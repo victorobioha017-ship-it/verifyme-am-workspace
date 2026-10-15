@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VerifyMe Account Management Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    fontFamily: { sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'] },
+    colors: {
+      bg: 'var(--bg)', surface: 'var(--surface)', surface2: 'var(--surface2)', ink: 'var(--ink)', mute: 'var(--mute)', line: 'var(--line)',
+      brand: 'var(--brand)', brandsoft: 'var(--brandsoft)', onbrand: 'var(--onbrand)',
+      ok: 'var(--ok)', oksoft: 'var(--oksoft)', warn: 'var(--warn)', warnsoft: 'var(--warnsoft)', bad: 'var(--bad)', badsoft: 'var(--badsoft)',
+      auto: 'var(--auto)', autosoft: 'var(--autosoft)'
+    }
+  } }
+};
+</script>
+<style>
+  :root {
+    --bg:#f4f5f7; --surface:#ffffff; --surface2:#eceef2; --ink:#15202b; --mute:#5d6b7a; --line:#dde1e7;
+    --brand:#0b6b61; --brandsoft:#dcf0ec; --onbrand:#ffffff;
+    --ok:#157a46; --oksoft:#dff3e7; --warn:#9a5b00; --warnsoft:#fdeccb; --bad:#b3261e; --badsoft:#fbe0dd;
+    --auto:#5b3fd0; --autosoft:#e9e4fb;
+    box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f151c; --surface:#17202a; --surface2:#212c38; --ink:#e8edf2; --mute:#98a6b5; --line:#2b3745;
+      --brand:#4fd1c0; --brandsoft:#143a37; --onbrand:#06201d;
+      --ok:#5fd394; --oksoft:#14301f; --warn:#f2b64d; --warnsoft:#3a2a0c; --bad:#ff8a80; --badsoft:#3d1815;
+      --auto:#b3a1ff; --autosoft:#2a2250;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f151c; --surface:#17202a; --surface2:#212c38; --ink:#e8edf2; --mute:#98a6b5; --line:#2b3745;
+    --brand:#4fd1c0; --brandsoft:#143a37; --onbrand:#06201d;
+    --ok:#5fd394; --oksoft:#14301f; --warn:#f2b64d; --warnsoft:#3a2a0c; --bad:#ff8a80; --badsoft:#3d1815;
+    --auto:#b3a1ff; --autosoft:#2a2250;
+    color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; font-feature-settings: "tnum"; margin: 0; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--surface); }
+  .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .scroll-x { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+/* ==========================================================================
+   VerifyMe Account Management Workspace: clickable concept prototype
+   Everything is mock and in memory. Structure (so Stage 2 and 3 add, not rewrite):
+   1 CONFIG  2 SEED DATA  3 LOGIC  4 STATE  5 UI PRIMITIVES  6 SHARED WIDGETS
+   7 SCREENS (registry)  8 APP SHELL
+   Assumption: "today" is fixed at Thu 15 Oct 2026, 09:00 so the stories always read the same.
+   ========================================================================== */
+const { useState, useReducer, useMemo, useEffect, useContext, createContext } = React;
+const html = htm.bind(React.createElement);
+const H = 3600e3, D = 864e5;
+const DEMO_NOW = new Date(2026, 9, 15, 9, 0, 0).getTime();
+const LOADED_AT = Date.now();
+const cx = (...a) => a.filter(Boolean).join(' ');
+const num = n => Math.round(n).toLocaleString('en-US');
+const ngn = n => 'NGN ' + num(n);
+const sod = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const fmtDay = ts => new Date(ts).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = ts => new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const fmtFull = ts => fmtDay(ts) + ', ' + fmtTime(ts);
+const isoDate = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const relAgo = (ts, now) => { const h = (now - ts) / H; if (h < 1) return Math.max(1, Math.round(h * 60)) + 'm ago'; if (h < 48) return Math.round(h) + 'h ago'; return Math.round(h / 24) + 'd ago'; };
+
+/* ============================ 1 CONFIG ============================ */
+const ROLES = {
+  AM:   { id: 'AM',   short: 'AM',         name: 'Amaka Eze',   title: 'Account Manager' },
+  VS:   { id: 'VS',   short: 'VS Agent',   name: 'Tunde Bello', title: 'Verification Services Agent' },
+  FIN:  { id: 'FIN',  short: 'Finance',    name: 'Ify Okon',    title: 'Finance' },
+  HEAD: { id: 'HEAD', short: 'Head of AM', name: 'Chidi Obi',   title: 'Head of Account Management' },
+};
+const ROLE_ORDER = ['AM', 'VS', 'FIN', 'HEAD'];
+
+// Service catalogue: add a row to extend. type: realtime | lastmile
+const SERVICES = [
+  { id: 'NIN',       name: 'NIN',                           type: 'realtime' },
+  { id: 'BVN',       name: 'BVN',                           type: 'realtime' },
+  { id: 'LIVE',      name: 'Liveness check',                type: 'realtime' },
+  { id: 'CAC',       name: 'CAC (Basic)',                   type: 'realtime' },
+  { id: 'DIGADDR',   name: 'Digital address (Verifind)',    type: 'realtime' },
+  { id: 'PHYADDR',   name: 'Physical address verification', type: 'lastmile', slaHours: [24, 72], slaLabel: '24 to 72 hours' },
+  { id: 'GUARANTOR', name: 'Guarantor verification',        type: 'lastmile', slaHours: [120, 120], slaLabel: '5 days' },
+];
+const SVC = Object.fromEntries(SERVICES.map(s => [s.id, s]));
+
+// Signal thresholds per segment (Stage 2 makes these editable and adds service-type overrides)
+const THRESHOLDS = {
+  Key:   { dropDays: 14, lowPct: 55, reducedPct: 25 },
+  Scale: { dropDays: 7,  lowPct: 50, reducedPct: 30 },
+};
+// Suppression rules: signals on a service with an open incident are held back
+THRESHOLDS.svcType = { realtime: 25, lastmile: 40 };
+const ACTIVE = { th: THRESHOLDS, supp: true };
+const SUPPRESSION_RULES = [{ id: 'incident', label: 'Open provider incident or downtime flag on the affected service' }];
+
+const NAV = [
+  { id: 'home',          label: 'Home',              icon: 'home',     stage: 1 },
+  { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
+  { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
+  { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
+  { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'FIN', 'HEAD'], blurb: 'Raise a request, validate against contract rules, auto-approve standard requests, route exceptions to Finance, generate the pack and share it, with request-to-delivery time.' },
+  { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
+  { id: 'dashboard',     label: 'Manager dashboard', icon: 'chart',    stage: 3, roles: ['HEAD'], blurb: 'First-response and resolution time per unit, escalation aging, breaches, signal-to-action rate, opportunities and retention tiles. Includes the guided demo.' },
+];
+const STAGE_DONE = 3;
+
+/* ============================ 2 SEED DATA ============================ */
+function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const ACCT_DEFS = [
+  { id: 'brightpay', name: 'Brightpay Microfinance', segment: 'Key', am: 'Amaka Eze', agreed: 12000, run: 1, seed: 11, price: 38, industry: 'Microfinance bank', since: 'Feb 2025',
+    mix: { NIN: .5, BVN: .4, LIVE: .1 }, mod: (s, a) => a <= 21 ? 0 : 1,
+    contacts: [{ id: 'br1', name: 'Folake Adegoke', role: 'CFO' }, { id: 'br2', name: 'Emeka Nwosu', role: 'Head of Engineering' }, { id: 'br3', name: 'Zainab Lawal', role: 'Operations Manager' }] },
+  { id: 'lumen', name: 'Lumen Insurance', segment: 'Key', am: 'Amaka Eze', agreed: 15000, run: .97, seed: 22, price: 41, industry: 'General insurance', since: 'Nov 2024',
+    mix: { NIN: .5, BVN: .3, LIVE: .2 }, mod: (s, a) => a <= 30 ? .64 : 1,
+    contacts: [{ id: 'lu1', name: 'Ifeanyi Okeke', role: 'Head of Risk' }, { id: 'lu2', name: 'Bola Adewale', role: 'Product Lead' }, { id: 'lu3', name: 'Ruth Ogunleye', role: 'Procurement' }] },
+  { id: 'orchid', name: 'Orchid Health HMO', segment: 'Key', am: 'Amaka Eze', agreed: 18000, run: 1, seed: 33, price: 36, industry: 'Health maintenance organisation', since: 'Jun 2025',
+    mix: { NIN: .7, BVN: .2, LIVE: .1 }, mod: (s, a) => s === 'NIN' && a <= 9 ? .5 : 1,
+    contacts: [{ id: 'or1', name: 'Ngozi Umeh', role: 'Head of Claims IT' }, { id: 'or2', name: 'Hauwa Garba', role: 'Operations Lead' }] },
+  { id: 'savannah', name: 'Savannah Agri Credit', segment: 'Key', am: 'Amaka Eze', agreed: 9000, run: .96, seed: 44, price: 40, industry: 'Agricultural lending', since: 'Aug 2025',
+    mix: { NIN: .65, BVN: .35 }, mod: () => 1,
+    contacts: [{ id: 'sa1', name: 'Adaora Nnadi', role: 'Head of Lending' }, { id: 'sa2', name: 'Yusuf Danjuma', role: 'Credit Operations' }] },
+  { id: 'meridian', name: 'Meridian Bank', segment: 'Key', am: 'Kemi Adeyemi', agreed: 40000, run: 1.02, seed: 55, price: 32, industry: 'Commercial bank', since: 'Mar 2024',
+    mix: { NIN: .4, BVN: .34, LIVE: .1, CAC: .1, DIGADDR: .05, PHYADDR: .01 }, mod: () => 1,
+    contacts: [{ id: 'me1', name: 'Adebayo Cole', role: 'CTO' }, { id: 'me2', name: 'Chioma Nwachukwu', role: 'Head of Compliance' }] },
+  { id: 'northgate', name: 'Northgate Logistics', segment: 'Scale', am: 'Amaka Eze', agreed: 20000, run: .4, seed: 66, price: 45, industry: 'Logistics and delivery', since: 'Jan 2026',
+    mix: { NIN: .5, BVN: .3, DIGADDR: .18, PHYADDR: .02 }, mod: () => 1,
+    contacts: [{ id: 'no1', name: 'Kelechi Ibe', role: 'Head of Fleet Operations' }, { id: 'no2', name: 'Dayo Fashola', role: 'Finance Manager' }] },
+  { id: 'quickloan', name: 'QuickLoan Hub', segment: 'Scale', am: 'Amaka Eze', agreed: 25000, run: .98, seed: 77, price: 44, industry: 'Digital lending', since: 'Apr 2026',
+    mix: { NIN: .45, BVN: .35, LIVE: .18, PHYADDR: .02 }, mod: () => 1,
+    contacts: [{ id: 'ql1', name: 'Tobi Ajayi', role: 'COO' }, { id: 'ql2', name: 'Mariam Sule', role: 'Head of Operations' }] },
+  { id: 'paynest', name: 'PayNest', segment: 'Scale', am: 'Segun Bakare', agreed: 10000, run: 1.03, seed: 88, price: 46, industry: 'Payments', since: 'May 2026',
+    mix: { NIN: .6, BVN: .4 }, mod: () => 1,
+    contacts: [{ id: 'pn1', name: 'Seyi Balogun', role: 'CEO' }, { id: 'pn2', name: 'Amina Yakubu', role: 'Engineering Lead' }] },
+];
+
+function genSeries(def) {
+  const r = rng(def.seed); const out = {};
+  Object.keys(def.mix).forEach(svc => {
+    const base = def.agreed * def.run * def.mix[svc] / 24.4;
+    out[svc] = Array.from({ length: 90 }, (_, i) => {
+      const ago = 90 - i; const dow = new Date(DEMO_NOW - ago * D).getDay();
+      const wk = (dow === 0 || dow === 6) ? .35 : 1;
+      return Math.max(0, Math.round(base * wk * def.mod(svc, ago) * (0.9 + r() * 0.2)));
+    });
+  });
+  return out;
+}
+const sum = a => a.reduce((x, y) => x + y, 0);
+function monthSum(total, month) { return sum(total.filter((_, i) => new Date(DEMO_NOW - (90 - i) * D).getMonth() === month)); }
+
+const ACCOUNTS = ACCT_DEFS.map(def => {
+  const series = genSeries(def);
+  const total = Array.from({ length: 90 }, (_, i) => sum(Object.values(series).map(s => s[i])));
+  let lastIdx = 89; while (lastIdx >= 0 && total[lastIdx] === 0) lastIdx--;
+  const last30 = sum(total.slice(60)), prior30 = sum(total.slice(30, 60));
+  const svcStats = Object.keys(series).map(id => {
+    const s = series[id]; const l30 = sum(s.slice(60)), p30 = sum(s.slice(30, 60));
+    const l7 = sum(s.slice(83)) / 7, pr = sum(s.slice(53, 83)) / 30;
+    return { id, last30: l30, prior30: p30, change7: pr > 0 ? l7 / pr - 1 : 0 };
+  });
+  const aug = monthSum(total, 7), sep = monthSum(total, 8);
+  const mk = (n, period, amt, status, issued, due) => ({ no: 'INV-' + def.id.slice(0, 3).toUpperCase() + '-' + n, period, amount: amt, status, issued, due });
+  const invoices = [
+    mk('0726', 'Jul 2026', Math.round(def.agreed * def.run * def.price * .97), 'Paid', '01 Aug 2026', '31 Aug 2026'),
+    mk('0826', 'Aug 2026', aug * def.price, 'Paid', '01 Sep 2026', '30 Sep 2026'),
+    mk('0926', 'Sep 2026', sep * def.price, 'Due', '01 Oct 2026', '31 Oct 2026'),
+  ];
+  return { ...def, series, total, stats: { last30, prior30, daysSinceLast: 89 - lastIdx, svcStats, mom: prior30 > 0 ? last30 / prior30 - 1 : 0 }, invoices, services: Object.keys(def.mix) };
+});
+const ACC = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
+
+// Timeline seed: [daysAgo, channel, direction, contactId, subject, body]. Tags are generated by autoTag().
+const TL_RAW = {
+  brightpay: [
+    [78, 'meeting', 'note', 'br1', 'Q2 review with Folake', 'Reviewed Q2 usage; the 12,000 per month commitment is on track and NIN match rates pleased the team. Amaka will send the updated price schedule by Friday.'],
+    [61, 'email', 'in', 'br2', 'BVN webhook timeouts', 'We saw intermittent timeouts on BVN last week and some of our customers were affected. Can you confirm the webhook retry policy? We are frustrated this reached end users.'],
+    [60, 'email', 'out', 'br2', 'Re: BVN webhook timeouts', 'Thanks Emeka, sorry for the disruption. We will share the retry policy today and our engineers will review your logs by tomorrow.'],
+    [42, 'slack', 'in', 'br3', '#brightpay-shared', 'Is liveness check included in our current plan? We want to roll it out to field agents next month.'],
+    [35, 'email', 'out', 'br1', 'August invoice and usage logs', 'Hi Folake, attached are the August invoice and usage logs. Let me know if Finance needs anything else.'],
+    [29, 'email', 'in', 'br1', 'Re: August invoice and usage logs', 'Thanks, received. Our board has asked us to review all vendor spend this quarter, including identity checks. We may pause some flows while we reconsider our integrations.'],
+    [24, 'slack', 'in', 'br2', '#brightpay-shared', 'We are moving onboarding to a new in-house screen so API calls will change for a while. Will update once the integration work is done.'],
+    [9, 'meeting', 'note', 'br1', 'Attempted check-in call', 'Two calls to Folake, no answer, left voicemail. No requests since late September. Raise at the next account review and propose a call with Emeka.'],
+  ],
+  lumen: [
+    [85, 'meeting', 'note', 'lu1', 'Onboarding retro', 'Go-live complete with NIN, BVN and Liveness. Ifeanyi is happy with sandbox support. Amaka will schedule an API health review next month.'],
+    [66, 'email', 'in', 'lu2', 'Liveness pricing', 'Could you confirm per-call pricing for liveness above 5,000 calls per month? We want to extend it to claims onboarding.'],
+    [64, 'email', 'out', 'lu2', 'Re: Liveness pricing', 'Tiered pricing is attached. We will confirm the volume discount by next Wednesday.'],
+    [40, 'slack', 'in', 'lu2', '#lumen-shared', 'Thanks for the pricing, great turnaround from the team.'],
+    [31, 'email', 'in', 'lu1', 'Renewal season', 'Renewal season is slower this month, and we are testing a competitor liveness product on a small share of traffic. Volume will be lower for a while.'],
+    [28, 'email', 'out', 'lu1', 'Re: Renewal season', 'Understood Ifeanyi. We will keep monitoring and I will send accuracy benchmarks next week.'],
+    [12, 'slack', 'in', 'lu2', '#lumen-shared', 'Our team sees slower responses on liveness since last week. Concern is that customers drop off at that step.'],
+    [5, 'meeting', 'note', 'lu1', 'Call with Ifeanyi', 'Volume is down and Ifeanyi mentioned a budget review in Q4. Amaka will send the benchmark pack by Monday.'],
+  ],
+  orchid: [
+    [70, 'meeting', 'note', 'or1', 'Annual review', 'NIN is core to member enrolment and a peak is expected in Q4. Amaka will send the capacity plan by Friday.'],
+    [50, 'email', 'in', 'or2', 'Enrolment spike plan', 'We expect a 20% spike at open enrolment. Please confirm rate limits will hold.'],
+    [49, 'email', 'out', 'or2', 'Re: Enrolment spike plan', 'Confirmed, limits sit above your projected peak. We will alert you if any provider incident affects NIN.'],
+    [30, 'slack', 'in', 'or2', '#orchid-shared', 'All smooth this month, thanks for the quick fix last week.'],
+    [9.3, 'slack', 'in', 'or2', '#orchid-shared', 'NIN requests are failing intermittently since this morning. Is this on your side?'],
+    [9.1, 'email', 'out', 'or2', 'Re: NIN failures', 'This is a provider-side downtime on the NIN gateway (INC-2291). TSI is tracking it and we will update you as soon as it recovers.'],
+    [3, 'slack', 'in', 'or2', '#orchid-shared', 'Our enrolment team is slowing uploads until NIN stabilises. Please keep us posted.'],
+    [1, 'meeting', 'note', 'or1', 'TSI update', 'TSI expects partial recovery this week. Amaka will confirm recovery with TSI on Friday before telling the customer.'],
+  ],
+  savannah: [
+    [80, 'meeting', 'note', 'sa1', 'Onboarding kickoff', 'Savannah will use NIN and BVN for loan applications. Go-live agreed for the following month. Amaka will share the sandbox keys tomorrow.'],
+    [55, 'email', 'in', 'sa2', 'Field verification for loans', 'Our field officers still visit borrowers to verify addresses. It is slow and costly. Is there a better option?'],
+    [54, 'email', 'out', 'sa2', 'Re: Field verification for loans', 'We offer digital and physical address verification. I will send details after your quarter close.'],
+    [33, 'slack', 'in', 'sa1', '#savannah-shared', 'Do we get a BVN match score in the response? Thanks.'],
+    [20, 'email', 'out', 'sa1', 'September invoice and usage logs', 'Hi Adaora, attached are the invoice and usage logs. Happy to walk through them.'],
+    [14, 'email', 'in', 'sa1', 'Q4 loan target', 'We plan to double disbursements before December and need faster credit checks and cheaper field verification.'],
+    [3, 'meeting', 'note', 'sa1', 'Call with Adaora', 'Expanding to three new states and interested in address checks. Amaka will send a proposal next week.'],
+  ],
+  meridian: [
+    [84, 'meeting', 'note', 'me1', 'Quarterly review', 'Usage is above plan across NIN, BVN, Liveness and CAC. Adebayo plans to add digital address in Q1. Kemi will send a contract summary by Friday.'],
+    [58, 'email', 'in', 'me2', 'CAC lookup coverage', 'Great coverage on CAC lookups, thanks for the quick support during our audit.'],
+    [40, 'email', 'out', 'me2', 'Re: CAC lookup coverage', 'Glad it helped Chioma. We will send the audit-ready usage report next week.'],
+    [22, 'slack', 'in', 'me1', '#meridian-shared', 'Latency has been excellent this month. Smooth rollout of the new branch app.'],
+    [10, 'email', 'in', 'me1', 'Renewal planning', 'We are planning the renewal and expect to increase our commitment. Can we meet next week?'],
+    [4, 'meeting', 'note', 'me1', 'Renewal prep call', 'Positive tone, increase of about 10% expected. Kemi will prepare the renewal addendum draft by next Friday.'],
+  ],
+  northgate: [
+    [75, 'email', 'in', 'no1', 'Driver onboarding', 'We onboard about 40 drivers a week and NIN and BVN checks fit our process. Volume will ramp as we add routes in Q4.'],
+    [70, 'meeting', 'note', 'no1', 'Volume agreement', 'Agreed 20,000 requests per month with a ramp. Amaka will check in at the 60 day mark.'],
+    [45, 'email', 'out', 'no1', 'Ramp check-in', 'Hi Kelechi, how is the driver ramp going? I can adjust the plan if the Q4 routes slip.'],
+    [38, 'email', 'in', 'no2', 'Invoice query', 'The August invoice shows a minimum charge. Can you explain how it is calculated?'],
+    [37, 'email', 'out', 'no2', 'Re: Invoice query', 'The minimum applies on the agreed plan. We will send the usage logs tomorrow.'],
+    [21, 'slack', 'in', 'no1', '#northgate-shared', 'We paused hiring until the new depot opens in November. Volume will stay low until then.'],
+    [1, 'email', 'in', 'no1', 'Address check for driver', 'VS says the address could not be found. We will send a landmark and a phone number for the guarantor today.'],
+  ],
+  quickloan: [
+    [62, 'meeting', 'note', 'ql1', 'Onboarding call', 'Live with NIN, BVN, Liveness and physical address checks. Amaka will review turnaround with VS after the first month.'],
+    [50, 'email', 'in', 'ql2', 'Address verification turnaround', 'Our loan decisions wait on physical address checks and the last batch took the full 72 hours. Can this be faster?'],
+    [49, 'email', 'out', 'ql2', 'Re: Address verification turnaround', 'We will raise priority with VS and give you updates every 24 hours on open batches.'],
+    [30, 'slack', 'in', 'ql2', '#quickloan-shared', 'Thanks, the last batch was better.'],
+    [18, 'email', 'out', 'ql1', 'September invoice and usage logs', 'Hi Tobi, invoice and logs attached for your records.'],
+    [2.5, 'email', 'in', 'ql2', '14 addresses pending', 'We submitted 14 address checks on Tuesday evening and have no update. Our loan officers are asking and this is the second delay. We are frustrated.'],
+    [2.4, 'email', 'out', 'ql2', 'Re: 14 addresses pending', 'I have raised this with VS as ESC-1042. I will update you today and again tomorrow morning.'],
+    [0.6, 'slack', 'in', 'ql2', '#quickloan-shared', 'Any news? Customers are calling us.'],
+  ],
+  paynest: [
+    [66, 'email', 'in', 'pn2', 'Go-live confirmation', 'Integration is live and stable. Thanks for the support during testing.'],
+    [52, 'email', 'out', 'pn2', 'Re: Go-live confirmation', 'Great news Amina. We will keep the shared channel open for any issue.'],
+    [35, 'slack', 'in', 'pn2', '#paynest-shared', 'Quick question about BVN rate limits. All good now, thanks.'],
+    [20, 'email', 'out', 'pn1', 'August invoice and usage logs', 'Hi Seyi, attached are the August invoice and usage logs.'],
+    [9, 'email', 'in', 'pn1', 'Usage report', 'Please send the monthly usage report on the first of each month. Happy with the service.'],
+    [2, 'slack', 'in', 'pn2', '#paynest-shared', 'Excellent response times this week, great work.'],
+  ],
+};
+
+// Open escalation cases (one model for both directions; Stage 2 adds actions)
+const ESCALATIONS_SEED = [
+  { id: 'ESC-1042', accountId: 'quickloan', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Batch of 14 address checks in Ikeja pending beyond 48 hours', raisedBy: 'Amaka Eze', owner: 'VS Team', openedAt: DEMO_NOW - 61 * H, slaHours: 72, status: 'In investigation',
+    thread: [{ by: 'Amaka Eze', ts: DEMO_NOW - 61 * H, text: 'Raising 14 address checks submitted Tuesday evening. Customer is asking for an update. Batch ref QL-0913.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 58 * H, text: 'Acknowledged. 9 of 14 completed, 5 awaiting field agent in Ikeja.' }] },
+  { id: 'ESC-1047', accountId: 'northgate', direction: 'VS_TO_AM', type: 'Physical address verification', issue: 'Address unreachable: landmark not found for driver applicant', raisedBy: 'Tunde Bello', owner: 'Amaka Eze', openedAt: DEMO_NOW - 20 * H, slaHours: 72, status: 'Awaiting AM',
+    thread: [{ by: 'Tunde Bello', ts: DEMO_NOW - 20 * H, text: 'Agent could not locate the address in Ojota. Please ask the customer for a nearby landmark and a guarantor phone number.' }] },
+  { id: 'ESC-1039', accountId: 'meridian', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Priority check for a corporate director address', raisedBy: 'Kemi Adeyemi', owner: 'VS Team', openedAt: DEMO_NOW - 14 * H, slaHours: 72, status: 'Acknowledged',
+    thread: [{ by: 'Kemi Adeyemi', ts: DEMO_NOW - 14 * H, text: 'Director address check needed ahead of a compliance filing.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 12 * H, text: 'Acknowledged, agent assigned.' }] },
+];
+const INCIDENTS_SEED = [{ id: 'INC-2291', service: 'NIN', title: 'NIN provider gateway downtime', openedAt: DEMO_NOW - 9 * D, status: 'Open', note: 'Provider-side intermittent failures. TSI is tracking.' }];
+const TASKS_SEED = [
+  { id: 't1', accountId: 'brightpay', text: 'Call Folake or Emeka about 21 days without requests', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'Signal' },
+  { id: 't2', accountId: 'lumen', text: 'Review benchmark pack before sending to Ifeanyi', owner: 'Amaka Eze', dueOff: 0, src: 'Meeting notes' },
+  { id: 't3', accountId: 'quickloan', text: 'Chase VS on ESC-1042 (61 of 72 hours used)', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'SLA reminder' },
+  { id: 't4', accountId: 'orchid', text: 'Confirm NIN recovery with TSI (INC-2291)', owner: 'Amaka Eze', dueOff: 0, src: 'Meeting notes' },
+  { id: 't5', accountId: 'northgate', text: 'Reply to VS on ESC-1047 with landmark and guarantor phone', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'Escalation' },
+  { id: 't6', accountId: 'savannah', text: 'Draft address verification proposal for Adaora', owner: 'Amaka Eze', dueOff: 2, src: 'Meeting notes' },
+  { id: 't7', accountId: 'meridian', text: 'Draft renewal addendum for Meridian', owner: 'Kemi Adeyemi', dueOff: 0, src: 'Meeting notes' },
+  { id: 't8', accountId: 'paynest', text: 'Send monthly usage report to Seyi', owner: 'Segun Bakare', dueOff: 1, src: 'Email' },
+];
+const INVOICE_REQ_SEED = [
+  { id: 'REQ-301', accountId: 'lumen', period: 'Sep 2026', services: ['NIN', 'BVN', 'LIVE'], raisedBy: 'Amaka Eze', raisedAt: DEMO_NOW - 5 * H, status: 'Awaiting Finance', reason: 'Requests a credit note that is not in the contract rules' },
+  { id: 'REQ-298', accountId: 'northgate', period: 'Sep 2026', services: ['NIN', 'BVN', 'DIGADDR'], raisedBy: 'Amaka Eze', raisedAt: DEMO_NOW - 30 * H, status: 'Delivered', reason: 'Standard request, auto-approved' },
+];
+const LOG_SEED = [
+  { id: 'l1', ts: DEMO_NOW - 3 * H, actor: 'System', auto: true, text: 'Daily usage feed processed. 4 signals detected, 1 suppressed (open incident INC-2291).' },
+  { id: 'l2', ts: DEMO_NOW - 3.4 * H, actor: 'System', auto: true, text: 'ESC-1042 reached 80% of SLA. Reminder sent to VS Team.', accountId: 'quickloan' },
+  { id: 'l3', ts: DEMO_NOW - 0.6 * D, actor: 'System', auto: true, text: 'Slack message from Mariam Sule synced to the QuickLoan timeline, matched by contact.', accountId: 'quickloan' },
+  { id: 'l4', ts: DEMO_NOW - 20 * H, actor: 'Tunde Bello', auto: false, text: 'Raised ESC-1047 to Amaka Eze: unreachable address (Northgate).', accountId: 'northgate' },
+  { id: 'l5', ts: DEMO_NOW - 61 * H, actor: 'Amaka Eze', auto: false, text: 'Raised ESC-1042 to VS Team (QuickLoan, physical address verification).', accountId: 'quickloan' },
+];
+
+/* ============================ 3 LOGIC ============================ */
+const TOPICS = [
+  ['Billing', /invoice|payment|pricing|price|tariff|billing|charge/i],
+  ['Technical', /\bapi\b|error|timeout|latency|webhook|downtime|integration|sandbox|failing|outage|slower|rate limit/i],
+  ['Volume', /volume|requests|usage|traffic|ramp|spike|peak|disbursement/i],
+  ['Verification ops', /address|guarantor|field officer|landmark|batch|\bVS\b/i],
+  ['Contract', /addendum|renewal|contract|commitment|agreed|plan\b/i],
+  ['Growth', /liveness|digital address|interested|extend|rollout|expand|new states|proposal/i],
+  ['Onboarding', /onboard|go-live|go live|kickoff/i],
+];
+const POS = /thanks|thank you|great|happy|pleased|excellent|smooth|glad|positive|stable/i;
+const NEG = /delay|issue|frustrat|concern|slow|error|failing|cancel|competitor|unhappy|pause|drop off|budget review|no answer|disruption|timeouts/i;
+const RISK = /cancel|competitor|alternative|reconsider|pause|budget|unhappy|frustrat|switch|testing a/i;
+function autoTag(text, dir) {
+  const topics = TOPICS.filter(t => t[1].test(text)).map(t => t[0]).slice(0, 2);
+  const p = (text.match(new RegExp(POS.source, 'gi')) || []).length, n = (text.match(new RegExp(NEG.source, 'gi')) || []).length;
+  const sentiment = n > p ? 'Negative' : p > n ? 'Positive' : 'Neutral';
+  const ours = /\b(will|we'll|i'll|let me)\b|by (monday|tuesday|wednesday|thursday|friday|tomorrow|next \w+)|next week|tomorrow/i;
+  const theirs = /\b(we will|we'll|will update|will share|will send)\b/i;
+  const sents = text.split(/(?<=[.!?])\s+/);
+  const hit = sents.find(s => (dir === 'in' ? theirs : ours).test(s));
+  return { topics: topics.length ? topics : ['General'], sentiment, commitment: hit ? (hit.length > 100 ? hit.slice(0, 97) + '...' : hit) : null, risk: RISK.test(text) };
+}
+const startTimeline = () => ACCOUNTS.flatMap(a => (TL_RAW[a.id] || []).map((r, i) => {
+  const [ago, channel, dir, cid, subject, body] = r;
+  const c = a.contacts.find(x => x.id === cid);
+  return { id: 'tl-' + a.id + '-' + i, accountId: a.id, channel, dir, contactId: cid, author: dir === 'in' ? c.name : a.am, ts: DEMO_NOW - ago * D, subject, body, auto: channel !== 'meeting', tags: autoTag(subject + '. ' + body, dir) };
+}));
+
+function computeSignals(list, incidents) {
+  const out = [];
+  list.forEach(a => {
+    const th = ACTIVE.th[a.segment]; const s = a.stats; const pct = s.last30 / a.agreed * 100;
+    let sig = null;
+    if (s.daysSinceLast >= th.dropDays) sig = { kind: 'Dropped', detail: 'No requests for ' + s.daysSinceLast + ' days. Last 30 days: ' + num(s.last30) + ' against ' + num(a.agreed) + ' agreed per month.' };
+    else if (pct < th.lowPct) sig = { kind: 'Low volume', detail: num(s.last30) + ' requests in the last 30 days against ' + num(a.agreed) + ' agreed (' + Math.round(pct) + '%).' };
+    else if (s.mom * 100 <= -th.reducedPct) sig = { kind: 'Reduced volume', detail: 'Down ' + Math.round(-s.mom * 100) + '% on the previous 30 days (' + num(s.prior30) + ' to ' + num(s.last30) + ').' };
+    else {
+      const sv = s.svcStats.filter(x => x.change7 * 100 <= -(ACTIVE.th.svcType[SVC[x.id].type] || th.reducedPct) && x.prior30 > 1000).sort((x, y) => x.change7 - y.change7)[0];
+      if (sv) {
+        const inc = ACTIVE.supp ? incidents.find(i => i.status === 'Open' && i.service === sv.id) : null;
+        sig = { kind: 'Reduced volume', service: sv.id, detail: SVC[sv.id].name + ' requests are down ' + Math.round(-sv.change7 * 100) + '% over the last 7 days.' };
+        if (inc) { sig.suppressed = true; sig.incident = inc; }
+      }
+    }
+    if (sig) out.push({ accountId: a.id, segment: a.segment, ...sig });
+  });
+  return out;
+}
+const slaPct = (c, now) => ((c.resolvedAt || now) - c.openedAt) / H / c.slaHours;
+const slaState = p => p >= 1 ? 'breached' : p >= .8 ? 'near' : 'ok';
+function healthOf(a, signals, cases, now) {
+  const sig = signals.find(s => s.accountId === a.id);
+  const states = cases.filter(c => c.accountId === a.id && isOpen(c)).map(c => slaState(slaPct(c, now)));
+  if ((sig && !sig.suppressed && sig.kind === 'Dropped') || states.includes('breached')) return 'red';
+  if (sig || states.includes('near')) return 'amber';
+  return 'green';
+}
+const HEALTH = { green: { tone: 'ok', label: 'Healthy' }, amber: { tone: 'warn', label: 'At risk' }, red: { tone: 'bad', label: 'Critical' } };
+
+// Meeting notes: extract action items, owner and due date
+const DAYIDX = ['sun', 'mon', 'tues', 'wednes', 'thurs', 'fri', 'satur'];
+function parseDue(s, now) {
+  const l = s.toLowerCase(); let m, n = 3;
+  if (/\btoday\b|\beod\b/.test(l)) n = 0;
+  else if (/\btomorrow\b/.test(l)) n = 1;
+  else if ((m = l.match(/in (\d+) days?/))) n = +m[1];
+  else if (/next week/.test(l)) n = 7;
+  else if ((m = l.match(/(mon|tues|wednes|thurs|fri|satur|sun)day/))) n = ((DAYIDX.indexOf(m[1]) - new Date(now).getDay() + 7) % 7) || 7;
+  return sod(now) + n * D;
+}
+function guessOwner(s, acc) {
+  const l = s.toLowerCase();
+  const c = acc.contacts.find(c => new RegExp('\\b' + c.name.split(' ')[0].toLowerCase() + '\\b (to|will)').test(l));
+  if (c) return c.name + ' (customer)';
+  if (/\bify\b|finance|invoice/.test(l)) return 'Ify Okon';
+  if (/\btunde\b|\bvs\b|verification services/.test(l)) return 'Tunde Bello';
+  return acc.am;
+}
+function extractActions(text, acc, now) {
+  const trig = /^(action|todo|to-do|next step|follow[- ]?up)s?\s*[:\-]\s*/i;
+  const verb = /\b(will|to send|to share|to confirm|send|share|schedule|confirm|prepare|raise|chase|follow up|review)\b/i;
+  const when = /\b(today|tomorrow|next week|(mon|tues|wednes|thurs|fri|satur|sun)day|in \d+ days?|eod)\b/i;
+  return text.split(/\n+|(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean)
+    .filter(s => trig.test(s) || (verb.test(s) && when.test(s)))
+    .map((s, i) => { const t = s.replace(trig, '').replace(/\.$/, ''); return { key: i, text: t, owner: guessOwner(t, acc), due: parseDue(t, now), on: true }; });
+}
+const CANNED_INBOUND = [
+  { channel: 'email', subject: 'Usage summary request', body: 'Could you send us this month\'s usage summary by Friday? We are preparing a board pack.' },
+  { channel: 'slack', subject: 'Shared channel', body: 'Quick one: we saw a few slow responses this morning and the concern is customers dropping off. Can someone check?' },
+  { channel: 'email', subject: 'Thanks for today', body: 'Thanks for the walkthrough, very helpful and the team is happy with the plan. We will confirm the addendum next week.' },
+];
+
+/* ============================ 4 STATE ============================ */
+const initState = () => ({
+  role: 'AM',
+  timeline: [...seedStage2().timeline, ...startTimeline()],
+  tasks: TASKS_SEED.map(t => ({ ...t, due: sod(DEMO_NOW) + t.dueOff * D, done: false })),
+  escalations: seedCases(),
+  incidents: INCIDENTS_SEED,
+  invoiceRequests: seedStage3().reqs,
+  oppSeen: seedStage3().seen,
+  oppWork: {},
+  log: [...seedStage3().log, ...seedStage2().log, ...LOG_SEED],
+  simHours: 0,       // advanced by "Simulate time passing"
+  thresholds: JSON.parse(JSON.stringify(THRESHOLDS)),
+  suppOn: true,
+  sigWork: seedStage2().work,
+  sentLog: seedStage2().sentLog,
+  toast: null,
+  seq: 1,
+});
+function reducer(s, a) {
+  switch (a.type) {
+    case 'RESET': return initState();
+    case 'SET_ROLE': return { ...s, role: a.role };
+    case 'TOGGLE_TASK': return { ...s, tasks: s.tasks.map(t => t.id === a.id ? { ...t, done: !t.done } : t) };
+    case 'ADD_TIMELINE': {   // item, optional tasks, optional log lines, toast text
+      const seq = s.seq + 1;
+      const tasks = (a.tasks || []).map((t, i) => ({ ...t, id: 'n' + seq + '-' + i, done: false }));
+      const logs = (a.logs || []).map((l, i) => ({ id: 'lg' + seq + '-' + i, ts: a.ts, ...l }));
+      return { ...s, seq, timeline: [{ ...a.item, id: 'tl-new-' + seq }, ...s.timeline], tasks: [...tasks, ...s.tasks], log: [...logs.reverse(), ...s.log], toast: a.toast ? { id: seq, text: a.toast } : s.toast };
+    }
+    case 'TOAST': return { ...s, toast: a.text ? { id: s.seq + 1, text: a.text } : null, seq: s.seq + 1 };
+    case 'SIM': return { ...s, simHours: s.simHours + a.hours, seq: s.seq + 1, toast: { id: s.seq + 1, text: 'Clock advanced by ' + a.hours + ' hours. Reminders and breach escalation fire automatically.' } };
+    case 'CLOCK_TICK': {
+      const nowT = a.now, nt = [], nl = []; let any = false;
+      const esc = s.escalations.map(c => {
+        if (!isOpen(c)) return c;
+        const p = slaPct(c, nowT); let n = c;
+        const upd = (patch, text, at, logText) => { n = { ...n, ...patch, thread: [...n.thread, { by: 'System', auto: true, ts: at, text }] }; nl.push({ actor: 'System', auto: true, accountId: c.accountId, text: logText }); any = true; };
+        if (p >= .5 && !n.rem50) upd({ rem50: true }, 'Reminder at 50% of the SLA sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .5, c.id + ' reached 50% of its SLA. Reminder sent to ' + n.owner + '.');
+        if (p >= .8 && !n.rem80) upd({ rem80: true }, 'Reminder at 80% of the SLA sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .8, c.id + ' reached 80% of its SLA. Reminder sent to ' + n.owner + '.');
+        if (p >= 1 && !n.breached) {
+          upd({ breached: true }, 'SLA breached. Auto-escalated to the Director of Verification Services and the Head of AM.', c.openedAt + c.slaHours * H, c.id + ' breached its ' + c.slaHours + 'h SLA. Auto-escalated to the Director of Verification Services and the Head of AM.');
+          nt.push({ accountId: c.accountId, text: 'Review breached case ' + c.id + ' (' + ACC[c.accountId].name + ')', owner: 'Chidi Obi', due: sod(nowT), src: 'Breach escalation', auto: true });
+        }
+        return n;
+      });
+      if (!any) return s;
+      const seq = s.seq + 1;
+      return { ...s, escalations: esc, tasks: [...mkTasks(nt, seq), ...s.tasks], log: [...mkLogs(nl, nowT, seq), ...s.log], seq };
+    }
+    case 'SET_TH': { const t = JSON.parse(JSON.stringify(s.thresholds)); if (a.seg === 'svcType') t.svcType[a.key] = a.val; else t[a.seg][a.key] = a.val; return { ...s, thresholds: t }; }
+    case 'SET_SUPP': return { ...s, suppOn: a.on };
+    case 'INC_TOGGLE': {
+      const seq = s.seq + 1; const inc = s.incidents.find(i => i.id === a.id); const ns = inc.status === 'Open' ? 'Resolved' : 'Open';
+      return { ...s, seq, incidents: s.incidents.map(i => i.id === a.id ? { ...i, status: ns } : i), log: [{ id: 'g' + seq, ts: a.ts, actor: ROLES[s.role].name, auto: false, text: a.id + ' marked ' + ns.toLowerCase() + '. Signals on ' + SVC[inc.service].name + (ns === 'Open' ? ' are suppressed again.' : ' are no longer suppressed. Run the daily feed to act on them.') }, ...s.log], toast: { id: seq, text: a.id + ' ' + ns.toLowerCase() + '.' } };
+    }
+    case 'FEED': {
+      syncActive(s); const seq = s.seq + 1; const sigs = computeSignals(ACCOUNTS, s.incidents);
+      const work = { ...s.sigWork }; const tl = [], sl = [], lg = [], tk = [];
+      sigs.forEach(sg => {
+        const acc = ACC[sg.accountId]; const w = work[acc.id];
+        if (sg.suppressed) {
+          if (!w || w.status !== 'Suppressed') { work[acc.id] = { status: 'Suppressed', kind: sg.kind, detectedAt: a.ts }; lg.push({ actor: 'System', auto: true, accountId: acc.id, text: 'Signal on ' + SVC[sg.service].name + ' suppressed because of open incident ' + sg.incident.id + '. AM told the cause; no customer email sent.' }); }
+          return;
+        }
+        if (w && w.status !== 'Suppressed') return;
+        const draft = makeCheckin(acc, sg);
+        if (acc.segment === 'Scale') {
+          const nw = { status: 'Sent', mode: 'auto', kind: sg.kind, detectedAt: a.ts, sentAt: a.ts, draft }; work[acc.id] = nw;
+          const b = buildSend(acc, nw, a.ts, 'Auto', null); tl.push(b.item); sl.push(b.entry); lg.push({ actor: 'System', auto: true, accountId: acc.id, text: sg.kind + ' detected for ' + acc.name + ' (Scale). ' }); lg.push(b.log);
+        } else {
+          work[acc.id] = { status: 'Draft', kind: sg.kind, detectedAt: a.ts, draft };
+          lg.push({ actor: 'System', auto: true, accountId: acc.id, text: sg.kind + ' detected for ' + acc.name + '. Check-in draft prepared for ' + acc.am + ' to approve.' });
+          tk.push({ accountId: acc.id, text: 'Review and approve check-in draft for ' + acc.name, owner: acc.am, due: sod(a.ts), auto: true, src: 'Signal' });
+        }
+      });
+      if (lg.length === 0) return { ...s, seq, toast: { id: seq, text: 'Daily feed ran. No new signals to action.' } };
+      return { ...s, seq, sigWork: work, timeline: [...tl.map((t, i) => ({ ...t, id: 'tl-f' + seq + '-' + i })), ...s.timeline], sentLog: [...sl.map((e, i) => ({ ...e, id: 'sl' + seq + '-' + i })), ...s.sentLog], tasks: [...mkTasks(tk, seq), ...s.tasks], log: [...mkLogs(lg, a.ts, seq), ...s.log], toast: { id: seq, text: 'Daily feed ran: ' + lg.length + ' automatic action' + (lg.length > 1 ? 's' : '') + ' logged.' } };
+    }
+    case 'SIG_EDIT': { const w = s.sigWork[a.accountId]; return { ...s, sigWork: { ...s.sigWork, [a.accountId]: { ...w, draft: { ...w.draft, ...a.patch } } } }; }
+    case 'SIG_APPROVE': {
+      const acc = ACC[a.accountId]; const w = s.sigWork[acc.id]; if (!w || w.status !== 'Draft') return s;
+      const seq = s.seq + 1; const nw = { ...w, status: 'Sent', mode: 'manual', sentAt: a.ts, approvedBy: a.by }; const b = buildSend(acc, nw, a.ts, 'Manual', a.by);
+      return { ...s, seq, sigWork: { ...s.sigWork, [acc.id]: nw }, timeline: [{ ...b.item, id: 'tl-s' + seq }, ...s.timeline], sentLog: [{ ...b.entry, id: 'sl' + seq }, ...s.sentLog], log: [{ ...b.log, id: 'g' + seq, ts: a.ts }, ...s.log],
+        tasks: s.tasks.map(t => t.accountId === acc.id && /approve check-in/i.test(t.text) ? { ...t, done: true } : t), toast: { id: seq, text: 'Check-in approved and sent (mock) to ' + b.entry.to + '. Logged to the timeline.' } };
+    }
+    case 'SIG_REPLY': {
+      const acc = ACC[a.accountId]; const w = s.sigWork[acc.id]; if (!w || w.status !== 'Sent') return s;
+      const seq = s.seq + 1; const c = acc.contacts.find(x => x.id === w.draft.to); const reply = { subject: 'Re: ' + w.draft.subject, body: REPLIES[acc.id] || REPLIES.default };
+      const item = { id: 'tl-r' + seq, accountId: acc.id, channel: 'email', dir: 'in', contactId: c.id, author: c.name, ts: a.ts, subject: reply.subject, body: reply.body, auto: true, tags: autoTag(reply.subject + '. ' + reply.body, 'in') };
+      const task = { accountId: acc.id, text: 'Follow up on ' + c.name.split(' ')[0] + "'s reply to the check-in (" + acc.name + ')', owner: acc.am, due: sod(a.ts) + 2 * D, auto: true, src: 'Reply' };
+      return { ...s, seq, sigWork: { ...s.sigWork, [acc.id]: { ...w, status: 'Replied', repliedAt: a.ts, reply } }, timeline: [item, ...s.timeline], tasks: [...mkTasks([task], seq), ...s.tasks],
+        log: [...mkLogs([{ actor: 'System', auto: true, accountId: acc.id, text: 'Reply from ' + c.name + ' logged to the ' + acc.name + ' timeline.' }, { actor: 'System', auto: true, accountId: acc.id, text: 'Follow-up task created for ' + acc.am + ', due ' + fmtDay(task.due) + '.' }], a.ts, seq), ...s.log], toast: { id: seq, text: 'Reply from ' + c.name + ' logged. Follow-up task created.' } };
+    }
+    case 'ESC_NEW': {
+      const seq = s.seq + 1; const n = Math.max(...s.escalations.map(c => +c.id.slice(4))) + 1; const acc = ACC[a.accountId]; const vs = a.direction === 'AM_TO_VS';
+      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: SVC[a.svc].slaHours[1], status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, thread: [{ by: a.by, ts: a.ts, text: a.issue }] };
+      return { ...s, seq, escalations: [c, ...s.escalations], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + c.id + ' to ' + c.owner + ' (' + acc.name + ', ' + a.category + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: c.id + ' created, routed to ' + c.owner + ' and SLA clock started (' + c.slaHours + 'h).' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.id + ' raised to ' + c.owner + '. SLA clock started at ' + c.slaHours + 'h.' } };
+    }
+    case 'ESC_ACT': {
+      const c = s.escalations.find(x => x.id === a.id); if (!c) return s;
+      const acc = ACC[c.accountId], t = a.ts, seq = s.seq + 1; let u = {}, msg = a.text || '', lg = [], tk = [], tl = null, toast = '';
+      let tasks = s.tasks; const isTurn = c.status === 'Open' || c.status === 'Awaiting AM';
+      switch (a.act) {
+        case 'ack': u = { status: 'Acknowledged', ackAt: c.ackAt || t }; msg = msg || 'Acknowledged. We are looking into it.'; lg.push({ actor: a.by, auto: false, text: 'Acknowledged ' + c.id + (c.ackAt ? '.' : '. First response ' + fmtDur(t - c.openedAt) + ' after the case was raised.') }); toast = c.id + ' acknowledged.'; break;
+        case 'reply': u = { status: 'In investigation', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Posted an update on ' + c.id + '.' }); toast = 'Update sent on ' + c.id + '.'; break;
+        case 'query': u = { owner: acc.am, status: 'Awaiting AM', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Raised a query to ' + acc.am + ' on ' + c.id + ' (' + acc.name + ').' });
+          tk.push({ accountId: acc.id, text: 'Reply to VS on ' + c.id + ': ' + (msg.length > 60 ? msg.slice(0, 57) + '...' : msg), owner: acc.am, due: sod(t), auto: true, src: 'Escalation' }); toast = 'Query sent to ' + acc.am + '. Task created for the AM.'; break;
+        case 'info': u = { owner: 'VS Team', status: 'In investigation', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Supplied information to VS on ' + c.id + '. Response time logged.' });
+          tasks = tasks.map(x => x.accountId === acc.id && x.text.includes(c.id) && x.owner === acc.am && !/Update customer/.test(x.text) && !/Review breached/.test(x.text) ? { ...x, done: true } : x); toast = 'Information sent to VS. Case is back with the VS Team.'; break;
+        case 'resolve': { u = { status: 'Resolved', resolvedAt: t }; const hrs = (t - c.openedAt) / H; msg = msg || 'Verification completed. Results are available.';
+          lg.push({ actor: a.by, auto: false, text: 'Resolved ' + c.id + ' in ' + fmtDur(t - c.openedAt) + ', ' + (hrs <= c.slaHours ? 'within' : 'after') + ' the ' + c.slaHours + 'h SLA.' });
+          tk.push({ accountId: acc.id, text: 'Update customer and close ' + c.id + ' (' + acc.name + ')', owner: acc.am, due: sod(t), auto: true, src: 'Escalation' }); toast = c.id + ' resolved. The AM is asked to update the customer.'; break; }
+        case 'close': { u = { status: 'Closed' }; const cn = acc.contacts[0]; msg = msg || 'Customer updated and case closed.';
+          tl = { accountId: acc.id, channel: 'email', dir: 'out', contactId: cn.id, author: a.by, ts: t, subject: 'Update on address verification (' + c.id + ')', body: 'Hi ' + cn.name.split(' ')[0] + ', the address verification case ' + c.id + ' is complete and the results are in your dashboard. Thank you for your patience.', auto: false };
+          tl.tags = autoTag(tl.subject + '. ' + tl.body, 'out'); lg.push({ actor: a.by, auto: false, text: 'Updated the customer (mock email) and closed ' + c.id + '.' });
+          tasks = tasks.map(x => x.text.includes(c.id) && /Update customer/.test(x.text) ? { ...x, done: true } : x); toast = 'Customer updated (mock email) and ' + c.id + ' closed.'; break; }
+        default: lg.push({ actor: a.by, auto: false, text: 'Commented on ' + c.id + '.' }); toast = 'Comment added to ' + c.id + '.';
+      }
+      const esc = s.escalations.map(x => x.id === c.id ? { ...x, ...u, thread: [...x.thread, { by: a.by, ts: t, text: msg }] } : x);
+      return { ...s, seq, escalations: esc, tasks: [...mkTasks(tk, seq), ...tasks], timeline: tl ? [{ ...tl, id: 'tl-c' + seq }, ...s.timeline] : s.timeline, log: [...mkLogs(lg.map(l => ({ ...l, accountId: acc.id })), t, seq), ...s.log], toast: { id: seq, text: toast } };
+    }
+    case 'INV_NEW': {
+      const acc = ACC[a.accountId]; const seq = s.seq + 1; const checks = validateRequest(acc, a.period, a.services, a.adjust, s.escalations); const standard = checks.every(c => c.pass);
+      const n = Math.max(...s.invoiceRequests.map(r => +r.id.slice(4))) + 1; const id = 'REQ-' + n; const t = a.ts;
+      const steps = [{ label: 'Request raised by ' + a.by, ts: t, auto: false }, { label: 'Validated against contract and SLA rules', ts: t, auto: true }];
+      const failed = checks.filter(c => !c.pass).map(c => c.label).join('; ');
+      if (standard) steps.push({ label: 'Within standard rules: auto-approved', ts: t, auto: true }, { label: 'Invoice and log pack generated and archived to the account', ts: t, auto: true });
+      else steps.push({ label: 'Outside standard rules: routed to Finance', ts: t, auto: true });
+      const r = { id, accountId: acc.id, period: a.period, services: a.services, adjust: a.adjust, raisedBy: a.by, raisedAt: t, checks, standard, status: standard ? 'Ready' : 'Awaiting Finance', reason: standard ? 'Standard request, auto-approved' : failed, readyAt: standard ? t : null, steps };
+      const lg = [{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + id + ': invoice and logs for ' + acc.name + ', ' + a.period + '.' }, { actor: 'System', auto: true, accountId: acc.id, text: id + ' validated against contract rules. ' + (standard ? 'Auto-approved, pack generated and archived.' : 'Exception (' + failed + '). Routed to the Finance queue.') }];
+      const tk = standard ? [] : [{ accountId: acc.id, text: 'Approve invoice exception ' + id + ' (' + acc.name + ')', owner: 'Ify Okon', due: sod(t), auto: true, src: 'Invoice request' }];
+      return { ...s, seq, invoiceRequests: [r, ...s.invoiceRequests], tasks: [...mkTasks(tk, seq), ...s.tasks], log: [...mkLogs(lg, t, seq), ...s.log], toast: { id: seq, text: id + (standard ? ' auto-approved. The pack is ready to share.' : ' needs Finance approval. It is in the Finance queue.') } };
+    }
+    case 'INV_APPROVE': {
+      const r = s.invoiceRequests.find(x => x.id === a.id); if (!r || r.status !== 'Awaiting Finance') return s; const seq = s.seq + 1; const acc = ACC[r.accountId];
+      const nr = { ...r, status: 'Ready', approvedBy: a.by, approvedAt: a.ts, readyAt: a.ts, note: a.note, steps: [...r.steps, { label: 'Exception approved by ' + a.by + (a.note ? ': ' + a.note : ''), ts: a.ts, auto: false }, { label: 'Invoice and log pack generated and archived to the account', ts: a.ts, auto: true }] };
+      return { ...s, seq, invoiceRequests: s.invoiceRequests.map(x => x.id === r.id ? nr : x), tasks: s.tasks.map(t => t.text.includes(r.id) && /Approve invoice exception/.test(t.text) ? { ...t, done: true } : t),
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Approved exception ' + r.id + ' (' + acc.name + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: r.id + ' pack generated and archived. ' + acc.am + ' can now share it.' }], a.ts, seq), ...s.log], toast: { id: seq, text: r.id + ' approved. Pack generated for ' + acc.am + ' to share.' } };
+    }
+    case 'INV_REJECT': {
+      const r = s.invoiceRequests.find(x => x.id === a.id); if (!r || r.status !== 'Awaiting Finance') return s; const seq = s.seq + 1; const acc = ACC[r.accountId];
+      const nr = { ...r, status: 'Rejected', rejectedBy: a.by, rejectedAt: a.ts, note: a.note, steps: [...r.steps, { label: 'Rejected by ' + a.by, ts: a.ts, auto: false }] };
+      return { ...s, seq, invoiceRequests: s.invoiceRequests.map(x => x.id === r.id ? nr : x), tasks: s.tasks.map(t => t.text.includes(r.id) && /Approve invoice exception/.test(t.text) ? { ...t, done: true } : t),
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Rejected ' + r.id + ' (' + acc.name + '): ' + a.note }], a.ts, seq), ...s.log], toast: { id: seq, text: r.id + ' rejected. The AM sees your note.' } };
+    }
+    case 'INV_SHARE': {
+      const r = s.invoiceRequests.find(x => x.id === a.id); if (!r || r.status !== 'Ready') return s; const seq = s.seq + 1; const acc = ACC[r.accountId]; const c = acc.contacts[0];
+      const link = 'files.verifyme.example/p/' + r.id.toLowerCase(); const email = a.method === 'email'; const method = email ? 'Sent to customer' : 'Secure link shared';
+      const nr = { ...r, status: 'Delivered', deliveredAt: a.ts, method, link: email ? null : link, steps: [...r.steps, { label: method + ' by ' + a.by, ts: a.ts, auto: false }, { label: 'Customer receives. Request clock stops', ts: a.ts, auto: true }] };
+      const subject = 'Invoice and usage logs, ' + r.period; const body = 'Hi ' + c.name.split(' ')[0] + ', ' + (email ? 'attached are the invoice and usage logs for ' + r.period + '.' : 'here is a secure link to the invoice and usage logs for ' + r.period + ': ' + link) + ' Let me know if Finance needs anything else.';
+      const item = { id: 'tl-i' + seq, accountId: acc.id, channel: 'email', dir: 'out', contactId: c.id, author: a.by, ts: a.ts, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'out') };
+      return { ...s, seq, invoiceRequests: s.invoiceRequests.map(x => x.id === r.id ? nr : x), timeline: [item, ...s.timeline],
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: method + ' for ' + r.id + ' to ' + c.name + '. Mock: nothing was really sent.' }, { actor: 'System', auto: true, accountId: acc.id, text: r.id + ' delivered in ' + fmtDur(a.ts - r.raisedAt) + '. Request clock stopped.' }], a.ts, seq), ...s.log], toast: { id: seq, text: r.id + ' delivered in ' + fmtDur(a.ts - r.raisedAt) + (email ? ' (mock email).' : '. Link: ' + link) } };
+    }
+    case 'OPP_SCAN': {
+      syncActive(s); const found = computeOpps(ACCOUNTS, { timeline: s.timeline, signals: computeSignals(ACCOUNTS, s.incidents), sigWork: s.sigWork, cases: s.escalations, now: a.now }).filter(o => !o.held && !s.oppSeen[o.key] && !s.oppWork[o.key]);
+      if (!found.length) return s; const seq = s.seq + 1; const seen = { ...s.oppSeen }; found.forEach(o => { seen[o.key] = a.now; });
+      return { ...s, seq, oppSeen: seen, log: [...mkLogs(found.map(o => ({ actor: 'System', auto: true, accountId: o.accountId, text: 'Rule scan flagged "' + OPP_RULES.find(r => r.id === o.rule).name + '" for ' + ACC[o.accountId].name + ' (score ' + o.score + '). ' + ACC[o.accountId].am + ' notified to review the drafted email.' })), a.now, seq), ...s.log] };
+    }
+    case 'OPP_EDIT': {
+      const [aid, rid] = a.okey.split(':'); const w = s.oppWork[a.okey] || { status: 'Flagged', draft: makeOppDraft(ACC[aid], rid) };
+      return { ...s, oppWork: { ...s.oppWork, [a.okey]: { ...w, draft: { ...w.draft, ...a.patch } } } };
+    }
+    case 'OPP_APPROVE': {
+      const [aid, rid] = a.okey.split(':'); const acc = ACC[aid]; const w = s.oppWork[a.okey] || {}; const draft = w.draft || makeOppDraft(acc, rid); const c = acc.contacts.find(x => x.id === draft.to); const seq = s.seq + 1; const rule = OPP_RULES.find(r => r.id === rid);
+      const item = { id: 'tl-o' + seq, accountId: acc.id, channel: 'email', dir: 'out', contactId: c.id, author: a.by, ts: a.ts, subject: draft.subject, body: draft.body.replace(/\n+/g, ' '), auto: true, tags: autoTag(draft.subject + '. ' + draft.body, 'out') };
+      const tk = [{ accountId: acc.id, text: 'Sales: pitch and commercials for ' + rule.name + ' (' + acc.name + ')', owner: 'Sales team', due: sod(a.ts) + 2 * D, auto: true, src: 'Sales handoff' }, { accountId: acc.id, text: 'Join the Sales call for ' + acc.name + ' and agree the addendum (SOP 4.3)', owner: acc.am, due: sod(a.ts) + 2 * D, auto: true, src: 'Sales handoff' }];
+      const nw = { ...w, status: 'Sales handoff', draft, approvedAt: a.ts, sentAt: a.ts, approvedBy: a.by };
+      return { ...s, seq, oppWork: { ...s.oppWork, [a.okey]: nw }, oppSeen: { ...s.oppSeen, [a.okey]: s.oppSeen[a.okey] || a.ts }, timeline: [item, ...s.timeline], tasks: [...mkTasks(tk, seq), ...s.tasks],
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Approved the "' + rule.name + '" email for ' + acc.name + '.' }, { actor: 'System', auto: true, accountId: acc.id, text: 'Approved email sent to ' + c.name + ' and logged to the timeline. Mock: nothing was really sent.' }, { actor: 'System', auto: true, accountId: acc.id, text: 'Opportunity moved to Sales handoff. Tasks created for Sales and ' + acc.am + '.' }], a.ts, seq), ...s.log], toast: { id: seq, text: 'Email sent (mock) to ' + c.name + '. Opportunity is now in Sales handoff.' } };
+    }
+    case 'OPP_INTEREST': {
+      const [aid, rid] = a.okey.split(':'); const acc = ACC[aid]; const w = s.oppWork[a.okey]; if (!w) return s; const c = acc.contacts.find(x => x.id === w.draft.to); const seq = s.seq + 1;
+      const subj = 'Re: ' + w.draft.subject; const body = 'Thanks for this. We are interested and would like to see commercials. Can Sales and ' + acc.am.split(' ')[0] + ' join a call next week?';
+      const item = { id: 'tl-oi' + seq, accountId: acc.id, channel: 'email', dir: 'in', contactId: c.id, author: c.name, ts: a.ts, subject: subj, body, auto: true, tags: autoTag(subj + '. ' + body, 'in') };
+      return { ...s, seq, oppWork: { ...s.oppWork, [a.okey]: { ...w, interestAt: a.ts } }, timeline: [item, ...s.timeline], log: [...mkLogs([{ actor: 'System', auto: true, accountId: acc.id, text: 'Reply from ' + c.name + ' logged: interest in the proposal.' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.name + ' replied with interest. Logged to the timeline.' } };
+    }
+    case 'OPP_ADDENDUM': {
+      const [aid, rid] = a.okey.split(':'); const acc = ACC[aid]; const w = s.oppWork[a.okey]; if (!w) return s; const seq = s.seq + 1;
+      return { ...s, seq, oppWork: { ...s.oppWork, [a.okey]: { ...w, status: 'Addendum filed', filedAt: a.ts } }, tasks: s.tasks.map(t => t.accountId === acc.id && t.src === 'Sales handoff' ? { ...t, done: true } : t),
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Addendum filed for ' + acc.name + ' (SOP 4.3).' }, { actor: 'System', auto: true, accountId: acc.id, text: 'Conversion tracked against the upsell KPI.' }], a.ts, seq), ...s.log], toast: { id: seq, text: 'Addendum filed. Conversion counted against the upsell KPI.' } };
+    }
+    case 'OPP_DISMISS': {
+      const [aid, rid] = a.okey.split(':'); const acc = ACC[aid]; const w = s.oppWork[a.okey] || {}; const seq = s.seq + 1;
+      return { ...s, seq, oppWork: { ...s.oppWork, [a.okey]: { ...w, status: 'Dismissed', reason: a.reason, note: a.note, dismissedAt: a.ts } }, oppSeen: { ...s.oppSeen, [a.okey]: s.oppSeen[a.okey] || a.ts },
+        log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Dismissed the ' + OPP_RULES.find(r => r.id === rid).name + ' opportunity for ' + acc.name + ': ' + a.reason + '.' }, { actor: 'System', auto: true, accountId: acc.id, text: 'Dismiss reason recorded for rule tuning.' }], a.ts, seq), ...s.log], toast: { id: seq, text: 'Dismissed. The reason feeds rule tuning.' } };
+    }
+    default: return s;
+  }
+}
+const NowCtx = createContext(DEMO_NOW);
+const useNow = () => useContext(NowCtx);
+
+/* ============================ 5 UI PRIMITIVES ============================ */
+const ICONS = {
+  home: 'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  building: 'M3 21h18 M5 21V5l7-3 7 3v16 M9 9h2 M13 9h2 M9 13h2 M13 13h2',
+  flag: 'M4 22V4 M4 4h13l-2 4 2 4H4',
+  trend: 'M23 18l-9.5-9.5-5 5L1 6 M17 18h6v-6',
+  file: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h8',
+  spark: 'M12 3l2.1 5.4L20 10l-5.9 1.6L12 17l-2.1-5.4L4 10l5.9-1.6z M19 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z',
+  chart: 'M3 3v18h18 M7 14l4-4 4 4 5-6',
+  mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6',
+  hash: 'M4 9h16 M4 15h16 M10 3L8 21 M16 3l-2 18',
+  note: 'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16 M21 21l-4.3-4.3',
+  check: 'M20 6L9 17l-5-5',
+  plus: 'M12 5v14 M5 12h14',
+  bolt: 'M13 2L3 14h9l-1 8 10-12h-9z',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M12 6v6l4 2',
+  alert: 'M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z M12 9v4 M12 17h.01',
+  back: 'M19 12H5 M12 19l-7-7 7-7',
+  lock: 'M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4',
+  reset: 'M23 4v6h-6 M1 20v-6h6 M3.5 9a9 9 0 0 1 14.9-3.4L23 10 M1 14l4.6 4.4A9 9 0 0 0 20.5 15',
+  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
+  inbox: 'M22 12h-6l-2 3h-4l-2-3H2 M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z',
+};
+const Icon = ({ n, s = 16, className = '' }) => html`<svg viewBox="0 0 24 24" width=${s} height=${s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className=${className} aria-hidden="true"><path d=${ICONS[n]} /></svg>`;
+const TONES = { ok: 'bg-oksoft text-ok', warn: 'bg-warnsoft text-warn', bad: 'bg-badsoft text-bad', info: 'bg-brandsoft text-brand', auto: 'bg-autosoft text-auto', mute: 'bg-surface2 text-mute' };
+const Pill = ({ tone = 'mute', children, className = '', title }) => html`<span title=${title} className=${cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap', TONES[tone], className)}>${children}</span>`;
+const AutoBadge = ({ label = 'Auto', title = 'Done by the system, no human step' }) => html`<span title=${title} className="inline-flex items-center gap-0.5 rounded bg-autosoft text-auto px-1.5 py-0.5 text-[10px] font-semibold"><${Icon} n="bolt" s=${10} />${label}</span>`;
+const Card = ({ children, className = '' }) => html`<section className=${cx('rounded-lg border border-line bg-surface', className)}>${children}</section>`;
+const CardHead = ({ title, right, sub }) => html`<div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-2.5 border-b border-line"><div><h3 className="text-sm font-semibold">${title}</h3>${sub && html`<p className="text-xs text-mute mt-0.5">${sub}</p>`}</div><div className="flex items-center gap-2">${right}</div></div>`;
+const Btn = ({ children, onClick, kind = 'default', disabled, className = '', title }) => html`<button title=${title} disabled=${disabled} onClick=${onClick} className=${cx('inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border transition-colors disabled:opacity-45 disabled:cursor-not-allowed', kind === 'primary' ? 'bg-brand text-onbrand border-brand hover:opacity-90' : 'bg-surface text-ink border-line hover:bg-surface2', className)}>${children}</button>`;
+const Empty = ({ children }) => html`<div className="px-4 py-6 text-sm text-mute text-center">${children}</div>`;
+
+/* ============================ 6 SHARED WIDGETS ============================ */
+const SegPill = ({ segment }) => html`<${Pill} tone=${segment === 'Key' ? 'info' : 'mute'}>${segment}<//>`;
+const HealthPill = ({ h }) => html`<${Pill} tone=${HEALTH[h].tone}><span className="inline-block w-1.5 h-1.5 rounded-full" style=${{ background: 'currentColor' }}></span>${HEALTH[h].label}<//>`;
+
+function SlaClock({ c, now, compact }) {
+  const el = ((c.resolvedAt || now) - c.openedAt) / H, p = el / c.slaHours, st = slaState(p), rem = c.slaHours - el;
+  const tone = st === 'breached' ? 'bad' : st === 'near' ? 'warn' : 'ok';
+  const remTxt = c.resolvedAt ? 'Clock stopped at resolution' : rem > 0 ? Math.floor(rem) + 'h ' + Math.floor((rem % 1) * 60) + 'm left' : Math.floor(-rem) + 'h over SLA';
+  return html`<div className="min-w-[190px]">
+    <div className="flex items-center justify-between gap-2 text-xs mb-1"><span className="font-medium tabular-nums">${Math.floor(el)}h of ${c.slaHours}h</span><${Pill} tone=${tone}>${c.resolvedAt ? (st === 'breached' ? 'Resolved late' : 'Resolved in SLA') : st === 'breached' ? 'Breached' : st === 'near' ? 'Near breach' : 'On track'}<//></div>
+    <div className="relative h-2 rounded-full bg-surface2 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, p * 100) + '%', background: 'var(--' + tone + ')' }}></div>
+      <div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '50%' }}></div><div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '80%' }}></div></div>
+    ${!compact && html`<div className="text-[11px] text-mute mt-1 tabular-nums">${remTxt}</div>`}
+  </div>`;
+}
+
+function VolumeSpark({ data, w = 120, h = 32 }) {
+  const max = Math.max(...data, 1); const step = w / (data.length - 1);
+  const pts = data.map((v, i) => (i * step).toFixed(1) + ',' + (h - 2 - (v / max) * (h - 4)).toFixed(1)).join(' ');
+  return html`<svg width=${w} height=${h} viewBox=${'0 0 ' + w + ' ' + h} aria-hidden="true"><polyline points=${pts} fill="none" style=${{ stroke: 'var(--brand)' }} strokeWidth="1.5" /></svg>`;
+}
+
+function Tile({ label, value, sub, children, tone }) {
+  return html`<div className="rounded-lg border border-line bg-surface p-3.5 flex flex-col gap-1 min-w-0">
+    <div className="text-xs text-mute">${label}</div>
+    <div className=${cx('text-2xl font-semibold tabular-nums', tone === 'bad' && 'text-bad', tone === 'warn' && 'text-warn')}>${value}</div>
+    ${sub && html`<div className="text-xs text-mute">${sub}</div>`}${children}
+  </div>`;
+}
+
+function CaseRow({ c, now, go }) {
+  const a = ACC[c.accountId];
+  return html`<div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'escalations', focus: c.id })}>
+    <div className="flex-1 min-w-[220px]">
+      <div className="flex items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><span className="text-mute">${a.name}</span></div>
+      <div className="text-xs text-mute mt-0.5">${c.issue}</div>
+      <div className="text-[11px] text-mute mt-0.5">${c.type} · with ${c.owner} · ${c.status}</div>
+    </div>
+    <${SlaClock} c=${c} now=${now} />
+  </div>`;
+}
+
+/* ============================ 7 SCREENS ============================ */
+const scopeAccounts = role => role === 'AM' ? ACCOUNTS.filter(a => a.am === ROLES.AM.name) : ACCOUNTS;
+
+/* ---------- Home (AM, Head of AM) ---------- */
+function Home({ st, dispatch, go, role }) {
+  const now = useNow(); const me = ROLES[role];
+  const accts = scopeAccounts(role); const ids = new Set(accts.map(a => a.id));
+  const signals = computeSignals(accts, st.incidents);
+  const cases = st.escalations.filter(c => ids.has(c.accountId) && isOpen(c));
+  const health = accts.map(a => healthOf(a, signals, st.escalations, now));
+  const hc = { green: health.filter(h => h === 'green').length, amber: health.filter(h => h === 'amber').length, red: health.filter(h => h === 'red').length };
+  const today = sod(now);
+  const myTasks = st.tasks.filter(t => !t.done && t.due <= today + D - 1 && (role === 'HEAD' || t.owner === me.name)).sort((a, b) => a.due - b.due);
+  const near = cases.filter(c => slaPct(c, now) >= .8).length;
+  const agreedTot = sum(accts.map(a => a.agreed)), actualTot = sum(accts.map(a => a.stats.last30));
+  const portfolio30 = Array.from({ length: 30 }, (_, i) => sum(accts.map(a => a.total[60 + i])));
+  const recentLog = st.log.filter(l => role === 'HEAD' || !l.accountId || ids.has(l.accountId)).slice(0, 7);
+
+  return html`<div className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div><h1 className="text-xl font-semibold">${role === 'HEAD' ? 'Portfolio overview' : 'Good morning, ' + me.name.split(' ')[0]}</h1>
+        <p className="text-sm text-mute">${fmtDay(now)} · ${accts.length} accounts ${role === 'HEAD' ? 'across 3 account managers' : 'assigned to you'}</p></div>
+      <div className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} /> marks anything the system does without a person</div>
+    </div>
+
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <${Tile} label="Portfolio health" value=${accts.length + ' accounts'}>
+        <div className="flex h-2 rounded-full overflow-hidden bg-surface2 mt-1">${['green', 'amber', 'red'].map(k => hc[k] ? html`<div key=${k} style=${{ width: hc[k] / accts.length * 100 + '%', background: 'var(--' + HEALTH[k].tone + ')' }}></div>` : null)}</div>
+        <div className="flex gap-3 text-xs mt-1"><span className="text-ok">${hc.green} healthy</span><span className="text-warn">${hc.amber} at risk</span><span className="text-bad">${hc.red} critical</span></div>
+      <//>
+      <${Tile} label="Open signals" value=${signals.length} sub=${signals.filter(s => s.suppressed).length + ' suppressed · target: action within 1 working day'} />
+      <${Tile} label="Open escalations" value=${cases.length} tone=${near ? 'warn' : ''} sub=${near + ' near breach'} />
+      <${Tile} label="Tasks due today" value=${myTasks.length} sub=${myTasks.filter(t => t.auto).length + ' created automatically'} />
+      <${Tile} label="Volume, last 30 days" value=${Math.round(actualTot / agreedTot * 100) + '% of agreed'} sub=${num(actualTot) + ' of ' + num(agreedTot)}><${VolumeSpark} data=${portfolio30} w=${140} /><//>
+    </div>
+
+    <div className="grid lg:grid-cols-3 gap-5">
+      <div className="lg:col-span-2 space-y-5 min-w-0">
+        <${Card}>
+          <${CardHead} title="Signal inbox" sub="From the daily usage feed, compared with baseline and agreed volume" right=${html`<${AutoBadge} label="Auto-detected" />`} />
+          ${signals.length === 0 ? html`<${Empty}>No open signals. Usage is in line with agreed volume.<//>` : signals.map(s => {
+            const a = ACC[s.accountId]; const tone = s.suppressed ? 'mute' : s.kind === 'Dropped' ? 'bad' : 'warn';
+            return html`<div key=${s.accountId} className="flex gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'signals' })}>
+              <div className=${cx('mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0', TONES[tone])}><${Icon} n=${s.suppressed ? 'lock' : 'trend'} s=${16} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${a.name}</span><${SegPill} segment=${a.segment} /><${Pill} tone=${tone}>${s.suppressed ? 'Suppressed · ' + s.kind : s.kind}<//>${role === 'HEAD' && html`<span className="text-xs text-mute">AM: ${a.am}</span>`}</div>
+                <p className="text-xs text-mute mt-1">${s.detail}</p>
+                ${s.suppressed
+                  ? html`<p className="text-xs mt-1.5 text-ink"><span className="font-medium">Cause: </span>${s.incident.id}, ${s.incident.title} (open ${Math.round((now - s.incident.openedAt) / D)} days). No customer email will be sent. <${AutoBadge} label="Auto-suppressed" /></p>`
+                  : s.segment === 'Scale'
+                    ? html`<${SignalNext} s=${s} work=${st.sigWork[s.accountId]} />`
+                    : html`<${SignalNext} s=${s} work=${st.sigWork[s.accountId]} />`}
+              </div></div>`;
+          })}
+        <//>
+        <${Card}>
+          <${CardHead} title="Open escalations" sub="Address verification cases, both directions, with live SLA clocks" right=${html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Live<//>`} />
+          ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.sort((a, b) => slaPct(b, now) - slaPct(a, now)).map(c => html`<${CaseRow} key=${c.id} c=${c} now=${now} go=${go} />`)}
+        <//>
+        ${role === 'HEAD' && html`<${ByAmTable} accts=${accts} signals=${signals} st=${st} now=${now} />`}
+        <${TodoCard} st=${st} go=${go} role=${role} />
+      </div>
+      <div className="space-y-5 min-w-0">
+        <${Card}>
+          <${CardHead} title=${role === 'HEAD' ? 'Tasks due today (all AMs)' : 'Tasks due today'} />
+          ${myTasks.length === 0 ? html`<${Empty}>Nothing due today. Tasks from meeting notes and signals appear here.<//>` : myTasks.map(t => html`<${TaskRow} key=${t.id} t=${t} dispatch=${dispatch} go=${go} showOwner=${role === 'HEAD'} />`)}
+        <//>
+        <${Card}>
+          <${CardHead} title="Activity log" sub="Mock: nothing is really sent" />
+          ${recentLog.map(l => html`<div key=${l.id} className="px-4 py-2.5 border-b border-line last:border-0 text-xs"><div className="flex items-center gap-2 text-mute"><span>${fmtTime(l.ts)}, ${fmtDay(l.ts)}</span>${l.auto && html`<${AutoBadge} />`}</div><div className="mt-0.5"><span className="font-medium">${l.actor}: </span>${l.text}</div></div>`)}
+        <//>
+      </div>
+    </div>
+  </div>`;
+}
+
+function ByAmTable({ accts, signals, st, now }) {
+  const ams = [...new Set(accts.map(a => a.am))];
+  return html`<${Card}><${CardHead} title="Portfolio by account manager" />
+    <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium">Accounts</th><th className="px-2 font-medium">At risk or critical</th><th className="px-2 font-medium">Signals</th><th className="px-2 font-medium">Open cases</th></tr></thead><tbody>
+    ${ams.map(am => { const l = accts.filter(a => a.am === am); const ids = new Set(l.map(a => a.id)); const hs = l.map(a => healthOf(a, signals, st.escalations, now));
+      return html`<tr key=${am} className="border-t border-line"><td className="px-4 py-2 font-medium">${am}</td><td className="px-2 tabular-nums">${l.length}</td><td className="px-2 tabular-nums">${hs.filter(h => h !== 'green').length}</td><td className="px-2 tabular-nums">${signals.filter(s => ids.has(s.accountId)).length}</td><td className="px-2 tabular-nums">${st.escalations.filter(c => ids.has(c.accountId)).length}</td></tr>`; })}
+    </tbody></table></div><//>`;
+}
+
+function TaskRow({ t, dispatch, go, showOwner }) {
+  const now = useNow(); const a = ACC[t.accountId]; const overdue = t.due < sod(now);
+  return html`<div className="flex items-start gap-2.5 px-4 py-2.5 border-b border-line last:border-0">
+    <button aria-label="Mark done" onClick=${() => dispatch({ type: 'TOGGLE_TASK', id: t.id })} className=${cx('mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0', t.done ? 'bg-brand border-brand text-onbrand' : 'border-mute')}>${t.done && html`<${Icon} n="check" s=${11} />`}</button>
+    <div className="min-w-0 text-xs"><div className=${cx('text-sm', t.done && 'line-through text-mute')}>${t.text}</div>
+      <div className="text-mute mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1"><button className="underline decoration-dotted" onClick=${() => go({ page: 'account', id: a.id, tab: 'Timeline' })}>${a.name}</button>${showOwner && html`<span>${t.owner}</span>`}<span className=${overdue ? 'text-bad' : ''}>${overdue ? 'Overdue · ' : 'Due '}${fmtDay(t.due)}</span>${t.auto && html`<${AutoBadge} title="Task created automatically" />`}<span>${t.src}</span></div></div>
+  </div>`;
+}
+
+/* ---------- Accounts list ---------- */
+function AccountsPage({ st, go, role }) {
+  const now = useNow(); const [seg, setSeg] = useState('All');
+  const list = scopeAccounts(role).filter(a => seg === 'All' || a.segment === seg);
+  const signals = computeSignals(ACCOUNTS, st.incidents);
+  return html`<div className="space-y-4">
+    <div className="flex flex-wrap items-end justify-between gap-2"><div><h1 className="text-xl font-semibold">${role === 'AM' ? 'My accounts' : 'All accounts'}</h1><p className="text-sm text-mute">Agreed against actual volume over the last 30 days</p></div>
+      <div className="flex gap-1">${['All', 'Key', 'Scale'].map(s => html`<button key=${s} onClick=${() => setSeg(s)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', seg === s ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${s}</button>`)}</div></div>
+    <${Card}><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2.5 font-medium">Account</th><th className="px-2 font-medium">Segment</th><th className="px-2 font-medium">AM</th><th className="px-2 font-medium">Health</th><th className="px-2 font-medium text-right">Agreed / mo</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium">Trend (90 days)</th><th className="px-2 font-medium">Signal</th></tr></thead><tbody>
+      ${list.map(a => { const sg = signals.find(s => s.accountId === a.id); const h = healthOf(a, signals, st.escalations, now);
+        return html`<tr key=${a.id} className="border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: a.id, tab: 'Timeline' })}>
+          <td className="px-4 py-2.5 font-medium">${a.name}</td><td className="px-2"><${SegPill} segment=${a.segment} /></td><td className="px-2 text-mute">${a.am}</td><td className="px-2"><${HealthPill} h=${h} /></td>
+          <td className="px-2 text-right tabular-nums">${num(a.agreed)}</td><td className="px-2 text-right tabular-nums">${num(a.stats.last30)} <span className="text-xs text-mute">(${Math.round(a.stats.last30 / a.agreed * 100)}%)</span></td>
+          <td className="px-2"><${VolumeSpark} data=${a.total} w=${110} h=${26} /></td>
+          <td className="px-2">${sg ? html`<${Pill} tone=${sg.suppressed ? 'mute' : sg.kind === 'Dropped' ? 'bad' : 'warn'}>${sg.suppressed ? 'Suppressed' : sg.kind}<//>` : html`<span className="text-xs text-mute">None</span>`}</td></tr>`; })}
+    </tbody></table></div><//>
+  </div>`;
+}
+
+/* ---------- Account 360 ---------- */
+const TABS = ['Timeline', 'Usage', 'Invoices', 'Escalations', 'Opportunities'];
+function Account360({ st, dispatch, go, role, route }) {
+  const now = useNow(); const a = ACC[route.id]; const tab = route.tab || 'Timeline';
+  const signals = computeSignals(ACCOUNTS, st.incidents); const sig = signals.find(s => s.accountId === a.id);
+  const h = healthOf(a, signals, st.escalations, now); const cases = st.escalations.filter(c => c.accountId === a.id);
+  const pct = Math.round(a.stats.last30 / a.agreed * 100); const mom = Math.round(a.stats.mom * 100);
+  const counts = { Timeline: st.timeline.filter(t => t.accountId === a.id).length, Escalations: cases.length };
+  return html`<div className="space-y-4">
+    <button className="text-xs text-mute inline-flex items-center gap-1 hover:text-ink" onClick=${() => go({ page: 'accounts' })}><${Icon} n="back" s=${13} />All accounts</button>
+    <${Card} className="p-4">
+      <div className="flex flex-wrap gap-x-8 gap-y-4 justify-between">
+        <div className="min-w-[260px]">
+          <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">${a.name}</h1><${SegPill} segment=${a.segment} /><${HealthPill} h=${h} /></div>
+          <p className="text-sm text-mute mt-1">${a.industry} · customer since ${a.since} · AM: <span className="text-ink font-medium">${a.am}</span></p>
+          <div className="flex flex-wrap gap-1.5 mt-2.5">${a.services.map(s => html`<${Pill} key=${s} tone=${SVC[s].type === 'lastmile' ? 'warn' : 'mute'} title=${SVC[s].type === 'lastmile' ? 'Last mile, SLA ' + SVC[s].slaLabel : 'Real-time'}>${SVC[s].name}<//>`)}</div>
+        </div>
+        <div className="min-w-[260px] w-full sm:w-80">
+          <div className="flex items-baseline justify-between text-sm"><span className="text-mute">Agreed vs actual, last 30 days</span><span className=${cx('text-xs font-medium', mom < -20 ? 'text-bad' : 'text-mute')}>${mom > 0 ? '+' : ''}${mom}% vs prior 30 days</span></div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">${num(a.stats.last30)} <span className="text-sm font-normal text-mute">of ${num(a.agreed)} agreed (${pct}%)</span></div>
+          <div className="h-2 rounded-full bg-surface2 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: pct >= 85 ? 'var(--ok)' : pct >= 55 ? 'var(--warn)' : 'var(--bad)' }}></div></div>
+        </div>
+      </div>
+      ${sig && html`<div className=${cx('mt-3.5 rounded-md px-3 py-2 text-sm flex flex-wrap items-center gap-2', sig.suppressed ? 'bg-surface2' : sig.kind === 'Dropped' ? 'bg-badsoft' : 'bg-warnsoft')}><${Icon} n=${sig.suppressed ? 'lock' : 'alert'} s=${15} /><span className="font-medium">${sig.suppressed ? 'Signal suppressed' : 'Signal: ' + sig.kind}.</span><span>${sig.detail}</span>${sig.suppressed && html`<span>Cause: ${sig.incident.id}, ${sig.incident.title}. No customer email is sent.</span>`}</div>`}
+    <//>
+    <div className="flex gap-1 border-b border-line scroll-x">${TABS.map(t => html`<button key=${t} onClick=${() => go({ ...route, tab: t })} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap', tab === t ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${t}${counts[t] != null && html`<span className="ml-1.5 text-xs text-mute">${counts[t]}</span>`}</button>`)}</div>
+    ${tab === 'Timeline' && html`<${TimelineTab} key=${a.id} a=${a} st=${st} dispatch=${dispatch} role=${role} />`}
+    ${tab === 'Usage' && html`<${UsageTab} a=${a} st=${st} />`}
+    ${tab === 'Invoices' && html`<${AccountInvoices} a=${a} st=${st} dispatch=${dispatch} role=${role} />`}
+    ${tab === 'Escalations' && html`<${AccountCases} a=${a} cases=${cases} st=${st} dispatch=${dispatch} role=${role} />`}
+    ${tab === 'Opportunities' && html`<${AccountOpps} a=${a} st=${st} dispatch=${dispatch} role=${role} />`}
+  </div>`;
+}
+
+/* ---------- Timeline (Flow 1) ---------- */
+const CH = { email: { icon: 'mail', label: 'Email' }, slack: { icon: 'hash', label: 'Slack' }, meeting: { icon: 'note', label: 'Meeting notes' } };
+const SENT_TONE = { Positive: 'ok', Neutral: 'mute', Negative: 'warn' };
+function TimelineTab({ a, st, dispatch, role }) {
+  const now = useNow();
+  const [q, setQ] = useState(''); const [ch, setCh] = useState('all'); const [topic, setTopic] = useState('all'); const [sent, setSent] = useState('all');
+  const [commitOnly, setCommitOnly] = useState(false); const [riskOnly, setRiskOnly] = useState(false); const [range, setRange] = useState(90);
+  const all = st.timeline.filter(t => t.accountId === a.id).sort((x, y) => y.ts - x.ts);
+  const items = all.filter(t => (ch === 'all' || t.channel === ch) && (topic === 'all' || t.tags.topics.includes(topic)) && (sent === 'all' || t.tags.sentiment === sent)
+    && (!commitOnly || t.tags.commitment) && (!riskOnly || t.tags.risk) && now - t.ts <= range * D
+    && (!q || (t.subject + ' ' + t.body + ' ' + t.author).toLowerCase().includes(q.toLowerCase())));
+  const topicCount = {}; all.forEach(t => t.tags.topics.forEach(x => topicCount[x] = (topicCount[x] || 0) + 1));
+  const topTopics = Object.entries(topicCount).sort((x, y) => y[1] - x[1]).slice(0, 4);
+  const riskN = all.filter(t => t.tags.risk).length, negN = all.filter(t => t.tags.sentiment === 'Negative').length, commitN = all.filter(t => t.tags.commitment).length;
+  const lastTouch = all[0] ? Math.round((now - all[0].ts) / D) : null;
+  const autoCount = st.timeline.filter(t => t.auto).length;
+  const simulate = () => {
+    const c = CANNED_INBOUND[autoCount % CANNED_INBOUND.length]; const ct = a.contacts[autoCount % a.contacts.length];
+    dispatch({ type: 'ADD_TIMELINE', ts: now, toast: 'Mock sync: ' + CH[c.channel].label.toLowerCase() + ' from ' + ct.name + ' added to the timeline.',
+      item: { accountId: a.id, channel: c.channel, dir: 'in', contactId: ct.id, author: ct.name, ts: now, subject: c.subject, body: c.body, auto: true, tags: autoTag(c.subject + '. ' + c.body, 'in') },
+      logs: [{ actor: 'System', auto: true, accountId: a.id, text: CH[c.channel].label + ' from ' + ct.name + ' synced to the ' + a.name + ' timeline, matched by contact.' }] });
+  };
+  const chips = [['all', 'All'], ['email', 'Email'], ['slack', 'Slack'], ['meeting', 'Notes']];
+  const sel = 'rounded-md border border-line bg-surface px-2 py-1.5 text-xs';
+  return html`<div className="grid lg:grid-cols-3 gap-5">
+    <div className="lg:col-span-2 space-y-3 min-w-0">
+      <${Card} className="p-3 space-y-2.5">
+        <div className="flex items-center gap-2 rounded-md border border-line bg-bg px-2.5 py-1.5"><${Icon} n="search" s=${14} className="text-mute" /><input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Search emails, Slack messages and notes" className="w-full bg-transparent text-sm outline-none" /></div>
+        <div className="flex flex-wrap items-center gap-2">
+          ${chips.map(([k, l]) => html`<button key=${k} onClick=${() => setCh(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border', ch === k ? 'bg-brand text-onbrand border-brand' : 'border-line bg-surface')}>${l}</button>`)}
+          <select value=${topic} onChange=${e => setTopic(e.target.value)} className=${sel} aria-label="Topic"><option value="all">Any topic</option>${TOPICS.map(t => html`<option key=${t[0]} value=${t[0]}>${t[0]}</option>`)}</select>
+          <select value=${sent} onChange=${e => setSent(e.target.value)} className=${sel} aria-label="Sentiment"><option value="all">Any sentiment</option><option>Positive</option><option>Neutral</option><option>Negative</option></select>
+          <select value=${range} onChange=${e => setRange(+e.target.value)} className=${sel} aria-label="Date range"><option value=${30}>Last 30 days</option><option value=${90}>Last 90 days</option></select>
+          <label className="text-xs flex items-center gap-1"><input type="checkbox" checked=${commitOnly} onChange=${e => setCommitOnly(e.target.checked)} />Commitments</label>
+          <label className="text-xs flex items-center gap-1"><input type="checkbox" checked=${riskOnly} onChange=${e => setRiskOnly(e.target.checked)} />Risk language</label>
+        </div>
+      <//>
+      <div className="flex items-center justify-between text-xs text-mute"><span>${items.length} of ${all.length} items</span><button onClick=${simulate} className="inline-flex items-center gap-1 text-auto font-medium hover:underline"><${Icon} n="bolt" s=${12} />Simulate an inbound email or Slack sync</button></div>
+      ${items.length === 0 ? html`<${Card}><${Empty}>Nothing matches these filters. Clear the search or widen the date range.<//><//>` : items.map(t => html`<${TlItem} key=${t.id} t=${t} a=${a} now=${now} />`)}
+    </div>
+    <div className="space-y-4 min-w-0">
+      <${NotesPanel} key=${a.id} a=${a} role=${role} dispatch=${dispatch} now=${now} />
+      <${Card}><${CardHead} title="Themes and risk language" right=${html`<${AutoBadge} label="Auto-tagged" />`} />
+        <div className="p-4 space-y-2 text-sm">
+          <div className="flex flex-wrap gap-1.5">${topTopics.map(([t, n]) => html`<${Pill} key=${t} tone="info">${t} · ${n}<//>`)}</div>
+          <div className="text-xs text-mute">${negN} negative-sentiment items · ${riskN} with risk language · ${commitN} commitments logged</div>
+          <div className="text-xs text-mute">Last logged touch: ${lastTouch === 0 ? 'today' : lastTouch + ' days ago'}</div>
+        </div><//>
+      <${Card}><${CardHead} title="Contacts" sub="Synced items are matched to these people" />
+        ${a.contacts.map(c => html`<div key=${c.id} className="px-4 py-2 border-b border-line last:border-0 text-sm"><div className="font-medium">${c.name}</div><div className="text-xs text-mute">${c.role}</div></div>`)}<//>
+      <${AccountTasks} a=${a} st=${st} dispatch=${dispatch} />
+    </div>
+  </div>`;
+}
+function TlItem({ t, a, now }) {
+  const [open, setOpen] = useState(false); const c = a.contacts.find(x => x.id === t.contactId); const ch = CH[t.channel];
+  return html`<${Card} className="p-3.5">
+    <div className="flex gap-3">
+      <div className=${cx('w-8 h-8 rounded-md flex items-center justify-center shrink-0', t.channel === 'meeting' ? 'bg-brandsoft text-brand' : 'bg-surface2 text-mute')}><${Icon} n=${ch.icon} s=${15} /></div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-mute">
+          <span className="text-ink font-medium text-sm">${t.author}</span><span>${t.dir === 'in' ? c.role : t.dir === 'out' ? (t.auto ? 'Automatic, sent to ' : 'AM, sent to ') + (c ? c.name : 'customer') : 'AM, logged'}</span>
+          <span>${ch.label}${t.dir === 'in' ? ', inbound' : t.dir === 'out' ? ', outbound' : ''}</span><span title=${fmtFull(t.ts)}>${fmtDay(t.ts)} · ${relAgo(t.ts, now)}</span>
+          ${t.auto && html`<${AutoBadge} title=${'Synced automatically and matched to ' + (c ? c.name : 'a contact')} />`}${t.auto && c && html`<span>matched to ${c.name}</span>`}
+        </div>
+        <div className="text-sm font-semibold mt-1">${t.subject}</div>
+        <p className=${cx('text-sm mt-0.5 text-ink', !open && 'clamp3')}>${t.body}</p>
+        ${t.body.length > 190 && html`<button className="text-xs text-brand mt-0.5" onClick=${() => setOpen(!open)}>${open ? 'Show less' : 'Show more'}</button>`}
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          ${t.tags.topics.map(x => html`<${Pill} key=${x} tone="info">${x}<//>`)}<${Pill} tone=${SENT_TONE[t.tags.sentiment]}>${t.tags.sentiment}<//>
+          ${t.tags.risk && html`<${Pill} tone="bad"><${Icon} n="alert" s=${11} />Risk language<//>`}
+          ${t.tags.commitment && html`<${Pill} tone="auto" title=${t.tags.commitment}>Commitment: ${t.tags.commitment.length > 70 ? t.tags.commitment.slice(0, 67) + '...' : t.tags.commitment}<//>`}
+        </div>
+      </div></div>
+  <//>`;
+}
+
+function NotesPanel({ a, role, dispatch, now }) {
+  const [title, setTitle] = useState(''); const [who, setWho] = useState(a.contacts[0].id); const [text, setText] = useState(''); const [items, setItems] = useState(null);
+  const can = role === 'AM' || role === 'HEAD'; const me = ROLES[role];
+  const owners = [a.am, 'Ify Okon', 'Tunde Bello', ...a.contacts.map(c => c.name + ' (customer)')];
+  const sample = () => {
+    const c1 = a.contacts[0], c2 = a.contacts[a.contacts.length > 1 ? 1 : 0];
+    setTitle('Check-in call with ' + c1.name); setWho(c1.id);
+    setText('We reviewed volume against the agreed ' + num(a.agreed) + ' per month and the plans for next quarter. ' + c1.name.split(' ')[0] + ' was positive about the service.\nAction: Send the updated usage summary by Friday.\nAction: ' + c2.name.split(' ')[0] + ' to send the new volume forecast in 2 days.\nAction: Ify to share the invoice and usage logs tomorrow.');
+    setItems(null);
+  };
+  const extract = () => setItems(extractActions(text, a, now));
+  const upd = (k, p) => setItems(items.map(i => i.key === k ? { ...i, ...p } : i));
+  const save = () => {
+    const chosen = (items || extractActions(text, a, now)).filter(i => i.on);
+    const body = text.trim(); const subject = title.trim() || 'Meeting notes';
+    dispatch({ type: 'ADD_TIMELINE', ts: now, toast: 'Notes logged to the timeline' + (chosen.length ? ' and ' + chosen.length + ' task' + (chosen.length > 1 ? 's' : '') + ' created.' : '.'),
+      item: { accountId: a.id, channel: 'meeting', dir: 'note', contactId: who, author: me.name, ts: now, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'note') },
+      tasks: chosen.map(i => ({ accountId: a.id, text: i.text, owner: i.owner, due: i.due, src: 'Meeting notes', auto: true })),
+      logs: [{ actor: me.name, auto: false, accountId: a.id, text: 'Logged meeting notes for ' + a.name + '.' }, ...chosen.map(i => ({ actor: 'System', auto: true, accountId: a.id, text: 'Task created from notes: "' + i.text + '" (' + i.owner + ', due ' + fmtDay(i.due) + ').' }))] });
+    setTitle(''); setText(''); setItems(null);
+  };
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><${CardHead} title="Add meeting notes" right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
+    <div className="p-4 space-y-2.5">
+      ${!can && html`<p className="text-xs text-mute">Meeting notes are logged by account managers. Switch to the AM role to try this.</p>`}
+      <input className=${inp} placeholder="Title, for example Q4 planning call" value=${title} onChange=${e => setTitle(e.target.value)} disabled=${!can} />
+      <select className=${inp} value=${who} onChange=${e => setWho(e.target.value)} disabled=${!can} aria-label="Main contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}</select>
+      <textarea className=${inp} rows="6" placeholder=${'Write notes in plain language. Lines starting with "Action:" and sentences such as "Ify to share the invoice tomorrow" become tasks.'} value=${text} onChange=${e => { setText(e.target.value); setItems(null); }} disabled=${!can}></textarea>
+      <div className="flex gap-2"><${Btn} onClick=${extract} disabled=${!can || !text.trim()}><${Icon} n="bolt" s=${12} />Extract action items<//><${Btn} kind="primary" onClick=${save} disabled=${!can || !text.trim()}>Save to timeline<//></div>
+      ${items && (items.length === 0 ? html`<p className="text-xs text-mute">No action items found. Start a line with "Action:" or add a date such as "by Friday".</p>` : html`<div className="space-y-2 pt-1"><div className="flex items-center gap-2 text-xs font-medium">Extracted action items<${AutoBadge} label="Auto-extracted" /></div>
+        ${items.map(i => html`<div key=${i.key} className="rounded-md border border-line p-2 space-y-1.5">
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked=${i.on} onChange=${e => upd(i.key, { on: e.target.checked })} /><span>${i.text}</span></label>
+          <div className="flex flex-wrap gap-2 pl-5"><select className="rounded border border-line bg-surface px-1.5 py-1 text-xs" value=${i.owner} onChange=${e => upd(i.key, { owner: e.target.value })} aria-label="Owner">${owners.map(o => html`<option key=${o}>${o}</option>`)}</select>
+            <input type="date" className="rounded border border-line bg-surface px-1.5 py-1 text-xs" value=${isoDate(i.due)} onChange=${e => e.target.value && upd(i.key, { due: new Date(e.target.value + 'T00:00:00').getTime() })} aria-label="Due date" /></div></div>`)}
+        <p className="text-xs text-mute">Saving creates ${items.filter(i => i.on).length} task(s) with the owner and due date shown.</p></div>`)}
+    </div><//>`;
+}
+function AccountTasks({ a, st, dispatch }) {
+  const go = () => {}; const list = st.tasks.filter(t => t.accountId === a.id).sort((x, y) => x.done - y.done || x.due - y.due);
+  return html`<${Card}><${CardHead} title="Tasks for this account" />${list.length === 0 ? html`<${Empty}>No tasks yet.<//>` : list.map(t => html`<${TaskRow} key=${t.id} t=${t} dispatch=${dispatch} go=${go} showOwner=${true} />`)}<//>`;
+}
+
+/* ---------- Usage ---------- */
+function UsageTab({ a, st }) {
+  const now = useNow(); const W = 900, Hh = 210, pl = 40, pb = 22; const max = Math.max(...a.total, a.agreed / 30 * 1.4, 10);
+  const bw = (W - pl) / 90; const y = v => Hh - pb - v / max * (Hh - pb - 10); const ay = y(a.agreed / 30);
+  const inc = st.incidents.filter(i => i.status === 'Open' && a.services.includes(i.service));
+  return html`<div className="space-y-4">
+    ${inc.map(i => html`<div key=${i.id} className="rounded-md bg-warnsoft px-3 py-2 text-sm flex items-center gap-2"><${Icon} n="alert" s=${15} /><span><span className="font-medium">${i.id} is open:</span> ${i.title} since ${fmtDay(i.openedAt)}. ${i.note} Usage signals on ${SVC[i.service].name} are suppressed.</span></div>`)}
+    <${Card}><${CardHead} title="Daily requests, last 90 days" sub=${'Dashed line is agreed volume per day (' + num(a.agreed) + ' per month ÷ 30). Weekends run lower.'} />
+      <div className="p-3 scroll-x"><svg viewBox=${'0 0 ' + W + ' ' + Hh} className="w-full min-w-[640px]" role="img" aria-label="Daily request volume">
+        ${[0, .5, 1].map(f => html`<g key=${f}><line x1=${pl} x2=${W} y1=${y(max * f)} y2=${y(max * f)} style=${{ stroke: 'var(--line)' }} /><text x="0" y=${y(max * f) + 4} fontSize="10" style=${{ fill: 'var(--mute)' }}>${num(max * f)}</text></g>`)}
+        ${a.total.map((v, i) => html`<rect key=${i} x=${pl + i * bw + 0.5} y=${y(v)} width=${Math.max(1, bw - 1.5)} height=${Math.max(0, Hh - pb - y(v))} style=${{ fill: i >= 60 ? 'var(--brand)' : 'var(--mute)', opacity: i >= 60 ? 1 : .45 }}><title>${fmtDay(now - (90 - i) * D)}: ${num(v)} requests</title></rect>`)}
+        <line x1=${pl} x2=${W} y1=${ay} y2=${ay} strokeDasharray="5 4" strokeWidth="1.5" style=${{ stroke: 'var(--warn)' }} />
+        <text x=${pl} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--mute)' }}>90 days ago</text><text x=${pl + 60 * bw} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--brand)' }}>Last 30 days</text><text x=${W - 34} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--mute)' }}>Today</text>
+      </svg></div><//>
+    <${Card}><${CardHead} title="By service" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Service</th><th className="px-2 font-medium">Type</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium text-right">Prior 30 days</th><th className="px-2 font-medium text-right">Last 7 days vs usual</th></tr></thead><tbody>
+      ${a.stats.svcStats.map(s => html`<tr key=${s.id} className="border-b border-line last:border-0"><td className="px-4 py-2">${SVC[s.id].name}</td><td className="px-2 text-mute text-xs">${SVC[s.id].type === 'lastmile' ? 'Last mile · ' + SVC[s.id].slaLabel : 'Real-time'}</td><td className="px-2 text-right tabular-nums">${num(s.last30)}</td><td className="px-2 text-right tabular-nums">${num(s.prior30)}</td><td className=${cx('px-2 text-right tabular-nums', s.change7 < -.25 && 'text-bad font-medium')}>${s.change7 > 0 ? '+' : ''}${Math.round(s.change7 * 100)}%</td></tr>`)}
+    </tbody></table></div><//>
+    <p className="text-xs text-mute">Catalogue services this account does not use: ${SERVICES.filter(s => !a.services.includes(s.id)).map(s => s.name).join(', ') || 'none'}.</p>
+  </div>`;
+}
+
+/* ---------- Invoices (read-only in Stage 1) ---------- */
+function InvoicesTab({ a, st }) {
+  const reqs = st.invoiceRequests.filter(r => r.accountId === a.id);
+  return html`<div className="space-y-4"><${Card}><${CardHead} title="Invoices" right=${html`<${Btn} disabled=${true} title="Arrives in Stage 3"><${Icon} n="lock" s=${12} />Request invoice and logs · Stage 3<//>`} />
+    <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Invoice</th><th className="px-2 font-medium">Period</th><th className="px-2 font-medium text-right">Amount</th><th className="px-2 font-medium">Issued</th><th className="px-2 font-medium">Due</th><th className="px-2 font-medium">Status</th></tr></thead><tbody>
+      ${a.invoices.map(i => html`<tr key=${i.no} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${i.no}</td><td className="px-2">${i.period}</td><td className="px-2 text-right tabular-nums">${ngn(i.amount)}</td><td className="px-2 text-mute">${i.issued}</td><td className="px-2 text-mute">${i.due}</td><td className="px-2"><${Pill} tone=${i.status === 'Paid' ? 'ok' : 'warn'}>${i.status}<//></td></tr>`)}
+    </tbody></table></div><//>
+    ${reqs.length > 0 && html`<${Card}><${CardHead} title="Invoice and log requests" />${reqs.map(r => html`<div key=${r.id} className="px-4 py-3 border-b border-line last:border-0 text-sm"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">${r.id}</span><span>${r.period}</span><${Pill} tone=${r.status === 'Delivered' ? 'ok' : 'warn'}>${r.status}<//></div><div className="text-xs text-mute mt-0.5">${r.reason} · raised by ${r.raisedBy}</div></div>`)}<//>`}
+  </div>`;
+}
+
+/* ---------- Escalations (read-only in Stage 1) ---------- */
+function EscalationsTab({ a, cases, now }) {
+  if (!cases.length) return html`<${Card}><${Empty}>No escalations for ${a.name}. AM to VS and VS to AM cases appear here with their SLA clock.<//><//>`;
+  return html`<div className="space-y-4">${cases.map(c => {
+    const p = slaPct(c, now);
+    return html`<${Card} key=${c.id}><div className="p-4 space-y-3">
+      <div className="flex flex-wrap justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone="info">${c.status}<//></div><div className="text-sm mt-1">${c.issue}</div><div className="text-xs text-mute mt-0.5">${c.type} · raised by ${c.raisedBy} · with ${c.owner} · opened ${fmtFull(c.openedAt)}</div></div><${SlaClock} c=${c} now=${now} /></div>
+      <div className="flex flex-wrap gap-2 text-xs"><${Pill} tone=${p >= .5 ? 'ok' : 'mute'}>${p >= .5 ? 'Reminder sent at 50%' : 'Reminder due at 50%'}<//>${p >= .5 && html`<${AutoBadge} />`}<${Pill} tone=${p >= .8 ? 'warn' : 'mute'}>${p >= .8 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${p >= .8 && html`<${AutoBadge} />`}<${Pill} tone=${p >= 1 ? 'bad' : 'mute'}>Breach: escalates to Director of Verification Services and Head of AM<//></div>
+      <div className="border-t border-line pt-2 space-y-2">${c.thread.map((m, i) => html`<div key=${i} className="text-sm"><span className="font-medium">${m.by}</span> <span className="text-xs text-mute">${fmtFull(m.ts)}</span><div className="text-mute">${m.text}</div></div>`)}</div>
+      <p className="text-xs text-mute flex items-center gap-1"><${Icon} n="lock" s=${12} />Raising, replying and the "Simulate time passing" control arrive in Stage 2.</p>
+    </div><//>`; })}</div>`;
+}
+
+/* ---------- Opportunities (read-only in Stage 1) ---------- */
+function OpportunitiesTab({ a }) {
+  const gaps = SERVICES.filter(s => !a.services.includes(s.id));
+  const addr = a.id === 'savannah';
+  return html`<div className="space-y-4">
+    ${addr && html`<${Card}><div className="p-4 space-y-2"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">Digital and physical address verification</span><${Pill} tone="auto">Rule match<//><${AutoBadge} label="Auto-detected" /></div>
+      <p className="text-sm text-mute">Savannah uses only NIN and BVN. The timeline shows field officers still verify borrower addresses by hand, and Q4 disbursements are expected to double.</p>
+      <p className="text-xs text-mute flex items-center gap-1"><${Icon} n="lock" s=${12} />The drafted email, Approve and send, Edit, Dismiss and Sales handoff arrive in Stage 3.</p></div><//>`}
+    <${Card}><${CardHead} title="Catalogue gaps" sub="Services in the catalogue that this account does not use yet" />${gaps.length === 0 ? html`<${Empty}>This account uses every service in the catalogue.<//>` : gaps.map(s => html`<div key=${s.id} className="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between"><span>${s.name}</span><span className="text-xs text-mute">${s.type === 'lastmile' ? 'Last mile · ' + s.slaLabel : 'Real-time'}</span></div>`)}<//>
+  </div>`;
+}
+
+/* ---------- VS Agent and Finance homes ---------- */
+function VsHome({ st, go }) {
+  const now = useNow(); const cases = st.escalations.filter(isOpen);
+  const mine = cases.filter(c => c.owner === 'VS Team'), raised = cases.filter(c => c.direction === 'VS_TO_AM');
+  const near = cases.filter(c => slaPct(c, now) >= .8).length;
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Verification Services queue</h1><p className="text-sm text-mute">Cases waiting on VS, and queries you have raised back to account managers</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="With VS" value=${mine.length} /><${Tile} label="Waiting on an AM" value=${raised.length} /><${Tile} label="Near breach" value=${near} tone=${near ? 'warn' : ''} /><${Tile} label="Breached" value=${cases.filter(c => slaPct(c, now) >= 1).length} /></div>
+    <${Card}><${CardHead} title="Cases with VS" />${mine.length ? mine.map(c => html`<${CaseRow} key=${c.id} c=${c} now=${now} go=${go} />`) : html`<${Empty}>No cases waiting on VS.<//>`}<//>
+    <${Card}><${CardHead} title="Queries you raised to AMs" />${raised.length ? raised.map(c => html`<${CaseRow} key=${c.id} c=${c} now=${now} go=${go} />`) : html`<${Empty}>No open queries.<//>`}<//>
+    <div><${Btn} kind="primary" onClick=${() => go({ page: 'escalations' })}>Open escalations workspace<//></div>
+  </div>`;
+}
+function FinHome({ st, go }) {
+  const now = useNow(); const open = st.invoiceRequests.filter(r => r.status === 'Awaiting Finance');
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Finance queue</h1><p className="text-sm text-mute">Invoice and usage-log requests that need your approval</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} /><${Tile} label="Auto-approved today" value=${st.invoiceRequests.filter(r => r.status === 'Delivered').length} sub="Standard rules, no Finance touch" /><${Tile} label="Proposed clock" value="Same day" sub="Standard requests" /><${Tile} label="Exceptions" value="To agree" sub="Open decision" /></div>
+    <${Card}><${CardHead} title="Approval queue" />${open.length ? open.map(r => html`<div key=${r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: r.accountId, tab: 'Invoices' })}><div><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${r.id}</span><span>${ACC[r.accountId].name}</span><span className="text-mute">${r.period}</span></div><div className="text-xs text-mute mt-0.5">${r.reason}. Raised by ${r.raisedBy} ${relAgo(r.raisedAt, now)}.</div></div><${Pill} tone="warn">Awaiting Finance<//></div>`) : html`<${Empty}>Nothing to approve.<//>`}<//>
+    <p className="text-xs text-mute flex items-center gap-1"><${Icon} n="lock" s=${12} />Validation against contract rules, approve and reject, and invoice pack generation arrive in Stage 3.</p>
+  </div>`;
+}
+
+/* ---------- Planned screens ---------- */
+function Planned({ item }) {
+  return html`<div className="max-w-xl mx-auto mt-10"><${Card} className="p-6 text-center space-y-2"><div className="mx-auto w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-mute"><${Icon} n="lock" s=${18} /></div>
+    <h1 className="text-lg font-semibold">${item.label}</h1><p className="text-sm text-mute">${item.blurb}</p><p className="text-sm">This screen is built in <span className="font-semibold">Stage ${item.stage}</span>. Say "Stage ${item.stage}" to continue.</p><//></div>`;
+}
+
+/* ============================ STAGE 2: ESCALATIONS (Flow 3) AND SIGNALS (Flow 4) ============================ */
+const isOpen = c => c.status !== 'Resolved' && c.status !== 'Closed';
+const ESC_CATEGORIES = ['Delayed verification', 'Unreachable address', 'Result dispute', 'Priority request', 'Missing customer information', 'Other'];
+const FIRST_RESPONSE_TARGET_H = 4; // proposed, to set with VS
+const fmtDur = ms => { const m = Math.max(0, Math.round(ms / 60000)); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+function syncActive(s) { ACTIVE.th = s.thresholds; ACTIVE.supp = s.suppOn; }
+const mkTasks = (list, seq) => list.map((t, i) => ({ done: false, ...t, id: 't' + seq + '-' + i }));
+const mkLogs = (list, ts, seq) => list.map((l, i) => ({ ts, ...l, id: 'g' + seq + '-' + i })).reverse();
+
+function seedCases() {
+  const X = {
+    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 58 * H, rem50: true, rem80: true,
+      add: [{ by: 'System', auto: true, ts: DEMO_NOW - 25 * H, text: 'Reminder at 50% of the SLA sent to VS Team.' }, { by: 'System', auto: true, ts: DEMO_NOW - 3.4 * H, text: 'Reminder at 80% of the SLA sent to VS Team.' }] },
+    'ESC-1047': { category: 'Unreachable address' },
+    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 12 * H },
+  };
+  return ESCALATIONS_SEED.map(c => { const x = X[c.id] || {}; const { add, ...rest } = x; return { ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, ...c, ...rest, thread: [...c.thread, ...(add || [])] }; });
+}
+
+/* ----- check-in drafts and sends ----- */
+const CHECKIN_CTX = {
+  brightpay: { to: 'br1', ctx: 'I know you were moving onboarding to a new in-house screen and that API calls would change for a while.' },
+  lumen: { to: 'lu1', ctx: 'I remember you were trialling another liveness provider on part of your traffic and that responses felt slower.' },
+  orchid: { to: 'or2', ctx: 'I know the NIN provider downtime has made the last weeks hard for your enrolment team.' },
+};
+const REPLIES = {
+  brightpay: 'Sorry for the silence. We moved onboarding to an in-house screen and API calls restart on 26 October. We will send the new volume forecast by Monday.',
+  lumen: 'Thanks for checking in. We are still comparing providers on liveness and would like the benchmark pack. Can we meet next week to review accuracy and response times?',
+  default: 'Thanks for checking in. It has been a quieter period for us, but we expect volumes to pick up. We will share an updated forecast next week.',
+};
+function makeCheckin(acc, s) {
+  const cc = CHECKIN_CTX[acc.id]; const to = (cc && cc.to) || acc.contacts[0].id; const c = acc.contacts.find(x => x.id === to); const first = c.name.split(' ')[0]; const st = acc.stats;
+  let fact;
+  if (s.service) { const sv = st.svcStats.find(x => x.id === s.service); fact = 'your ' + SVC[s.service].name + ' requests are down ' + Math.round(-sv.change7 * 100) + '% over the last 7 days'; }
+  else if (s.kind === 'Dropped') fact = 'we have not seen any requests from your integration for ' + st.daysSinceLast + ' days';
+  else if (s.kind === 'Low volume') fact = 'your volume over the last 30 days is ' + num(st.last30) + ' requests against ' + num(acc.agreed) + ' agreed each month';
+  else fact = 'your request volume is down ' + Math.round(-st.mom * 100) + '% on the previous 30 days';
+  if (acc.segment === 'Scale') return { to, subject: 'Checking in on your VerifyMe usage', body: 'Hi ' + first + ',\n\nOur usage report shows ' + fact + '. Is everything working as expected on your side, or is there anything we can help with, such as integration support or adjusting your plan?\n\nReply to this email and ' + acc.am + ' will follow up.\n\nRegards,\nVerifyMe Account Management' };
+  return { to, subject: 'Checking in on ' + acc.name.split(' ')[0] + ' and VerifyMe', body: 'Hi ' + first + ',\n\nI wanted to check in personally because ' + fact + '. ' + (cc && cc.ctx ? cc.ctx + ' ' : '') + 'Could we find 20 minutes this week to see whether anything has changed on your side, or whether there is something we can fix?\n\nBest regards,\n' + acc.am + '\nAccount Manager, VerifyMe' };
+}
+function buildSend(acc, w, ts, mode, by) {
+  const c = acc.contacts.find(x => x.id === w.draft.to); const auto = mode === 'Auto';
+  return {
+    item: { accountId: acc.id, channel: 'email', dir: 'out', contactId: c.id, author: auto ? 'VerifyMe (automatic)' : by, ts, subject: w.draft.subject, body: w.draft.body.replace(/\n+/g, ' '), auto, tags: autoTag(w.draft.subject + '. ' + w.draft.body, 'out') },
+    entry: { ts, accountId: acc.id, to: c.name, subject: w.draft.subject, mode: auto ? 'Auto (templated)' : 'Approved by ' + by, auto, kind: w.kind },
+    log: { actor: auto ? 'System' : by, auto, accountId: acc.id, text: (auto ? 'Templated check-in sent to ' : 'Approved and sent check-in to ') + c.name + ' (' + acc.name + '). Mock: no real email sent.' },
+  };
+}
+function seedStage2() {
+  const det = DEMO_NOW - 3 * H; const work = {}, timeline = [], sentLog = [], log = [];
+  computeSignals(ACCOUNTS, INCIDENTS_SEED).forEach(s => {
+    const acc = ACC[s.accountId];
+    if (s.suppressed) { work[acc.id] = { status: 'Suppressed', kind: s.kind, detectedAt: det }; return; }
+    const draft = makeCheckin(acc, s);
+    if (acc.segment === 'Scale') {
+      const w = { status: 'Sent', mode: 'auto', kind: s.kind, detectedAt: det, sentAt: det + 5 * 60e3, draft }; work[acc.id] = w;
+      const b = buildSend(acc, w, w.sentAt, 'Auto', null);
+      timeline.push({ ...b.item, id: 'tl-auto-' + acc.id }); sentLog.push({ ...b.entry, id: 'sl-' + acc.id }); log.push({ ...b.log, id: 'l-auto-' + acc.id, ts: w.sentAt });
+    } else work[acc.id] = { status: 'Draft', kind: s.kind, detectedAt: det, draft };
+  });
+  return { work, timeline, sentLog, log };
+}
+
+/* ----- shared signal widgets ----- */
+function SignalNext({ s, work }) {
+  const t = work && work.sentAt ? fmtTime(work.sentAt) : '';
+  if (!work || work.status === 'Suppressed') return html`<p className="text-xs mt-1.5">Next step: run the daily usage feed to prepare the check-in.</p>`;
+  if (work.status === 'Draft') return html`<p className="text-xs mt-1.5">Next step: check-in draft is ready for you to edit and approve.</p>`;
+  if (work.status === 'Sent') return html`<p className="text-xs mt-1.5">${work.mode === 'auto' ? 'Templated check-in sent automatically at ' + t + '.' : 'You approved the check-in at ' + t + '.'} Waiting for a reply. ${work.mode === 'auto' && html`<${AutoBadge} />`}</p>`;
+  return html`<p className="text-xs mt-1.5">Customer replied and the reply is logged. Follow-up task created automatically. <${AutoBadge} /></p>`;
+}
+const EmailBox = ({ to, subject, body }) => html`<div className="rounded-md border border-line bg-bg p-3 text-sm"><div className="text-xs text-mute">To: ${to}</div><div className="font-medium mt-0.5">${subject}</div><div className="mt-2 whitespace-pre-line">${body}</div></div>`;
+
+function ActionClock({ w, now }) {
+  if (!w || w.status === 'Suppressed') return null;
+  if (w.sentAt) return html`<${Pill} tone="ok"><${Icon} n="clock" s=${11} />Actioned ${fmtDur(w.sentAt - w.detectedAt)} after detection · ${w.mode === 'auto' ? 'automatically' : 'by AM'}<//>`;
+  const el = (now - w.detectedAt) / H;
+  return html`<${Pill} tone=${el > 24 ? 'bad' : el > 18 ? 'warn' : 'ok'}><${Icon} n="clock" s=${11} />${fmtDur(now - w.detectedAt)} since detection · target: AM action within 1 working day<//>`;
+}
+
+function SignalCard({ s, st, dispatch, role }) {
+  const now = useNow(); const me = ROLES[role]; const a = ACC[s.accountId]; const w = st.sigWork[a.id];
+  const mine = role === 'AM' && a.am === me.name; const tone = s.suppressed ? 'mute' : s.kind === 'Dropped' ? 'bad' : 'warn';
+  const c = w && w.draft ? a.contacts.find(x => x.id === w.draft.to) : null;
+  const edit = patch => dispatch({ type: 'SIG_EDIT', accountId: a.id, patch });
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><div className="p-4 space-y-3">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">${a.name}</span><${SegPill} segment=${a.segment} /><${Pill} tone=${tone}>${s.suppressed ? 'Suppressed · ' + s.kind : s.kind}<//><span className="text-xs text-mute">AM: ${a.am}</span></div>
+        <p className="text-sm text-mute mt-1">${s.detail}</p></div>
+      <${VolumeSpark} data=${a.total} w=${130} h=${34} />
+    </div>
+    ${w && html`<div><${ActionClock} w=${w} now=${now} /></div>`}
+    ${s.suppressed && html`<div className="rounded-md bg-surface2 p-3 text-sm space-y-1"><div className="flex items-center gap-2 font-medium"><${Icon} n="lock" s=${14} />Suppressed: AM told the cause, no customer email sent <${AutoBadge} label="Auto-suppressed" /></div>
+      <div className="text-mute">Cause: ${s.incident.id}, ${s.incident.title}, open since ${fmtDay(s.incident.openedAt)}. ${s.incident.note} Resolve the incident under Suppression rule to see the signal released.</div></div>`}
+    ${!s.suppressed && !w && html`<div className="flex items-center gap-3 text-sm"><span className="text-mute">Not processed yet.</span><${Btn} onClick=${() => dispatch({ type: 'FEED', ts: now })}><${Icon} n="bolt" s=${12} />Run daily usage feed<//></div>`}
+    ${!s.suppressed && w && w.status === 'Suppressed' && html`<div className="flex items-center gap-3 text-sm"><span className="text-mute">The suppression ended. Run the feed to prepare the check-in.</span><${Btn} onClick=${() => dispatch({ type: 'FEED', ts: now })}><${Icon} n="bolt" s=${12} />Run daily usage feed<//></div>`}
+    ${w && w.status === 'Draft' && html`<div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium">Check-in draft for approval<${AutoBadge} label="Auto-drafted" /></div>
+      ${mine ? html`<div className="space-y-2">
+        <select className=${inp} value=${w.draft.to} onChange=${e => edit({ to: e.target.value })} aria-label="Recipient">${a.contacts.map(x => html`<option key=${x.id} value=${x.id}>To: ${x.name}, ${x.role}</option>`)}</select>
+        <input className=${inp} value=${w.draft.subject} onChange=${e => edit({ subject: e.target.value })} aria-label="Subject" />
+        <textarea className=${inp} rows="9" value=${w.draft.body} onChange=${e => edit({ body: e.target.value })} aria-label="Email body"></textarea>
+        <div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'SIG_APPROVE', accountId: a.id, ts: now, by: me.name })}><${Icon} n="check" s=${12} />Approve and send<//><${Btn} onClick=${() => edit(makeCheckin(a, s))}>Reset to generated draft<//></div>
+        <p className="text-xs text-mute">Key accounts: nothing customer-facing goes out until you approve. Sending is mocked.</p></div>`
+        : html`<div className="space-y-2"><${EmailBox} to=${c.name} subject=${w.draft.subject} body=${w.draft.body} /><p className="text-xs text-mute">Waiting for ${a.am} to edit and approve.${role !== 'AM' ? ' Switch to the AM role to approve.' : ''}</p></div>`}</div>`}
+    ${w && w.status === 'Sent' && html`<div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm font-medium">Check-in sent ${fmtTime(w.sentAt)}<${Pill} tone=${w.mode === 'auto' ? 'auto' : 'ok'}>${w.mode === 'auto' ? 'Templated, sent automatically' : 'Approved by ' + w.approvedBy}<//>${w.mode === 'auto' && html`<${AutoBadge} />`}<span className="text-xs text-mute font-normal">Mock: no real email sent</span></div>
+      <${EmailBox} to=${c.name} subject=${w.draft.subject} body=${w.draft.body} />
+      <div className="flex flex-wrap items-center gap-2"><${Btn} onClick=${() => dispatch({ type: 'SIG_REPLY', accountId: a.id, ts: now })}><${Icon} n="mail" s=${12} />Simulate customer reply<//><span className="text-xs text-mute">The reply is logged to the timeline and a follow-up task is created.</span></div></div>`}
+    ${w && w.status === 'Replied' && html`<div className="space-y-2"><div className="flex flex-wrap items-center gap-2 text-sm font-medium">Customer replied ${fmtTime(w.repliedAt)}<${AutoBadge} label="Auto-logged" /><${Pill} tone="ok">Follow-up task created<//></div>
+      <${EmailBox} to=${'VerifyMe, from ' + c.name} subject=${w.reply.subject} body=${w.reply.body} />
+</div>`}
+  </div><//>`;
+}
+
+function ThresholdCard({ st, dispatch, can }) {
+  const th = st.thresholds;
+  const field = (seg, key, label, suffix) => html`<td className="px-2 py-1.5"><div className="flex items-center gap-1"><input type="number" min="0" disabled=${!can} value=${th[seg][key]} onChange=${e => dispatch({ type: 'SET_TH', seg, key, val: Math.max(0, +e.target.value || 0) })} className="w-16 rounded border border-line bg-bg px-1.5 py-1 text-sm tabular-nums" aria-label=${seg + ' ' + label} /><span className="text-xs text-mute">${suffix}</span></div></td>`;
+  return html`<${Card}><${CardHead} title="Threshold settings" sub=${can ? 'Changes apply at once. Run the daily feed to act on new signals.' : 'Read-only for this role'} />
+    <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute"><th className="px-4 py-2 font-medium">Segment</th><th className="px-2 font-medium">Dropped after</th><th className="px-2 font-medium">Low volume below</th><th className="px-2 font-medium">Reduced by</th></tr></thead><tbody>
+      ${['Key', 'Scale'].map(seg => html`<tr key=${seg} className="border-t border-line"><td className="px-4 py-1.5"><${SegPill} segment=${seg} /></td>${field(seg, 'dropDays', 'dropped days', 'days, no requests')}${field(seg, 'lowPct', 'low volume', '% of agreed')}${field(seg, 'reducedPct', 'reduced', '% vs prior 30d')}</tr>`)}
+    </tbody></table></div>
+    <div className="border-t border-line px-4 py-3"><div className="text-xs text-mute mb-1.5">Service-level drop (last 7 days vs usual), by service type</div>
+      <div className="flex flex-wrap gap-4">${[['realtime', 'Real-time services'], ['lastmile', 'Last-mile services']].map(([k, l]) => html`<label key=${k} className="flex items-center gap-2 text-sm">${l}<input type="number" min="0" disabled=${!can} value=${th.svcType[k]} onChange=${e => dispatch({ type: 'SET_TH', seg: 'svcType', key: k, val: Math.max(0, +e.target.value || 0) })} className="w-16 rounded border border-line bg-bg px-1.5 py-1 text-sm tabular-nums" aria-label=${l + ' drop threshold'} /><span className="text-xs text-mute">%</span></label>`)}</div></div>
+  <//>`;
+}
+function SuppressionCard({ st, dispatch, can }) {
+  const now = useNow();
+  return html`<${Card}><${CardHead} title="Suppression rule" sub=${SUPPRESSION_RULES[0].label} />
+    <div className="p-4 space-y-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled=${!can} checked=${st.suppOn} onChange=${e => dispatch({ type: 'SET_SUPP', on: e.target.checked })} />Suppress signals and customer emails while an incident is open</label>
+      ${st.incidents.map(i => html`<div key=${i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line p-2.5 text-sm"><div><span className="font-medium">${i.id}</span> ${i.title} <${Pill} tone=${i.status === 'Open' ? 'warn' : 'ok'}>${i.status}<//><div className="text-xs text-mute">${SVC[i.service].name} · opened ${fmtDay(i.openedAt)}</div></div><${Btn} disabled=${!can} onClick=${() => dispatch({ type: 'INC_TOGGLE', id: i.id, ts: now })}>${i.status === 'Open' ? 'Mark resolved' : 'Reopen'}<//></div>`)}</div><//>`;
+}
+function SentLogCard({ st }) {
+  return html`<${Card}><${CardHead} title="Check-in sent log" sub="Mock: nothing is really sent" />
+    ${st.sentLog.length === 0 ? html`<${Empty}>No check-ins sent yet.<//>` : [...st.sentLog].sort((x, y) => y.ts - x.ts).map(l => html`<div key=${l.id} className="px-4 py-2.5 border-b border-line last:border-0 text-xs"><div className="flex flex-wrap items-center gap-2 text-mute"><span>${fmtTime(l.ts)}, ${fmtDay(l.ts)}</span>${l.auto && html`<${AutoBadge} />`}<${Pill} tone=${l.auto ? 'auto' : 'ok'}>${l.mode}<//></div><div className="mt-0.5"><span className="font-medium">${ACC[l.accountId].name}</span> to ${l.to}: ${l.subject}</div></div>`)}<//>`;
+}
+
+function SignalsPage({ st, dispatch, role }) {
+  const now = useNow(); const accts = scopeAccounts(role); const signals = computeSignals(accts, st.incidents); const can = role === 'AM' || role === 'HEAD';
+  const n = k => signals.filter(s => !s.suppressed && s.kind === k).length;
+  return html`<div className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Usage signals</h1><p className="text-sm text-mute">Daily usage compared with baseline and agreed volume. Target: signal to AM action within one working day.</p></div>
+      <${Btn} kind="primary" onClick=${() => dispatch({ type: 'FEED', ts: now })}><${Icon} n="bolt" s=${12} />Run daily usage feed<//></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Dropped" value=${n('Dropped')} tone=${n('Dropped') ? 'bad' : ''} /><${Tile} label="Low volume" value=${n('Low volume')} /><${Tile} label="Reduced volume" value=${n('Reduced volume')} /><${Tile} label="Suppressed" value=${signals.filter(s => s.suppressed).length} sub="Open incident" /></div>
+    <div className="grid lg:grid-cols-3 gap-5">
+      <div className="lg:col-span-2 space-y-4 min-w-0">${signals.length === 0 ? html`<${Card}><${Empty}>No open signals under the current thresholds.<//><//>` : signals.map(s => html`<${SignalCard} key=${s.accountId} s=${s} st=${st} dispatch=${dispatch} role=${role} />`)}</div>
+      <div className="space-y-4 min-w-0"><${ThresholdCard} st=${st} dispatch=${dispatch} can=${can} /><${SuppressionCard} st=${st} dispatch=${dispatch} can=${can} /><${SentLogCard} st=${st} /></div>
+    </div>
+  </div>`;
+}
+
+/* ----- escalation cases ----- */
+function NewCaseForm({ role, dispatch, now, onDone, fixedAccount }) {
+  const me = ROLES[role]; const accts = role === 'AM' ? ACCOUNTS.filter(a => a.am === me.name) : ACCOUNTS;
+  const [accId, setAcc] = useState(fixedAccount || accts[0].id); const [svc, setSvc] = useState('PHYADDR'); const [cat, setCat] = useState(role === 'VS' ? 'Unreachable address' : 'Delayed verification'); const [text, setText] = useState('');
+  const toVS = role !== 'VS'; const sl = SVC[svc]; const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><${CardHead} title=${toVS ? 'Raise an escalation to VS' : 'Raise a query to the AM'} /><div className="p-4 space-y-2.5">
+    <div className="grid sm:grid-cols-3 gap-2.5">
+      <select className=${inp} value=${accId} onChange=${e => setAcc(e.target.value)} disabled=${!!fixedAccount} aria-label="Customer">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select className=${inp} value=${svc} onChange=${e => setSvc(e.target.value)} aria-label="Service">${SERVICES.filter(s => s.type === 'lastmile').map(s => html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</select>
+      <select className=${inp} value=${cat} onChange=${e => setCat(e.target.value)} aria-label="Issue type">${ESC_CATEGORIES.map(c => html`<option key=${c}>${c}</option>`)}</select></div>
+    <textarea className=${inp} rows="3" value=${text} onChange=${e => setText(e.target.value)} placeholder="Case details: batch reference, applicant, what is missing or late" aria-label="Case details"></textarea>
+    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the SLA clock starts at ${sl.slaHours[1]}h (${sl.slaLabel}).</p>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
+  </div><//>`;
+}
+
+function CaseCard({ c, st, dispatch, role, defaultOpen }) {
+  const now = useNow(); const me = ROLES[role]; const a = ACC[c.accountId];
+  const [open, setOpen] = useState(!!defaultOpen); const [msg, setMsg] = useState('');
+  const done = !isOpen(c), isVS = role === 'VS', isAM = role === 'AM';
+  const mine = !done && ((isVS && c.owner === 'VS Team') || (isAM && c.owner === me.name));
+  const myAcct = isAM && a.am === me.name; const m = msg.trim().length > 0;
+  const act = k => { dispatch({ type: 'ESC_ACT', id: c.id, act: k, by: me.name, ts: now, text: msg.trim() }); setMsg(''); };
+  const thread = [...c.thread].sort((x, y) => x.ts - y.ts);
+  const elapsed = ((c.resolvedAt || now) - c.openedAt) / H;
+  const statusTone = c.status === 'Closed' || c.status === 'Resolved' ? 'ok' : c.status === 'Awaiting AM' ? 'warn' : 'info';
+  const canComment = !done && !mine && (isAM || isVS || role === 'HEAD');
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${() => setOpen(!open)}>
+      <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone=${statusTone}>${c.status}<//>${c.breached && html`<${Pill} tone="bad">Breached<//>`}<span className="text-mute">${a.name}</span></div>
+        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · with ${c.owner}</div></div>
+      <${SlaClock} c=${c} now=${now} />
+    </div>
+    ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        ${c.ackAt ? html`<${Pill} tone=${(c.ackAt - c.openedAt) / H <= FIRST_RESPONSE_TARGET_H ? 'ok' : 'warn'}>First response ${fmtDur(c.ackAt - c.openedAt)} (target ${FIRST_RESPONSE_TARGET_H}h, proposed)<//>` : html`<${Pill} tone=${elapsed > FIRST_RESPONSE_TARGET_H ? 'warn' : 'mute'}>Awaiting first response, ${fmtDur(elapsed * H)} so far (target ${FIRST_RESPONSE_TARGET_H}h, proposed)<//>`}
+        <${Pill} tone=${c.rem50 ? 'ok' : 'mute'}>${c.rem50 ? 'Reminder sent at 50%' : 'Reminder due at 50%'}<//>${c.rem50 && html`<${AutoBadge} />`}
+        <${Pill} tone=${c.rem80 ? 'warn' : 'mute'}>${c.rem80 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${c.rem80 && html`<${AutoBadge} />`}
+        ${c.breached ? html`<${Pill} tone="bad">Auto-escalated to Director of Verification Services and Head of AM<//><${AutoBadge} />` : html`<${Pill} tone="mute">On breach: escalates to Director of VS and Head of AM<//>`}
+      </div>
+      <div className="space-y-2">${thread.map((t, i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', t.auto ? 'bg-autosoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${t.by}</span><span>${fmtFull(t.ts)}</span>${t.auto && html`<${AutoBadge} />`}</div><div className="mt-0.5">${t.text}</div></div>`)}</div>
+      ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//><span className="text-xs text-mute">Sends a mock update to the customer and logs it on the timeline.</span></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case.</p>`)}
+      ${!done && (mine || canComment) && html`<div className="space-y-2">
+        <textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder=${isVS && mine ? 'Update, or the question you need the AM to answer' : isAM && mine ? 'Information for VS, for example a landmark or phone number' : 'Add a comment to the thread'} aria-label="Message"></textarea>
+        <div className="flex flex-wrap gap-2">
+          ${mine && (c.status === 'Open' || c.status === 'Awaiting AM') && html`<${Btn} onClick=${() => act('ack')}><${Icon} n="check" s=${12} />Acknowledge<//>`}
+          ${mine && isVS && html`<${Btn} disabled=${!m} onClick=${() => act('reply')}>Send update<//><${Btn} disabled=${!m} onClick=${() => act('query')}>Raise query to AM<//><${Btn} kind="primary" onClick=${() => act('resolve')}>Mark resolved<//>`}
+          ${mine && isAM && html`<${Btn} kind="primary" disabled=${!m} onClick=${() => act('info')}>Send info to VS<//>`}
+          ${canComment && html`<${Btn} disabled=${!m} onClick=${() => act('comment')}>Add comment<//>`}
+        </div></div>`}
+      ${done && c.status === 'Closed' && html`<p className="text-xs text-mute">Closed. Resolved in ${fmtDur(c.resolvedAt - c.openedAt)} against a ${c.slaHours}h SLA.</p>`}
+    </div>`}
+  <//>`;
+}
+
+function EscalationsPage({ st, dispatch, role, route }) {
+  const now = useNow(); const me = ROLES[role];
+  const scoped = st.escalations.filter(c => role !== 'AM' || ACC[c.accountId].am === me.name);
+  const mineF = c => isOpen(c) && ((role === 'VS' && c.owner === 'VS Team') || (role === 'AM' && c.owner === me.name));
+  const [tab, setTab] = useState(role === 'HEAD' ? 'open' : 'mine'); const [showNew, setShowNew] = useState(false);
+  const open = scoped.filter(isOpen), closed = scoped.filter(c => !isOpen(c));
+  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
+  const near = open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, breached = open.filter(c => slaPct(c, now) >= 1).length;
+  const acked = scoped.filter(c => c.ackAt); const avgFr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
+  const resolved = scoped.filter(c => c.resolvedAt); const within = resolved.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length;
+  const canRaise = role === 'AM' || role === 'VS';
+  return html`<div className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalations</h1><p className="text-sm text-mute">Address verification, both directions. One case, one clock, one thread.</p></div>
+      ${canRaise && html`<${Btn} kind="primary" onClick=${() => setShowNew(!showNew)}><${Icon} n="plus" s=${12} />${role === 'VS' ? 'Raise query to AM' : 'Raise escalation to VS'}<//>`}</div>
+    ${showNew && html`<${NewCaseForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShowNew(false)} />`}
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open cases" value=${open.length} /><${Tile} label="Near breach (80%+)" value=${near} tone=${near ? 'warn' : ''} /><${Tile} label="Breached" value=${breached} tone=${breached ? 'bad' : ''} sub=${breached ? 'Auto-escalated' : 'None'} /><${Tile} label="Avg first response" value=${avgFr == null ? 'n/a' : fmtDur(avgFr)} sub=${'Target ' + FIRST_RESPONSE_TARGET_H + 'h (proposed)'} /><${Tile} label="Resolved within SLA" value=${resolved.length ? within + ' of ' + resolved.length : 'n/a'} /></div>
+    <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>
+      ${[6, 12, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h} hours<//>`)}
+      <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + st.simHours + 'h' : 'Real time'}<//>
+      <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
+    <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !(t[0] === 'mine' && role === 'HEAD')).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
+    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
+    <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Clock:</span> physical address verification 24 to 72 hours, guarantor verification 5 days. The case clock runs to the upper bound.</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and the first-response target.</div><//>
+  </div>`;
+}
+function AccountCases({ a, cases, st, dispatch, role }) {
+  const now = useNow(); const [show, setShow] = useState(false);
+  const can = (role === 'AM' && a.am === ROLES.AM.name) || role === 'VS';
+  return html`<div className="space-y-3">
+    ${can && html`<div className="flex justify-end"><${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />${role === 'VS' ? 'Raise query to AM' : 'Raise escalation to VS'}<//></div>`}
+    ${show && html`<${NewCaseForm} role=${role} dispatch=${dispatch} now=${now} fixedAccount=${a.id} onDone=${() => setShow(false)} />`}
+    ${cases.length === 0 ? html`<${Card}><${Empty}>No escalations for ${a.name}.<//><//>` : cases.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${true} />`)}
+  </div>`;
+}
+
+/* ============================ STAGE 3: INVOICES (Flow 2), OPPORTUNITIES (Flow 5), DASHBOARD, GUIDED DEMO ============================ */
+const avg = a => a.length ? sum(a) / a.length : null;
+const hrsTxt = ms => ms == null ? 'n/a' : (ms / H).toFixed(1) + 'h';
+
+/* ----- invoices and logs ----- */
+const PERIODS = { 'Aug 2026': { m: 7, closed: true, code: '0826' }, 'Sep 2026': { m: 8, closed: true, code: '0926' }, 'Oct 2026': { m: 9, closed: false, code: '1026' } };
+const LOG_PACK_LIMIT = 50000;
+const STANDARD_CLOCK_H = 8; // proposed: standard requests the same working day
+function monthRecords(a, month, services) {
+  let t = 0; for (let i = 0; i < 90; i++) { if (new Date(DEMO_NOW - (90 - i) * D).getMonth() === month) services.forEach(s => { t += a.series[s] ? a.series[s][i] : 0; }); } return t;
+}
+function validateRequest(a, period, services, adjust, cases) {
+  const P = PERIODS[period]; const recs = monthRecords(a, P.m, services); const outside = services.filter(s => !a.services.includes(s));
+  const breached = (cases || []).filter(c => c.accountId === a.id && c.breached);
+  return [
+    { id: 'period', label: 'Billing period is closed', pass: P.closed, detail: P.closed ? period + ' is a closed month.' : period + ' is still open (month to date), so the invoice is not final.' },
+    { id: 'contract', label: 'Services are covered by the contract', pass: outside.length === 0, detail: outside.length ? 'Not in contract: ' + outside.map(s => SVC[s].name).join(', ') + '.' : 'All ' + services.length + ' services are in the contract.' },
+    { id: 'size', label: 'Log pack is under ' + num(LOG_PACK_LIMIT) + ' records', pass: recs < LOG_PACK_LIMIT, detail: num(recs) + ' records compiled.' },
+    { id: 'sla', label: 'No breached SLA case needing a service credit', pass: breached.length === 0, detail: breached.length ? breached.map(c => c.id).join(', ') + ' breached its SLA. Finance reviews any credit.' : 'No SLA breaches on this account.' },
+    { id: 'adjust', label: 'No credit note or adjustment requested', pass: !adjust, detail: adjust ? 'Credit notes are outside the standard contract rules.' : 'Standard invoice and logs only.' },
+  ];
+}
+function packData(a, period, services) {
+  const P = PERIODS[period]; const days = [];
+  for (let i = 0; i < 90; i++) { const d = new Date(DEMO_NOW - (90 - i) * D); if (d.getMonth() !== P.m) continue; const counts = {}; services.forEach(s => { counts[s] = a.series[s] ? a.series[s][i] : 0; }); days.push({ date: d.getTime(), counts }); }
+  const lines = services.map(s => { const q = sum(days.map(r => r.counts[s])); return { svc: s, qty: q, unit: a.price, amount: q * a.price }; });
+  const sub = sum(lines.map(l => l.amount)), vat = Math.round(sub * .075);
+  return { days, lines, sub, vat, total: sub + vat, records: sum(lines.map(l => l.qty)) };
+}
+function seedStage3() {
+  const mk = (id, accountId, period, services, adjust, raisedAt, extra, stepsFn) => {
+    const a = ACC[accountId]; const checks = validateRequest(a, period, services, adjust, []);
+    return { id, accountId, period, services, adjust, raisedBy: 'Amaka Eze', raisedAt, checks, standard: checks.every(c => c.pass), ...extra, steps: stepsFn };
+  };
+  const t1 = DEMO_NOW - 30 * H, t2 = DEMO_NOW - 5 * H;
+  const reqs = [
+    mk('REQ-301', 'lumen', 'Sep 2026', ['NIN', 'BVN', 'LIVE'], true, t2, { status: 'Awaiting Finance', reason: 'Credit notes are outside the standard contract rules' },
+      [{ label: 'Request raised by Amaka Eze', ts: t2, auto: false }, { label: 'Validated against contract and SLA rules', ts: t2 + 6e4, auto: true }, { label: 'Outside standard rules: routed to Finance', ts: t2 + 6e4, auto: true }]),
+    mk('REQ-298', 'northgate', 'Sep 2026', ['NIN', 'BVN', 'DIGADDR'], false, t1, { status: 'Delivered', reason: 'Standard request, auto-approved', readyAt: t1 + 6e4, deliveredAt: t1 + 42 * 6e4, method: 'Sent to customer' },
+      [{ label: 'Request raised by Amaka Eze', ts: t1, auto: false }, { label: 'Validated against contract and SLA rules', ts: t1 + 3e4, auto: true }, { label: 'Within standard rules: auto-approved', ts: t1 + 4e4, auto: true }, { label: 'Invoice and log pack generated and archived to the account', ts: t1 + 6e4, auto: true }, { label: 'Sent to customer by Amaka Eze', ts: t1 + 42 * 6e4, auto: false }, { label: 'Customer receives. Request clock stops', ts: t1 + 42 * 6e4, auto: true }]),
+  ];
+  const seen = {}; const sigs = computeSignals(ACCOUNTS, INCIDENTS_SEED); const cs = seedCases();
+  computeOpps(ACCOUNTS, { timeline: startTimeline(), signals: sigs, sigWork: seedStage2().work, cases: cs, now: DEMO_NOW }).forEach(o => { if (!o.held) seen[o.key] = DEMO_NOW - 2 * H; });
+  const log = Object.keys(seen).map(k => { const [aid, rid] = k.split(':'); return { id: 'l-opp-' + aid, ts: DEMO_NOW - 2 * H, actor: 'System', auto: true, accountId: aid, text: 'Rule scan flagged "' + OPP_RULES.find(r => r.id === rid).name + '" for ' + ACC[aid].name + '. ' + ACC[aid].am + ' notified to review the drafted email.' }; });
+  return { reqs, seen, log };
+}
+
+function PackPreview({ r }) {
+  const a = ACC[r.accountId]; const p = packData(a, r.period, r.services);
+  return html`<div className="rounded-md border border-line bg-bg p-3 space-y-3 text-sm">
+    <div className="flex flex-wrap justify-between gap-2"><div><div className="font-semibold">Invoice INV-${a.id.slice(0, 3).toUpperCase()}-${PERIODS[r.period].code}-${r.id.slice(4)}</div><div className="text-xs text-mute">${a.name} · ${r.period} · prepared for ${a.contacts[0].name}</div></div><${Pill} tone="auto">Mock preview<//></div>
+    <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute"><th className="py-1 font-medium">Service</th><th className="font-medium text-right">Requests</th><th className="font-medium text-right">Unit price</th><th className="font-medium text-right">Amount</th></tr></thead><tbody>
+      ${p.lines.map(l => html`<tr key=${l.svc} className="border-t border-line"><td className="py-1">${SVC[l.svc].name}</td><td className="text-right tabular-nums">${num(l.qty)}</td><td className="text-right tabular-nums">${ngn(l.unit)}</td><td className="text-right tabular-nums">${ngn(l.amount)}</td></tr>`)}
+      <tr className="border-t border-line"><td colSpan="3" className="py-1 text-right text-mute">Subtotal</td><td className="text-right tabular-nums">${ngn(p.sub)}</td></tr>
+      <tr><td colSpan="3" className="py-1 text-right text-mute">VAT 7.5%</td><td className="text-right tabular-nums">${ngn(p.vat)}</td></tr>
+      <tr className="font-semibold"><td colSpan="3" className="py-1 text-right">Total</td><td className="text-right tabular-nums">${ngn(p.total)}</td></tr></tbody></table></div>
+    <div><div className="text-xs font-medium mb-1">Usage log, first 6 of ${p.days.length} days (${num(p.records)} records)</div><div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute"><th className="py-1 font-medium">Date</th>${r.services.map(s => html`<th key=${s} className="font-medium text-right">${SVC[s].name.split(' ')[0]}</th>`)}</tr></thead><tbody>
+      ${p.days.slice(0, 6).map(d => html`<tr key=${d.date} className="border-t border-line"><td className="py-1">${fmtDay(d.date)}</td>${r.services.map(s => html`<td key=${s} className="text-right tabular-nums">${num(d.counts[s])}</td>`)}</tr>`)}</tbody></table></div></div>
+    <div className="flex flex-wrap gap-2"><${Btn} disabled=${true} title="Mock">Download invoice PDF<//><${Btn} disabled=${true} title="Mock">Download usage log CSV<//></div>
+  </div>`;
+}
+
+function RequestForm({ role, dispatch, now, onDone, fixedAccount, cases }) {
+  const me = ROLES[role]; const accts = ACCOUNTS.filter(a => a.am === me.name);
+  const [accId, setAcc] = useState(fixedAccount || accts[0].id); const a = ACC[accId];
+  const [period, setPeriod] = useState('Sep 2026'); const [svcs, setSvcs] = useState(a.services); const [adjust, setAdjust] = useState(false);
+  const checks = validateRequest(a, period, svcs, adjust, cases); const standard = checks.every(c => c.pass); const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><${CardHead} title="Request invoice and usage logs" sub="Raise the request. Validation against contract rules runs automatically." /><div className="p-4 space-y-3">
+    <div className="flex flex-wrap gap-2.5">
+      <select className=${inp} value=${accId} disabled=${!!fixedAccount} onChange=${e => { setAcc(e.target.value); setSvcs(ACC[e.target.value].services); }} aria-label="Account">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name}</option>`)}</select>
+      <select className=${inp} value=${period} onChange=${e => setPeriod(e.target.value)} aria-label="Period">${Object.keys(PERIODS).map(p => html`<option key=${p}>${p}</option>`)}</select></div>
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">${SERVICES.map(s => html`<label key=${s.id} className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked=${svcs.includes(s.id)} onChange=${() => setSvcs(svcs.includes(s.id) ? svcs.filter(x => x !== s.id) : [...svcs, s.id])} />${s.name}${!a.services.includes(s.id) && html`<span className="text-[10px] text-mute">(not in contract)</span>`}</label>`)}</div>
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked=${adjust} onChange=${e => setAdjust(e.target.checked)} />Customer asked for a credit note or adjustment</label>
+    <div className="rounded-md bg-surface2 p-3 space-y-1.5"><div className="flex items-center gap-2 text-xs font-medium">Validation preview<${AutoBadge} label="Auto" /></div>
+      ${checks.map(c => html`<div key=${c.id} className="flex items-start gap-2 text-xs"><span className=${c.pass ? 'text-ok' : 'text-bad'}><${Icon} n=${c.pass ? 'check' : 'alert'} s=${13} /></span><span><span className="font-medium">${c.label}.</span> <span className="text-mute">${c.detail}</span></span></div>`)}
+      <div className="pt-1 text-xs"><${Pill} tone=${standard ? 'ok' : 'warn'}>${standard ? 'Standard: will be auto-approved' : 'Exception: will go to the Finance queue'}<//></div></div>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${svcs.length === 0} onClick=${() => { dispatch({ type: 'INV_NEW', accountId: accId, period, services: svcs, adjust, by: me.name, ts: now }); onDone(); }}>Raise request<//><${Btn} onClick=${onDone}>Cancel<//></div>
+  </div><//>`;
+}
+
+function RequestCard({ r, dispatch, role, defaultOpen }) {
+  const now = useNow(); const me = ROLES[role]; const a = ACC[r.accountId];
+  const [open, setOpen] = useState(!!defaultOpen); const [prev, setPrev] = useState(false); const [note, setNote] = useState('');
+  const tone = { 'Awaiting Finance': 'warn', Ready: 'info', Delivered: 'ok', Rejected: 'bad' }[r.status]; const label = r.status === 'Ready' ? 'Ready to share' : r.status;
+  const elapsed = (r.deliveredAt || (r.status === 'Rejected' ? r.rejectedAt : now)) - r.raisedAt; const myAcct = role === 'AM' && a.am === me.name;
+  const clockTone = r.deliveredAt ? (r.standard && elapsed / H > STANDARD_CLOCK_H ? 'warn' : 'ok') : (r.standard && elapsed / H > STANDARD_CLOCK_H ? 'warn' : 'mute');
+  return html`<${Card}>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${() => setOpen(!open)}>
+      <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${r.id}</span><${Pill} tone=${tone}>${label}<//><${Pill} tone=${r.standard ? 'ok' : 'warn'}>${r.standard ? 'Standard' : 'Exception'}<//><span className="text-mute">${a.name} · ${r.period}</span></div>
+        <div className="text-xs text-mute mt-0.5">${r.services.map(s => SVC[s].name).join(', ')} · raised by ${r.raisedBy} ${relAgo(r.raisedAt, now)}</div></div>
+      <${Pill} tone=${clockTone} title=${r.standard ? 'Proposed clock: standard requests the same working day' : 'Exception clock to agree with Finance'}><${Icon} n="clock" s=${11} />${r.deliveredAt ? 'Request to delivery ' + fmtDur(elapsed) : r.status === 'Rejected' ? 'Rejected after ' + fmtDur(elapsed) : 'Open ' + fmtDur(elapsed)}<//>
+    </div>
+    ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
+      <div className="space-y-1.5"><div className="flex items-center gap-2 text-xs font-medium">Validation against contract and SLA rules<${AutoBadge} /></div>
+        ${r.checks.map(c => html`<div key=${c.id} className="flex items-start gap-2 text-xs"><span className=${c.pass ? 'text-ok' : 'text-bad'}><${Icon} n=${c.pass ? 'check' : 'alert'} s=${13} /></span><span><span className="font-medium">${c.label}.</span> <span className="text-mute">${c.detail}</span></span></div>`)}</div>
+      <div className="space-y-1.5 border-t border-line pt-2">${r.steps.map((s, i) => html`<div key=${i} className="flex items-center gap-2 text-xs"><span className="text-mute tabular-nums w-24 shrink-0">${fmtDay(s.ts)} ${fmtTime(s.ts)}</span><span>${s.label}</span>${s.auto && html`<${AutoBadge} />`}</div>`)}</div>
+      ${r.status === 'Rejected' && html`<p className="text-sm text-bad">Rejected by ${r.rejectedBy}: ${r.note}</p>`}
+      ${r.status === 'Awaiting Finance' && (role === 'FIN' ? html`<div className="space-y-2"><input className="w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm" placeholder="Note to the AM (optional for approval, required to reject)" value=${note} onChange=${e => setNote(e.target.value)} aria-label="Note" />
+        <div className="flex gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_APPROVE', id: r.id, by: me.name, ts: now, note: note.trim() })}><${Icon} n="check" s=${12} />Approve exception<//><${Btn} disabled=${!note.trim()} onClick=${() => dispatch({ type: 'INV_REJECT', id: r.id, by: me.name, ts: now, note: note.trim() })}>Reject<//></div></div>` : html`<p className="text-xs text-mute">Waiting for Finance (Ify Okon) to review the exception.${role === 'AM' ? ' Switch to the Finance role to approve it.' : ''}</p>`)}
+      ${(r.status === 'Ready' || r.status === 'Delivered') && html`<div className="space-y-2"><${Btn} onClick=${() => setPrev(!prev)}><${Icon} n="file" s=${12} />${prev ? 'Hide pack preview' : 'Preview invoice and log pack'}<//>${r.status === 'Ready' && html`<span className="text-xs text-mute ml-2 inline-flex items-center gap-1">Archived to the account <${AutoBadge} /></span>`}${prev && html`<${PackPreview} r=${r} />`}</div>`}
+      ${r.status === 'Ready' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//><${Btn} onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'link', by: me.name, ts: now })}>Share link<//><span className="text-xs text-mute">Delivery stops the request clock. Sending is mocked.</span></div>` : html`<p className="text-xs text-mute">Ready. Waiting for ${a.am} to share it with the customer.</p>`)}
+      ${r.status === 'Delivered' && html`<p className="text-xs text-mute">${r.method}${r.link ? ': ' + r.link : ''}. Delivered in ${fmtDur(r.deliveredAt - r.raisedAt)}.</p>`}
+    </div>`}
+  <//>`;
+}
+
+function InvoicesPage({ st, dispatch, role }) {
+  const now = useNow(); const me = ROLES[role]; const [show, setShow] = useState(false); const [tab, setTab] = useState('action');
+  const mine = st.invoiceRequests.filter(r => role !== 'AM' || ACC[r.accountId].am === me.name);
+  const needs = r => (role === 'FIN' && r.status === 'Awaiting Finance') || (role === 'AM' && r.status === 'Ready') || (role === 'HEAD' && (r.status === 'Awaiting Finance' || r.status === 'Ready'));
+  const list = (tab === 'action' ? mine.filter(needs) : tab === 'done' ? mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected') : mine).sort((x, y) => y.raisedAt - x.raisedAt);
+  const delivered = mine.filter(r => r.deliveredAt); const stdN = mine.filter(r => r.standard).length;
+  return html`<div className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p></div>
+      ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New request<//>`}</div>
+    ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} onDone=${() => setShow(false)} />`}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? Math.round(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Proposed: same day for standard" /></div>
+    <div className="flex gap-1 border-b border-line">${[['action', 'Needs action', mine.filter(needs).length], ['all', 'All requests', mine.length], ['done', 'Delivered or rejected', mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected').length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
+    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'action' ? 'Nothing needs your action.' : 'No requests here.'}<//><//>` : list.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${tab === 'action'} />`)}
+    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Open decisions:</span> approval rules, invoice source system, withholding-tax rule for international customers, and the customer-facing sharing method.<//>
+  </div>`;
+}
+function AccountInvoices({ a, st, dispatch, role }) {
+  const now = useNow(); const [show, setShow] = useState(false); const reqs = st.invoiceRequests.filter(r => r.accountId === a.id).sort((x, y) => y.raisedAt - x.raisedAt);
+  const can = role === 'AM' && a.am === ROLES.AM.name;
+  return html`<div className="space-y-4">
+    ${can && html`<div className="flex justify-end"><${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request invoice and logs<//></div>`}
+    ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} fixedAccount=${a.id} onDone=${() => setShow(false)} />`}
+    <${Card}><${CardHead} title="Invoices" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Invoice</th><th className="px-2 font-medium">Period</th><th className="px-2 font-medium text-right">Amount</th><th className="px-2 font-medium">Issued</th><th className="px-2 font-medium">Due</th><th className="px-2 font-medium">Status</th></tr></thead><tbody>
+      ${a.invoices.map(i => html`<tr key=${i.no} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${i.no}</td><td className="px-2">${i.period}</td><td className="px-2 text-right tabular-nums">${ngn(i.amount)}</td><td className="px-2 text-mute">${i.issued}</td><td className="px-2 text-mute">${i.due}</td><td className="px-2"><${Pill} tone=${i.status === 'Paid' ? 'ok' : 'warn'}>${i.status}<//></td></tr>`)}</tbody></table></div><//>
+    ${reqs.length > 0 && html`<div className="space-y-3"><h3 className="text-sm font-semibold">Requests for this account</h3>${reqs.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${true} />`)}</div>`}
+  </div>`;
+}
+function FinHome3({ st, dispatch, go }) {
+  const now = useNow(); const open = st.invoiceRequests.filter(r => r.status === 'Awaiting Finance'); const all = st.invoiceRequests;
+  const apr = all.filter(r => r.approvedAt); const std = all.filter(r => r.standard).length;
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Finance queue</h1><p className="text-sm text-mute">Invoice and usage-log requests that fall outside the standard rules</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} tone=${open.length ? 'warn' : ''} /><${Tile} label="Auto-approved" value=${std} sub="No Finance touch" /><${Tile} label="Avg approval time" value=${apr.length ? fmtDur(avg(apr.map(r => r.approvedAt - r.raisedAt))) : 'n/a'} sub="Exception clock to agree" /><${Tile} label="Proposed clock" value="Same day" sub="Standard requests" /></div>
+    <div className="space-y-3"><h2 className="text-sm font-semibold">Approval queue</h2>${open.length ? open.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role="FIN" defaultOpen=${true} />`) : html`<${Card}><${Empty}>Nothing to approve.<//><//>`}</div>
+    <div><${Btn} onClick=${() => go({ page: 'invoices' })}>Open all requests<//></div>
+  </div>`;
+}
+
+/* ----- opportunities ----- */
+const OPP_THRESHOLD = 70;
+const OPP_RULES = [
+  { id: 'addr', name: 'Address verification bundle', products: ['DIGADDR', 'PHYADDR'], base: 50, evidence: /address|field officer|field agent|landmark|verify borrowers/i, test: a => (a.services.includes('NIN') || a.services.includes('BVN')) && !a.services.includes('DIGADDR') && !a.services.includes('PHYADDR') },
+  { id: 'live', name: 'Liveness check cross-sell', products: ['LIVE'], base: 45, evidence: /fraud|selfie|impersonat|spoof/i, test: a => a.services.includes('NIN') && a.services.includes('BVN') && !a.services.includes('LIVE') },
+  { id: 'commit', name: 'Commitment increase', products: [], base: 55, evidence: /increase|expand|growth|plan to|double/i, test: a => a.stats.last30 >= a.agreed },
+];
+const OPP_STAGES = ['Flagged', 'Approved and sent', 'Sales handoff', 'Addendum filed'];
+const DISMISS_REASONS = ['Wrong timing', 'Customer is evaluating alternatives', 'Not relevant to this customer', 'Already offered', 'Other'];
+const OPP_CTX = {
+  savannah: { to: 'sa1', ctx: 'You mentioned that your field officers still visit borrowers to verify addresses, and that you plan to double disbursements before December.' },
+  brightpay: { to: 'br3', ctx: 'You mentioned rolling out to field agents next month, and now that integration work is settling it is a good time to look at onboarding checks for them.' },
+  meridian: { to: 'me1', ctx: 'You mentioned expecting to increase your commitment at renewal.' },
+};
+function oppEvidence(a, rule, timeline) {
+  const items = timeline.filter(t => t.accountId === a.id).sort((x, y) => y.ts - x.ts);
+  const ev = items.find(t => t.dir !== 'out' && rule.evidence.test(t.subject + ' ' + t.body));
+  const facts = [];
+  if (rule.id === 'addr' || rule.id === 'live') facts.push('Uses only ' + a.services.map(s => SVC[s].name).join(' and ') + ' from the catalogue.');
+  if (rule.id === 'commit') facts.push('Running at ' + Math.round(a.stats.last30 / a.agreed * 100) + '% of agreed volume over the last 30 days.');
+  if (ev) facts.push('Timeline, ' + fmtDay(ev.ts) + ': "' + ev.subject + '" from ' + ev.author + '.');
+  facts.push(a.segment + ' account, ' + num(a.agreed) + ' requests agreed per month.');
+  return { ev, facts, items };
+}
+function computeOpps(accts, ctx) {
+  const out = [];
+  accts.forEach(a => OPP_RULES.forEach(r => {
+    if (!r.test(a)) return;
+    const { ev, items } = oppEvidence(a, r, ctx.timeline); let score = r.base + (ev ? 25 : 0) + (a.segment === 'Key' ? 10 : 0);
+    const l5 = items.slice(0, 5); if (l5.filter(t => t.tags.sentiment === 'Positive').length > l5.filter(t => t.tags.sentiment === 'Negative').length) score += 10;
+    score = Math.min(100, score); if (score < OPP_THRESHOLD) return;
+    const sig = ctx.signals.find(s => s.accountId === a.id); const w = ctx.sigWork[a.id]; let held = null;
+    if (sig && sig.suppressed) held = 'Open incident ' + sig.incident.id + ' on ' + SVC[sig.service].name + '. Signals are suppressed, so no upsell yet.';
+    else if (sig && !(w && w.status === 'Replied')) held = 'Open ' + sig.kind + ' signal. Held until the customer has replied to the check-in.';
+    const near = ctx.cases.find(c => c.accountId === a.id && isOpen(c) && slaPct(c, ctx.now) >= .8);
+    if (!held && near) held = 'Open escalation ' + near.id + ' is at ' + Math.round(slaPct(near, ctx.now) * 100) + '% of its SLA.';
+    out.push({ key: a.id + ':' + r.id, accountId: a.id, rule: r.id, score, held });
+  }));
+  return out;
+}
+const oppCtx = (st, now) => ({ timeline: st.timeline, signals: computeSignals(ACCOUNTS, st.incidents), sigWork: st.sigWork, cases: st.escalations, now });
+function oppValue(a, ruleId) { return Math.round(a.agreed * (ruleId === 'commit' ? .1 : .12) * a.price * (ruleId === 'commit' ? 1 : 2) / 1000) * 1000; }
+function makeOppDraft(a, ruleId) {
+  const cc = OPP_CTX[a.id] || { to: a.contacts[0].id, ctx: '' }; const c = a.contacts.find(x => x.id === cc.to); const first = c.name.split(' ')[0];
+  const sign = '\n\nBest regards,\n' + a.am + '\nAccount Manager, VerifyMe';
+  if (ruleId === 'commit') return { to: c.id, subject: 'Making your VerifyMe plan fit your growth', body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Your usage has been at ' + Math.round(a.stats.last30 / a.agreed * 100) + '% of the agreed monthly volume over the last 30 days. We can prepare an addendum with a higher monthly commitment and a better per-call rate for your review.\n\nWould it help if we sent a short option sheet this week?' + sign };
+  if (ruleId === 'live') return { to: c.id, subject: 'Adding liveness checks to ' + a.name.split(' ')[0] + ' onboarding', body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Our liveness check confirms that a real person is present during onboarding and sits alongside the NIN and BVN checks you already use.\n\nWould a short pilot on your next batch be useful?' + sign };
+  return { to: c.id, subject: 'Faster address checks for ' + a.name.split(' ')[0], body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Two services fit: Digital address verification (Verifind), a real-time check of a submitted address, and Physical address verification, where a field agent confirms the address in person (24 to 72 hours). Many lenders run the digital check first and send an agent only where needed, which cuts field costs.\n\nWould a short pilot on your next batch of applications be useful?' + sign };
+}
+function OppCard({ okey, st, dispatch, role }) {
+  const now = useNow(); const me = ROLES[role]; const [aid, rid] = okey.split(':'); const a = ACC[aid]; const rule = OPP_RULES.find(r => r.id === rid);
+  const w = st.oppWork[okey]; const status = w ? w.status : 'Flagged'; const draft = (w && w.draft) || makeOppDraft(a, rid);
+  const [editing, setEditing] = useState(false); const [dismissing, setDismissing] = useState(false); const [reason, setReason] = useState(DISMISS_REASONS[0]); const [dnote, setDnote] = useState('');
+  const c = a.contacts.find(x => x.id === draft.to); const mine = role === 'AM' && a.am === me.name; const canClose = mine || role === 'HEAD';
+  const { facts } = oppEvidence(a, rule, st.timeline); const flaggedAt = st.oppSeen[okey] || now; const stage = status === 'Flagged' ? 0 : status === 'Sales handoff' ? 2 : status === 'Addendum filed' ? 3 : -1;
+  const cand = computeOpps([a], oppCtx(st, now)).find(o => o.key === okey); const score = cand ? cand.score : null;
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm'; const edit = patch => dispatch({ type: 'OPP_EDIT', okey, patch });
+  const value = oppValue(a, rid); const age = (now - flaggedAt) / H;
+  return html`<${Card}><div className="p-4 space-y-3">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">${rule.name}</span><${SegPill} segment=${a.segment} /><span className="text-sm text-mute">${a.name}</span>${score != null && html`<${Pill} tone="auto">Score ${score}<//>`}<${AutoBadge} label="Auto-detected" /></div>
+        <p className="text-xs text-mute mt-1">AM: ${a.am} · estimated ${ngn(value)} per month if accepted</p></div>
+      ${status === 'Flagged' && html`<${Pill} tone=${age > 48 ? 'bad' : age > 36 ? 'warn' : 'ok'}><${Icon} n="clock" s=${11} />${fmtDur(now - flaggedAt)} since flagged · AM review within 2 working days<//>`}</div>
+    ${status !== 'Dismissed' && html`<div className="flex flex-wrap items-center gap-1.5">${OPP_STAGES.map((s, i) => html`<${Pill} key=${s} tone=${i < stage ? 'ok' : i === stage ? 'info' : 'mute'}>${i < stage ? '✓ ' : ''}${s}<//>`)}</div>`}
+    <div className="text-xs space-y-1"><div className="font-medium">Why this was flagged</div>${facts.map((f, i) => html`<div key=${i} className="text-mute">· ${f}</div>`)}</div>
+    ${status === 'Dismissed' && html`<p className="text-sm">Dismissed: <span className="font-medium">${w.reason}</span>${w.note ? '. ' + w.note : ''} <span className="text-xs text-mute">Feeds rule tuning.</span></p>`}
+    ${status === 'Flagged' && html`<div className="space-y-2"><div className="flex items-center gap-2 text-sm font-medium">Drafted email<${AutoBadge} label="Auto-drafted" /></div>
+      ${editing ? html`<div className="space-y-2"><select className=${inp} value=${draft.to} onChange=${e => edit({ to: e.target.value })} aria-label="Recipient">${a.contacts.map(x => html`<option key=${x.id} value=${x.id}>To: ${x.name}, ${x.role}</option>`)}</select><input className=${inp} value=${draft.subject} onChange=${e => edit({ subject: e.target.value })} aria-label="Subject" /><textarea className=${inp} rows="10" value=${draft.body} onChange=${e => edit({ body: e.target.value })} aria-label="Email body"></textarea></div>` : html`<${EmailBox} to=${c.name} subject=${draft.subject} body=${draft.body} />`}
+      ${mine ? html`<div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'OPP_APPROVE', okey, by: me.name, ts: now })}><${Icon} n="check" s=${12} />Approve and send<//><${Btn} onClick=${() => setEditing(!editing)}>${editing ? 'Done editing' : 'Edit'}<//><${Btn} onClick=${() => setDismissing(!dismissing)}>Dismiss<//></div>` : html`<p className="text-xs text-mute">Waiting for ${a.am} to review.${role !== 'AM' ? ' Switch to the AM role to approve.' : ''}</p>`}
+      <p className="text-xs text-mute">Nothing is sent until the AM approves. After approval it sends automatically and is logged to the timeline.</p>
+      ${dismissing && mine && html`<div className="rounded-md bg-surface2 p-3 space-y-2"><select className=${inp} value=${reason} onChange=${e => setReason(e.target.value)} aria-label="Dismiss reason">${DISMISS_REASONS.map(x => html`<option key=${x}>${x}</option>`)}</select><input className=${inp} placeholder="Optional note for rule tuning" value=${dnote} onChange=${e => setDnote(e.target.value)} aria-label="Note" /><${Btn} onClick=${() => { dispatch({ type: 'OPP_DISMISS', okey, by: me.name, ts: now, reason, note: dnote.trim() }); setDismissing(false); }}>Dismiss with reason<//></div>`}</div>`}
+    ${status === 'Sales handoff' && html`<div className="space-y-2"><div className="rounded-md bg-surface2 p-3 text-sm"><div className="font-medium">Sent ${fmtFull(w.sentAt)} <${AutoBadge} label="Auto-sent after approval" /></div><div className="text-xs text-mute mt-1">Sales tag-teams the pitch and commercials with ${a.am}. Next: the addendum (SOP 4.3).${w.interestAt ? ' Customer replied with interest on ' + fmtFull(w.interestAt) + '.' : ' No reply yet.'}</div></div>
+      ${canClose && html`<div className="flex flex-wrap gap-2">${!w.interestAt && html`<${Btn} onClick=${() => dispatch({ type: 'OPP_INTEREST', okey, ts: now })}><${Icon} n="mail" s=${12} />Simulate customer interest<//>`}<${Btn} kind="primary" onClick=${() => dispatch({ type: 'OPP_ADDENDUM', okey, by: me.name, ts: now })}>Mark addendum filed<//></div>`}</div>`}
+    ${status === 'Addendum filed' && html`<p className="text-sm"><${Pill} tone="ok">Converted<//> Addendum filed ${fmtFull(w.filedAt)}. Counted against the upsell KPI. Estimated ${ngn(value)} per month.</p>`}
+  </div><//>`;
+}
+function OppsPage({ st, dispatch, role }) {
+  const now = useNow(); const accts = scopeAccounts(role); const ids = new Set(accts.map(a => a.id)); const [tab, setTab] = useState('flagged');
+  const cands = computeOpps(accts, oppCtx(st, now));
+  const flagged = cands.filter(c => !c.held && !st.oppWork[c.key]).map(c => c.key); const held = cands.filter(c => c.held && !st.oppWork[c.key]);
+  const work = Object.entries(st.oppWork).filter(([k]) => ids.has(k.split(':')[0]));
+  const prog = work.filter(([, w]) => w.status === 'Sales handoff').map(([k]) => k), closed = work.filter(([, w]) => w.status === 'Addendum filed' || w.status === 'Dismissed').map(([k]) => k);
+  const list = tab === 'flagged' ? flagged : tab === 'progress' ? prog : closed; const allW = Object.values(st.oppWork);
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Opportunities</h1><p className="text-sm text-mute">Rules scan usage against the product catalogue. The AM approves before anything is sent.</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="To review" value=${flagged.length} /><${Tile} label="In Sales handoff" value=${prog.length} /><${Tile} label="Addendum filed" value=${work.filter(([, w]) => w.status === 'Addendum filed').length} /><${Tile} label="Held by rules" value=${held.length} sub="Open signal, incident or near-breach case" /></div>
+    <div className="grid lg:grid-cols-3 gap-5"><div className="lg:col-span-2 space-y-4 min-w-0">
+      <div className="flex gap-1 border-b border-line">${[['flagged', 'To review', flagged.length], ['progress', 'In progress', prog.length], ['closed', 'Closed', closed.length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
+      ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'flagged' ? 'No opportunities to review right now.' : 'Nothing here yet.'}<//><//>` : list.map(k => html`<${OppCard} key=${k} okey=${k} st=${st} dispatch=${dispatch} role=${role} />`)}</div>
+      <div className="space-y-4 min-w-0">
+        <${Card}><${CardHead} title="Held by rules" sub="Matches that wait until the account is ready" />${held.length === 0 ? html`<${Empty}>No held opportunities.<//>` : held.map(h => html`<div key=${h.key} className="px-4 py-2.5 border-b border-line last:border-0 text-sm"><div className="font-medium">${ACC[h.accountId].name}</div><div className="text-xs text-mute">${OPP_RULES.find(r => r.id === h.rule).name}, score ${h.score}</div><div className="text-xs mt-1 flex items-start gap-1"><${Icon} n="lock" s=${12} />${h.held}</div></div>`)}<//>
+        <${Card}><${CardHead} title="Rule library and tuning" sub=${'Flag when score is ' + OPP_THRESHOLD + ' or more'} />${OPP_RULES.map(r => { const ws = Object.entries(st.oppWork).filter(([k]) => k.endsWith(':' + r.id)).map(x => x[1]); const dis = ws.filter(w => w.status === 'Dismissed');
+          return html`<div key=${r.id} className="px-4 py-2.5 border-b border-line last:border-0 text-xs"><div className="text-sm font-medium">${r.name}</div><div className="text-mute">${r.products.length ? r.products.map(p => SVC[p].name).join(' and ') : 'Volume rule'} · ${ws.length} actioned, ${ws.filter(w => w.approvedAt).length} approved, ${dis.length} dismissed</div>${dis.length > 0 && html`<div className="mt-1">Dismiss reasons feed tuning: ${[...new Set(dis.map(d => d.reason))].join('; ')}.</div>`}</div>`; })}<//>
+      </div></div>
+  </div>`;
+}
+function AccountOpps({ a, st, dispatch, role }) {
+  const now = useNow(); const cands = computeOpps([a], oppCtx(st, now)); const keys = new Set([...cands.filter(c => !c.held).map(c => c.key), ...Object.keys(st.oppWork).filter(k => k.startsWith(a.id + ':'))]);
+  const held = cands.filter(c => c.held && !st.oppWork[c.key]); const gaps = SERVICES.filter(s => !a.services.includes(s.id));
+  return html`<div className="space-y-4">
+    ${[...keys].map(k => html`<${OppCard} key=${k} okey=${k} st=${st} dispatch=${dispatch} role=${role} />`)}
+    ${keys.size === 0 && html`<${Card}><${Empty}>No opportunity is ready for ${a.name} right now.<//><//>`}
+    ${held.map(h => html`<div key=${h.key} className="rounded-md bg-surface2 px-3 py-2 text-sm flex items-start gap-2"><${Icon} n="lock" s=${14} /><span><span className="font-medium">${OPP_RULES.find(r => r.id === h.rule).name} is held.</span> ${h.held}</span></div>`)}
+    <${Card}><${CardHead} title="Catalogue gaps" sub="Services in the catalogue that this account does not use yet" />${gaps.length === 0 ? html`<${Empty}>This account uses every service in the catalogue.<//>` : gaps.map(s => html`<div key=${s.id} className="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between"><span>${s.name}</span><span className="text-xs text-mute">${s.type === 'lastmile' ? 'Last mile · ' + s.slaLabel : 'Real-time'}</span></div>`)}<//>
+  </div>`;
+}
+function TodoCard({ st, go, role }) {
+  const now = useNow(); const me = ROLES[role]; const accts = scopeAccounts(role); const ids = new Set(accts.map(a => a.id));
+  const opps = computeOpps(accts, oppCtx(st, now)).filter(c => !c.held && !st.oppWork[c.key]).length;
+  const ready = st.invoiceRequests.filter(r => r.status === 'Ready' && ids.has(r.accountId)).length, fin = st.invoiceRequests.filter(r => r.status === 'Awaiting Finance' && ids.has(r.accountId)).length;
+  const row = (n, label, page) => html`<button className="w-full flex items-center justify-between px-4 py-2.5 border-b border-line last:border-0 text-sm hover:bg-surface2" onClick=${() => go({ page })}><span>${label}</span><${Pill} tone=${n ? 'info' : 'mute'}>${n}<//></button>`;
+  return html`<${Card}><${CardHead} title="Waiting on you" />${row(opps, 'Opportunities to review', 'opportunities')}${row(ready, 'Invoice packs ready to share', 'invoices')}${row(fin, 'Requests awaiting Finance', 'invoices')}<//>`;
+}
+
+/* ----- manager dashboard ----- */
+const BASE = { vs: { n: 26, fr: 2.8, res: 38.5 }, am: { n: 9, fr: 5.2, res: 20 }, fin: { n: 31, fr: 6.5, res: 7.9 }, breaches: 3, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
+function Bar({ pct, tone = 'brand', h = 'h-2' }) { return html`<div className=${cx('rounded-full bg-surface2 overflow-hidden', h)}><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: 'var(--' + tone + ')' }}></div></div>`; }
+function DashboardPage({ st }) {
+  const now = useNow(); const esc = st.escalations; const sigs = computeSignals(ACCOUNTS, st.incidents);
+  const vsC = esc.filter(c => c.direction === 'AM_TO_VS'), amC = esc.filter(c => c.direction === 'VS_TO_AM');
+  const fr = cs => avg(cs.filter(c => c.ackAt).map(c => c.ackAt - c.openedAt)), rs = cs => avg(cs.filter(c => c.resolvedAt).map(c => c.resolvedAt - c.openedAt));
+  const reqs = st.invoiceRequests; const frFin = avg(reqs.filter(r => r.approvedAt).map(r => r.approvedAt - r.raisedAt)), rsFin = avg(reqs.filter(r => r.deliveredAt).map(r => r.deliveredAt - r.raisedAt));
+  const open = esc.filter(isOpen); const el = c => (now - c.openedAt) / H;
+  const buckets = [['0 to 24h', open.filter(c => el(c) < 24).length, 'ok'], ['24 to 48h', open.filter(c => el(c) >= 24 && el(c) < 48).length, 'ok'], ['48 to 72h', open.filter(c => el(c) >= 48 && el(c) < 72).length, 'warn'], ['Over 72h', open.filter(c => el(c) >= 72).length, 'bad']];
+  const liveBreach = esc.filter(c => c.breached).length; const breachRate = (BASE.breaches + liveBreach) / (BASE.cases + esc.length) * 100;
+  const live = sigs.filter(s => !s.suppressed); const works = live.map(s => st.sigWork[s.accountId]).filter(w => w && w.sentAt); const within = works.filter(w => w.sentAt - w.detectedAt <= 24 * H).length;
+  const sigRate = live.length ? Math.round(within / live.length * 100) : null; const sigAvg = avg(works.map(w => w.sentAt - w.detectedAt));
+  const ow = Object.values(st.oppWork); const oppF = BASE.opp.flagged + Object.keys(st.oppSeen).length, oppA = BASE.opp.approved + ow.filter(w => w.approvedAt).length, oppC = BASE.opp.converted + ow.filter(w => w.status === 'Addendum filed').length;
+  const health = ACCOUNTS.map(a => healthOf(a, sigs, esc, now)); const rev = ACCOUNTS.map(a => a.agreed * a.price); const atRisk = sum(ACCOUNTS.map((a, i) => health[i] !== 'green' ? rev[i] : 0));
+  const stdPct = reqs.length ? Math.round(reqs.filter(r => r.standard).length / reqs.length * 100) : null;
+  const rows = [['VS Team', 'AM to VS cases', BASE.vs.fr * H, BASE.vs.res * H, fr(vsC), rs(vsC), vsC.length], ['Account Management', 'VS to AM queries', BASE.am.fr * H, BASE.am.res * H, fr(amC), rs(amC), amC.length], ['Finance', 'Invoice exceptions, approval and delivery', BASE.fin.fr * H, BASE.fin.res * H, frFin, rsFin, reqs.length]];
+  const maxB = Math.max(1, ...buckets.map(b => b[1]));
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Manager dashboard</h1><p className="text-sm text-mute">One scorecard definition, read from the same case records. Live figures update as you act; the 30-day baseline is mock history.</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <${Tile} label="Open escalations" value=${open.length} sub=${open.filter(c => slaPct(c, now) >= .8).length + ' at 80% or more'} />
+      <${Tile} label="Breaches, 30 days" value=${BASE.breaches + liveBreach} tone=${liveBreach ? 'bad' : ''} sub=${breachRate.toFixed(1) + '% breach rate · ' + liveBreach + ' live'} />
+      <${Tile} label="Signal-to-action rate" value=${sigRate == null ? 'n/a' : sigRate + '%'} sub=${'Within 1 working day · baseline ' + BASE.sigRate + '%'} />
+      <${Tile} label="Revenue at risk" value=${ngn(atRisk)} tone=${atRisk ? 'warn' : ''} sub=${'Per month · ' + Math.round(atRisk / sum(rev) * 100) + '% of portfolio'} />
+      <${Tile} label="Logo retention, 12 months" value=${BASE.retention + '%'} sub=${BASE.churned + ' account churned this quarter (mock)'} />
+    </div>
+    <${Card}><${CardHead} title="First response and resolution time per unit" sub="Baseline is the mock 30-day average. Live is this session." />
+      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Unit</th><th className="px-2 font-medium text-right">Baseline first response</th><th className="px-2 font-medium text-right">Baseline resolution</th><th className="px-2 font-medium text-right">Live first response</th><th className="px-2 font-medium text-right">Live resolution</th><th className="px-2 font-medium text-right">Live cases</th></tr></thead><tbody>
+        ${rows.map(r => html`<tr key=${r[0]} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r[0]}</div><div className="text-xs text-mute">${r[1]}</div></td><td className="px-2 text-right tabular-nums">${hrsTxt(r[2])}</td><td className="px-2 text-right tabular-nums">${hrsTxt(r[3])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[4])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[5])}</td><td className="px-2 text-right tabular-nums">${r[6]}</td></tr>`)}</tbody></table></div><//>
+    <div className="grid lg:grid-cols-3 gap-5">
+      <${Card}><${CardHead} title="Escalation aging" sub="Open cases by time since raised" /><div className="p-4 space-y-3">${buckets.map(b => html`<div key=${b[0]}><div className="flex justify-between text-xs mb-1"><span>${b[0]}</span><span className="tabular-nums font-medium">${b[1]}</span></div><${Bar} pct=${b[1] / maxB * 100} tone=${b[2]} /></div>`)}
+        ${open.length > 0 && html`<div className="text-xs text-mute border-t border-line pt-2">Oldest: ${[...open].sort((x, y) => el(y) - el(x)).slice(0, 2).map(c => c.id + ' (' + ACC[c.accountId].name + ', ' + Math.floor(el(c)) + 'h)').join(', ')}</div>`}</div><//>
+      <${Card}><${CardHead} title="Opportunities, quarter to date" sub="Baseline plus live activity" /><div className="p-4 space-y-3">${[['Flagged', oppF, 'brand'], ['Approved', oppA, 'brand'], ['Converted', oppC, 'ok']].map(([l, v, t]) => html`<div key=${l}><div className="flex justify-between text-xs mb-1"><span>${l}</span><span className="tabular-nums font-medium">${v}</span></div><${Bar} pct=${v / Math.max(1, oppF) * 100} tone=${t} /></div>`)}
+        <div className="text-xs text-mute border-t border-line pt-2">Upsell KPI: ${oppC} of ${ACCOUNTS.length} live customers (target 50%, so ${Math.ceil(ACCOUNTS.length / 2)}).</div></div><//>
+      <${Card}><${CardHead} title="Signals and invoices" /><div className="p-4 space-y-3 text-sm">
+        <div><div className="flex justify-between text-xs mb-1"><span>Signals actioned within 1 working day</span><span className="tabular-nums font-medium">${sigRate == null ? 'n/a' : sigRate + '%'}</span></div><${Bar} pct=${sigRate || 0} tone="ok" /><div className="text-xs text-mute mt-1">Avg detection to action: ${sigAvg == null ? 'n/a' : fmtDur(sigAvg)} · ${sigs.filter(s => s.suppressed).length} suppressed</div></div>
+        <div><div className="flex justify-between text-xs mb-1"><span>Invoice requests handled without Finance</span><span className="tabular-nums font-medium">${stdPct == null ? 'n/a' : stdPct + '%'}</span></div><${Bar} pct=${stdPct || 0} tone="brand" /><div className="text-xs text-mute mt-1">Avg request to delivery: ${rsFin == null ? 'n/a' : fmtDur(rsFin)} · baseline ${BASE.invAuto}% auto</div></div>
+      <//><//>
+    </div>
+    <${Card}><${CardHead} title="Account health" sub="Same health definition as every AM home screen" />${ACCOUNTS.map((a, i) => html`<div key=${a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-line last:border-0 text-sm"><span className="font-medium">${a.name} <span className="text-xs text-mute font-normal">${a.segment} · ${a.am}</span></span><${HealthPill} h=${health[i]} /></div>`)}<//>
+  </div>`;
+}
+
+/* ----- guided demo ----- */
+function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
+  const [i, setI] = useState(0); const [done, setDone] = useState({});
+  const latest = (list, pred) => [...list].filter(pred)[0];
+  const STEPS = [
+    { who: 'Reset', title: 'Start from a clean demo', text: 'Amaka opens her Home. Brightpay is Critical: 12,000 requests agreed per month, none for the last 21 days.', run: () => { dispatch({ type: 'RESET' }); setRole('AM'); go({ page: 'home' }); } },
+    { who: 'Auto', title: 'Brightpay drop detected', text: 'The daily usage feed flags Brightpay as Dropped and prepares a check-in draft. It is a Key account, so nothing is sent without Amaka.', run: () => { setRole('AM'); go({ page: 'signals' }); } },
+    { who: 'Human', title: 'AM approves the check-in', text: 'Amaka reviews the draft and approves it. The mock send is logged to the timeline and the signal-to-action time is recorded.', run: () => { dispatch({ type: 'SIG_APPROVE', accountId: 'brightpay', ts: now, by: 'Amaka Eze' }); setRole('AM'); go({ page: 'signals' }); } },
+    { who: 'Auto', title: 'Reply logged, follow-up task created', text: 'Folake replies. The system logs the reply to the timeline, tags it, and creates a follow-up task.', run: () => { dispatch({ type: 'SIG_REPLY', accountId: 'brightpay', ts: now }); setRole('AM'); go({ page: 'account', id: 'brightpay', tab: 'Timeline' }); } },
+    { who: 'Human', title: 'AM raises an escalation to VS', text: 'Brightpay is restarting onboarding and needs priority address checks for field agents. Amaka raises a case; the SLA clock starts at 72 hours.', run: () => { dispatch({ type: 'ESC_NEW', accountId: 'brightpay', svc: 'PHYADDR', category: 'Priority request', issue: 'Brightpay is restarting onboarding. 6 field agent addresses need priority physical verification.', direction: 'AM_TO_VS', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'escalations' }); } },
+    { who: 'Human', title: 'VS acknowledges', text: 'Tunde sees the case in the VS queue and acknowledges it. First-response time is logged for the manager view.', run: () => { const c = latest(st.escalations, x => x.accountId === 'brightpay' && x.owner === 'VS Team' && !x.ackAt); if (c) dispatch({ type: 'ESC_ACT', id: c.id, act: 'ack', by: 'Tunde Bello', ts: now, text: '' }); setRole('VS'); go({ page: 'escalations' }); } },
+    { who: 'Auto', title: 'Invoice requested and auto-approved', text: 'Back as Amaka: she requests the September invoice and logs. It passes every contract rule, so it is approved automatically and the pack is generated.', run: () => { dispatch({ type: 'INV_NEW', accountId: 'brightpay', period: 'Sep 2026', services: ACC.brightpay.services, adjust: false, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
+    { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. Delivery stops the request clock, so request-to-delivery time is recorded.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
+    { who: 'Auto', title: 'Upsell proposed', text: 'The customer has replied, so the hold on Brightpay lifts. The rules match field agent onboarding with address verification and draft an email using the account context.', run: () => { setRole('AM'); go({ page: 'opportunities' }); } },
+    { who: 'Human', title: 'AM approves the upsell', text: 'Amaka approves the draft. It sends automatically, logs to the timeline, and the opportunity moves to Sales handoff.', run: () => { dispatch({ type: 'OPP_APPROVE', okey: 'brightpay:addr', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'opportunities' }); } },
+    { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows the first response from VS, the invoice turnaround, the signal-to-action time, and the opportunity moving through the funnel.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
+  ];
+  const s = STEPS[i]; const tone = { Auto: 'auto', Human: 'info', Reset: 'mute', 'Head of AM': 'ok' }[s.who];
+  const run = () => { s.run(); setDone({ ...done, [i]: true }); };
+  return html`<div className="fixed z-[65] bottom-4 right-4 w-[min(92vw,380px)] rounded-lg border border-line bg-surface shadow-xl" style=${{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <div className="flex items-center justify-between px-4 py-2.5 border-b border-line"><div className="text-sm font-semibold">Guided demo: the Brightpay story</div><button onClick=${onClose} className="text-xs text-mute hover:text-ink" aria-label="Close guided demo">Close</button></div>
+    <div className="p-4 space-y-3"><div className="flex items-center gap-2 text-xs text-mute">Step ${i + 1} of ${STEPS.length}<${Pill} tone=${tone}>${s.who === 'Auto' ? 'System does this' : s.who === 'Human' ? 'A person does this' : s.who}<//>${done[i] && html`<${Pill} tone="ok">Done<//>`}</div>
+      <div><div className="font-semibold text-sm">${s.title}</div><p className="text-sm text-mute mt-1">${s.text}</p></div>
+      <div className="flex gap-1">${STEPS.map((_, k) => html`<span key=${k} className="h-1.5 flex-1 rounded-full" style=${{ background: k === i ? 'var(--brand)' : done[k] ? 'var(--ok)' : 'var(--surface2)' }}></span>`)}</div>
+      <div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${run}>${i === 0 ? 'Reset and start' : 'Run this step'}<//><${Btn} disabled=${i === 0} onClick=${() => setI(i - 1)}>Back<//><${Btn} disabled=${i === STEPS.length - 1} onClick=${() => setI(i + 1)}>Next<//></div></div>
+  </div>`;
+}
+
+// Screen registry: later stages register their screens here (and bump STAGE_DONE)
+const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, dashboard: DashboardPage };
+
+/* ============================ 8 APP SHELL ============================ */
+function App() {
+  const [st, dispatch] = useReducer(reducer, null, initState);
+  ACTIVE.th = st.thresholds; ACTIVE.supp = st.suppOn;
+  const [route, setRoute] = useState({ page: 'home' });
+  const [guide, setGuide] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 10000); return () => clearInterval(t); }, []);
+  useEffect(() => { if (!st.toast) return; const t = setTimeout(() => dispatch({ type: 'TOAST', text: null }), 4500); return () => clearTimeout(t); }, [st.toast && st.toast.id]);
+  useEffect(() => { dispatch({ type: 'CLOCK_TICK', now: DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT) }); }, [st.simHours, tick]);
+  useEffect(() => { dispatch({ type: 'OPP_SCAN', now: DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT) }); }, [st.sigWork, st.escalations, st.incidents, st.thresholds, st.suppOn, st.timeline, tick]);
+  const now = DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT);
+  const role = st.role; const me = ROLES[role];
+  const go = r => { setRoute(r); window.scrollTo(0, 0); };
+  const setRole = r => { dispatch({ type: 'SET_ROLE', role: r }); setRoute({ page: 'home' }); };
+  const nav = NAV.filter(n => !n.roles || n.roles.includes(role));
+  const planned = NAV.find(n => n.id === route.page && n.stage > STAGE_DONE);
+  let screen;
+  if (planned) screen = html`<${Planned} item=${planned} />`;
+  else if (route.page === 'home' && role === 'VS') screen = html`<${VsHome} st=${st} go=${go} />`;
+  else if (route.page === 'home' && role === 'FIN') screen = html`<${FinHome3} st=${st} dispatch=${dispatch} go=${go} />`;
+  else { const S = SCREENS[route.page] || Home; screen = html`<${S} st=${st} dispatch=${dispatch} go=${go} role=${role} route=${route} />`; }
+  const active = route.page === 'account' ? 'accounts' : route.page;
+
+  return html`<${NowCtx.Provider} value=${now}>
+    <div className="min-h-screen flex">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-line bg-surface sticky top-0 h-screen">
+        <div className="px-4 py-4 border-b border-line"><div className="font-semibold text-sm leading-tight">VerifyMe</div><div className="text-xs text-mute">Account Management Workspace</div></div>
+        <nav className="p-2 space-y-0.5 flex-1">${nav.map(n => { const locked = n.stage > STAGE_DONE; return html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-left', active === n.id ? 'bg-brandsoft text-brand font-medium' : locked ? 'text-mute hover:bg-surface2' : 'hover:bg-surface2')}><${Icon} n=${n.icon} s=${16} /><span className="flex-1">${n.label}</span>${locked && html`<span className="text-[10px] rounded bg-surface2 text-mute px-1.5 py-0.5">Stage ${n.stage}</span>`}</button>`; })}</nav>
+        <div className="p-3 text-[11px] text-mute border-t border-line">Concept prototype. All data and actions are mock. Currency in NGN.</div>
+      </aside>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky z-50 bg-surface border-b border-line" style=${{ top: 'env(safe-area-inset-top, 0px)' }}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+            <div className="md:hidden font-semibold text-sm">VerifyMe AM</div>
+            <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${me.name}</div><div className="text-xs text-mute">${me.title}</div></div></div>
+            <div className="flex items-center gap-1.5 md:ml-auto" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
+            <${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${st.simHours}h<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
+          </div>
+          <div className="md:hidden flex gap-1 px-3 pb-2 scroll-x">${nav.filter(n => n.stage <= STAGE_DONE).map(n => html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('px-3 py-1 rounded-md text-xs border whitespace-nowrap', active === n.id ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${n.label}</button>`)}</div>
+        </header>
+        <main className="p-4 md:p-6 max-w-[1280px] w-full mx-auto">${screen}</main>
+      </div>
+      ${guide && html`<${GuidedDemo} st=${st} dispatch=${dispatch} go=${go} setRole=${setRole} now=${now} onClose=${() => setGuide(false)} />`}
+      ${st.toast && html`<div key=${st.toast.id} className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] max-w-[90vw] rounded-lg bg-ink text-bg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2" role="status"><${Icon} n="check" s=${15} />${st.toast.text}</div>`}
+    </div>
+  <//>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
