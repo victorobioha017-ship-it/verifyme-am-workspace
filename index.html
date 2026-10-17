@@ -86,17 +86,18 @@ const fmtFull = ts => fmtDay(ts) + ', ' + fmtTime(ts);
 const isoDate = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 // Plain durations people can read at a glance: 15 mins, 3 hrs, 1 hr 24 mins, 4 days
 const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
-const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)); if (m < 60) return plural(m, 'min'); const h = Math.floor(m / 60), r = m % 60; if (h < 100) return plural(h, 'hr') + (r ? ' ' + plural(r, 'min') : ''); return plural(Math.round(h / 24), 'day'); };
+const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)); if (m < 60) return plural(m, 'min'); const h = Math.floor(m / 60), r = m % 60; if (h < 48) return plural(h, 'hr') + (r ? ' ' + plural(r, 'min') : ''); const d = Math.floor(h / 24), hr = h % 24; return plural(d, 'day') + (hr ? ' ' + plural(hr, 'hr') : ''); };
 const relAgo = (ts, now) => { const h = (now - ts) / H; if (h < 1) return dur(Math.max(60e3, now - ts)) + ' ago'; if (h < 48) return plural(Math.round(h), 'hr') + ' ago'; return plural(Math.round(h / 24), 'day') + ' ago'; };
 
 /* ============================ 1 CONFIG ============================ */
 const ROLES = {
   AM:   { id: 'AM',   short: 'AM',         name: 'Amaka Eze',   title: 'Account Manager' },
+  TSI:  { id: 'TSI',  short: 'TSI',        name: 'Ada Okafor',  title: 'Technical Support and Implementation' },
   VS:   { id: 'VS',   short: 'VS Agent',   name: 'Tunde Bello', title: 'Verification Services Agent' },
   FIN:  { id: 'FIN',  short: 'Finance',    name: 'Ify Okon',    title: 'Finance' },
   HEAD: { id: 'HEAD', short: 'Head of AM', name: 'Chidi Obi',   title: 'Head of Account Management' },
 };
-const ROLE_ORDER = ['AM', 'VS', 'FIN', 'HEAD'];
+const ROLE_ORDER = ['AM', 'TSI', 'VS', 'FIN', 'HEAD'];
 
 // Service catalogue: add a row to extend. type: realtime | lastmile
 const SERVICES = [
@@ -123,11 +124,12 @@ const SUPPRESSION_RULES = [{ id: 'incident', label: 'Open provider incident or d
 const NAV = [
   { id: 'home',          label: 'Home',              icon: 'home',     stage: 1 },
   { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
+  { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
   { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
   { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
   { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'FIN', 'HEAD'], blurb: 'Raise a request, validate against contract rules, auto-approve standard requests, route exceptions to Finance, generate the pack and share it, with request-to-delivery time.' },
   { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
-  { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
+  { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'TSI', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
   { id: 'dashboard',     label: 'Manager dashboard', icon: 'chart',    stage: 3, roles: ['HEAD'], blurb: 'First-response and resolution time per unit, escalation aging, breaches, signal-to-action rate, opportunities and retention tiles. Includes the guided demo.' },
 ];
 const STAGE_DONE = 4;
@@ -286,6 +288,21 @@ const ESCALATIONS_SEED = [
     thread: [{ by: 'Kemi Adeyemi', ts: DEMO_NOW - 35 * 60e3, text: 'Director address check needed ahead of a compliance filing.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 22 * 60e3, text: 'Acknowledged, agent assigned.' }] },
 ];
 const INCIDENTS_SEED = [{ id: 'INC-2291', service: 'NIN', title: 'NIN provider gateway downtime', openedAt: DEMO_NOW - 9 * D, status: 'Open', note: 'Provider-side intermittent failures. TSI is tracking.' }];
+// TSI: new customers from Sales (assigned on the CRM) and first-line technical tickets
+const ONB_STAGES = ['Assigned', 'Contacted', 'Demo done', 'Integration and testing', 'Live', 'Handed to AM'];
+const ONB_SEED = [
+  { id: 'ob1', name: 'Kora Pay', segment: 'Scale', industry: 'Payments', services: ['NIN', 'BVN'], assignedAt: DEMO_NOW - 6 * 60e3, stage: 'Assigned' },
+  { id: 'ob2', name: 'Atlas Microcredit', segment: 'Key', industry: 'Microfinance bank', services: ['NIN', 'BVN', 'LIVE'], assignedAt: DEMO_NOW - 2 * D, respondedAt: DEMO_NOW - 2 * D + 14 * 60e3, stage: 'Demo done' },
+  { id: 'ob3', name: 'Zenith Fleet', segment: 'Scale', industry: 'Logistics', services: ['NIN', 'DIGADDR'], assignedAt: DEMO_NOW - 4.2 * D, respondedAt: DEMO_NOW - 4.2 * D + 22 * 60e3, stage: 'Integration and testing' },
+  { id: 'ob4', name: 'Crest Savings', segment: 'Key', industry: 'Savings and loans', services: ['NIN', 'BVN', 'CAC'], assignedAt: DEMO_NOW - 12 * D, respondedAt: DEMO_NOW - 12 * D + 18 * 60e3, liveAt: DEMO_NOW - 8 * D, handedAt: DEMO_NOW - 8 * D + 3 * H, handedTo: 'Amaka Eze', stage: 'Handed to AM' },
+];
+const TSI_FR_H = 20 / 60, TSI_RES_H = { L1: 2, L2: 3, L3: 48 }, ONB_RESP_H = 0.5, ONB_DAYS = 5; // TSI standards: first response 15 to 20 mins; resolution L1 1 to 2 hrs, L2 2 to 3 hrs, L3 24 to 48 hrs; new assignment response 30 mins, onboard in 2 to 5 days
+const TICKETS_SEED = [
+  { id: 'TKT-314', accountId: 'quickloan', level: 'L1', issue: 'Question on rotating API keys', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 7 * 60e3, status: 'Open' },
+  { id: 'TKT-311', accountId: 'lumen', level: 'L2', issue: 'Liveness responses slower since last week', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 50 * 60e3, ackAt: DEMO_NOW - 38 * 60e3, status: 'In progress' },
+  { id: 'TKT-309', accountId: 'orchid', level: 'L3', issue: 'NIN requests still failing after partial recovery (INC-2291)', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 30 * H, ackAt: DEMO_NOW - 30 * H + 16 * 60e3, qaAt: DEMO_NOW - 26 * H, status: 'Pushed to QA' },
+  { id: 'TKT-305', accountId: 'meridian', level: 'L1', issue: 'Sandbox credentials for the new branch app', raisedBy: 'Kemi Adeyemi', openedAt: DEMO_NOW - 2 * D, ackAt: DEMO_NOW - 2 * D + 9 * 60e3, resolvedAt: DEMO_NOW - 2 * D + 70 * 60e3, status: 'Resolved' },
+];
 const TASKS_SEED = [
   { id: 't1', accountId: 'brightpay', text: 'Call Folake or Emeka about 21 days without requests', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'Signal' },
   { id: 't2', accountId: 'lumen', text: 'Review benchmark pack before sending to Ifeanyi', owner: 'Amaka Eze', dueOff: 0, src: 'Meeting notes' },
@@ -412,6 +429,7 @@ const initState = () => ({
   oppSeen: seedStage3().seen,
   oppWork: {},
   log: [...seedStage3().log, ...seedStage2().log, ...LOG_SEED],
+  onboarding: ONB_SEED, tickets: TICKETS_SEED,
   simHours: 0,       // advanced by "Simulate time passing"
   base: Date.now(),  // real-time clock restarts on Reset demo
   thresholds: JSON.parse(JSON.stringify(THRESHOLDS)),
@@ -426,6 +444,22 @@ function reducer(s, a) {
   switch (a.type) {
     case 'RESET': return initState();
     case 'SET_ROLE': return { ...s, role: a.role };
+    case 'ONB_NEXT': {
+      const o = s.onboarding.find(x => x.id === a.id); const i = ONB_STAGES.indexOf(o.stage); if (i < 0 || i >= ONB_STAGES.length - 1) return s;
+      const next = ONB_STAGES[i + 1], seq = s.seq + 1, t = a.ts; const am = o.segment === 'Key' ? 'Amaka Eze' : 'Segun Bakare';
+      const patch = { stage: next, ...(next === 'Contacted' ? { respondedAt: t } : {}), ...(next === 'Live' ? { liveAt: t } : {}), ...(next === 'Handed to AM' ? { handedAt: t, handedTo: am } : {}) };
+      const txt = next === 'Contacted' ? 'Contacted ' + o.name + ' ' + dur(t - o.assignedAt) + ' after assignment from Sales (' + (t - o.assignedAt <= ONB_RESP_H * H ? 'within' : 'outside') + ' the 30-min standard).'
+        : next === 'Live' ? o.name + ' went live ' + dur(t - o.assignedAt) + ' after assignment (' + (t - o.assignedAt <= ONB_DAYS * D ? 'within' : 'outside') + ' the 5-day standard).'
+        : next === 'Handed to AM' ? o.name + ' handed over to ' + am + ' (' + o.segment + ') with the onboarding history attached.' : o.name + ' moved to ' + next + '.';
+      return { ...s, seq, onboarding: s.onboarding.map(x => x.id === a.id ? { ...x, ...patch } : x), log: [{ id: 'ob' + seq, ts: t, actor: a.by, auto: false, text: txt }, ...s.log], toast: { id: seq, text: txt } };
+    }
+    case 'TKT_ACT': {
+      const k = s.tickets.find(x => x.id === a.id); const seq = s.seq + 1, t = a.ts; let patch = {}, txt = '';
+      if (a.act === 'ack') { patch = { ackAt: t, status: 'In progress' }; txt = k.id + ' acknowledged in ' + dur(t - k.openedAt) + ' (standard 20 mins).'; }
+      if (a.act === 'resolve') { patch = { resolvedAt: t, status: 'Resolved', ackAt: k.ackAt || t }; txt = k.id + ' resolved in ' + dur(t - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + '). ' + ACC[k.accountId].am + ' told.'; }
+      if (a.act === 'qa') { patch = { qaAt: t, status: 'Pushed to QA', ackAt: k.ackAt || t }; txt = k.id + ' pushed to QA. TSI keeps the customer and ' + ACC[k.accountId].am + ' updated.'; }
+      return { ...s, seq, tickets: s.tickets.map(x => x.id === a.id ? { ...x, ...patch } : x), log: [{ id: 'tk' + seq, ts: t, actor: a.by, auto: false, accountId: k.accountId, text: txt }, ...s.log], toast: { id: seq, text: txt } };
+    }
     case 'TOGGLE_TASK': return { ...s, tasks: s.tasks.map(t => t.id === a.id ? { ...t, done: !t.done } : t) };
     case 'ADD_TIMELINE': {   // item, optional tasks, optional log lines, toast text
       const seq = s.seq + 1;
@@ -1237,7 +1271,7 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
     </div>
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <${Pill} tone="info">Standard: ${stdLabel(c)}<//>${c.submittedAt && html`<${Pill} tone="mute">Verification submitted ${fmtDur((c.resolvedAt || now) - c.submittedAt)} ago (SLA 24 to 72 hrs)<//>`}${c.ackAt ? html`<${Pill} tone=${(c.ackAt - c.openedAt) / H <= frTarget(c) ? 'ok' : 'warn'}>First response ${fmtDur(c.ackAt - c.openedAt)} (target ${hLabel(frTarget(c))}${c.direction === 'AM_TO_VS' ? ', proposed' : ''})<//>` : html`<${Pill} tone=${elapsed > frTarget(c) ? 'warn' : 'mute'}>Awaiting first response, ${fmtDur(elapsed * H)} so far (target ${hLabel(frTarget(c))})<//>`}
+        <${Pill} tone="info">Standard: ${stdLabel(c)}<//>${c.submittedAt && html`<${Pill} tone="mute">Verification submitted ${fmtDur((c.resolvedAt || now) - c.submittedAt)} ago (SLA 1 to 3 days)<//>`}${c.ackAt ? html`<${Pill} tone=${(c.ackAt - c.openedAt) / H <= frTarget(c) ? 'ok' : 'warn'}>First response ${fmtDur(c.ackAt - c.openedAt)} (target ${hLabel(frTarget(c))}${c.direction === 'AM_TO_VS' ? ', proposed' : ''})<//>` : html`<${Pill} tone=${elapsed > frTarget(c) ? 'warn' : 'mute'}>Awaiting first response, ${fmtDur(elapsed * H)} so far (target ${hLabel(frTarget(c))})<//>`}
         <${Pill} tone=${c.rem50 ? 'ok' : 'mute'}>${c.rem50 ? 'Reminder sent at 50%' : 'Reminder due at 50%'}<//>${c.rem50 && html`<${AutoBadge} />`}
         <${Pill} tone=${c.rem80 ? 'warn' : 'mute'}>${c.rem80 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${c.rem80 && html`<${AutoBadge} />`}
         ${c.breached ? html`<${Pill} tone="bad">Auto-escalated to Director of Verification Services and Head of AM<//><${AutoBadge} />` : html`<${Pill} tone="mute">On breach: escalates to Director of VS and Head of AM<//>`}
@@ -1550,7 +1584,7 @@ function TodoCard({ st, go, role }) {
 }
 
 /* ----- manager dashboard ----- */
-const BASE = { vs: { n: 26, fr: 0.9, res: 3.6 }, am: { n: 9, fr: 0.6, res: 0.6 }, fin: { n: 31, fr: 0.5, res: 1.4 }, breaches: 17, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
+const BASE = { vs: { n: 26, fr: 0.9, res: 3.6 }, am: { n: 9, fr: 0.6, res: 0.6 }, fin: { n: 31, fr: 0.5, res: 1.4 }, tsi: { n: 44, fr: 0.4, res: 3.2 }, onb: { resp: 81, live5: 70 }, breaches: 17, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
 function Bar({ pct, tone = 'brand', h = 'h-2' }) { return html`<div className=${cx('rounded-full bg-surface2 overflow-hidden', h)}><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: 'var(--' + tone + ')' }}></div></div>`; }
 function DashboardPage({ st }) {
   const now = useNow(); const esc = st.escalations; const sigs = computeSignals(ACCOUNTS, st.incidents);
@@ -1565,7 +1599,8 @@ function DashboardPage({ st }) {
   const ow = Object.values(st.oppWork); const oppF = BASE.opp.flagged + Object.keys(st.oppSeen).length, oppA = BASE.opp.approved + ow.filter(w => w.approvedAt).length, oppC = BASE.opp.converted + ow.filter(w => w.status === 'Addendum filed').length;
   const health = ACCOUNTS.map(a => healthOf(a, sigs, esc, now)); const rev = ACCOUNTS.map(a => a.agreed * a.price); const atRisk = sum(ACCOUNTS.map((a, i) => health[i] !== 'green' ? rev[i] : 0));
   const stdPct = reqs.length ? p1(reqs.filter(r => r.standard).length / reqs.length * 100) : null;
-  const rows = [['VS Team', 'AM to VS cases', BASE.vs.fr * H, BASE.vs.res * H, fr(vsC), rs(vsC), vsC.length], ['Account Management', 'VS to AM queries', BASE.am.fr * H, BASE.am.res * H, fr(amC), rs(amC), amC.length], ['Finance', 'Invoice exceptions, approval and delivery', BASE.fin.fr * H, BASE.fin.res * H, frFin, rsFin, reqs.length]];
+  const rows = [['VS Team', 'AM to VS cases', BASE.vs.fr * H, BASE.vs.res * H, fr(vsC), rs(vsC), vsC.length], ['Account Management', 'VS to AM queries', BASE.am.fr * H, BASE.am.res * H, fr(amC), rs(amC), amC.length], ['Finance', 'Invoice exceptions, approval and delivery', BASE.fin.fr * H, BASE.fin.res * H, frFin, rsFin, reqs.length], ['TSI', 'Technical tickets (first line)', BASE.tsi.fr * H, BASE.tsi.res * H, avg(st.tickets.filter(k => k.ackAt).map(k => k.ackAt - k.openedAt)), avg(st.tickets.filter(k => k.resolvedAt).map(k => k.resolvedAt - k.openedAt)), st.tickets.length]];
+  const ob = st.onboarding, obResp = ob.filter(o => o.respondedAt), obLive = ob.filter(o => o.liveAt);
   const maxB = Math.max(1, ...buckets.map(b => b[1]));
   return html`<div className="space-y-5">
     <div><h1 className="text-xl font-semibold">Manager dashboard</h1><p className="text-sm text-mute">One scorecard definition, read from the same case records. Live figures update as you act; the 30-day baseline is mock history.</p></div>
@@ -1579,6 +1614,8 @@ function DashboardPage({ st }) {
     <${Card}><${CardHead} title="First response and resolution time per unit" sub="Baseline is the mock 30-day average. Live is this session." />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Unit</th><th className="px-2 font-medium text-right">Baseline first response</th><th className="px-2 font-medium text-right">Baseline resolution</th><th className="px-2 font-medium text-right">Live first response</th><th className="px-2 font-medium text-right">Live resolution</th><th className="px-2 font-medium text-right">Live cases</th></tr></thead><tbody>
         ${rows.map(r => html`<tr key=${r[0]} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r[0]}</div><div className="text-xs text-mute">${r[1]}</div></td><td className="px-2 text-right tabular-nums">${hrsTxt(r[2])}</td><td className="px-2 text-right tabular-nums">${hrsTxt(r[3])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[4])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[5])}</td><td className="px-2 text-right tabular-nums">${r[6]}</td></tr>`)}</tbody></table></div><//>
+    <${Card}><${CardHead} title="Onboarding (TSI)" sub="New customers from Sales to AM handover. Standards: contact within 30 mins, live within 5 days" />
+      <div className="p-4 grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Contacted within 30 mins" value=${obResp.length ? obResp.filter(o => o.respondedAt - o.assignedAt <= ONB_RESP_H * H).length + ' of ' + obResp.length : 'n/a'} sub=${'Baseline ' + BASE.onb.resp + '% (mock)'} /><${Tile} label="Live within 5 days" value=${obLive.length ? obLive.filter(o => o.liveAt - o.assignedAt <= ONB_DAYS * D).length + ' of ' + obLive.length : 'n/a'} sub=${'Baseline ' + BASE.onb.live5 + '% (mock)'} /><${Tile} label="In onboarding now" value=${ob.filter(o => !['Live', 'Handed to AM'].includes(o.stage)).length} /><${Tile} label="Tickets pushed to QA" value=${st.tickets.filter(k => k.status === 'Pushed to QA').length} /></div><//>
     <div className="grid lg:grid-cols-3 gap-5">
       <${Card}><${CardHead} title="Escalation aging" sub="Open cases against their standard (VS 2 hrs, AM 15 mins)" /><div className="p-4 space-y-3">${buckets.map(b => html`<div key=${b[0]}><div className="flex justify-between text-xs mb-1"><span>${b[0]}</span><span className="tabular-nums font-medium">${b[1]}</span></div><${Bar} pct=${b[1] / maxB * 100} tone=${b[2]} /></div>`)}
         ${open.length > 0 && html`<div className="text-xs text-mute border-t border-line pt-2">Oldest: ${[...open].sort((x, y) => el(y) - el(x)).slice(0, 2).map(c => c.id + ' (' + ACC[c.accountId].name + ', ' + dur(el(c) * H) + ')').join(', ')}</div>`}</div><//>
@@ -1600,6 +1637,9 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
   const latest = (list, pred) => [...list].filter(pred)[0];
   const STEPS = [
     { who: 'Reset', title: 'Start from a clean demo', text: 'Amaka opens her Home. Brightpay is Critical: 12,000 requests agreed per month, none for the last 21 days.', run: () => { dispatch({ type: 'RESET' }); setRole('AM'); go({ page: 'home' }); } },
+    { who: 'Human', title: 'TSI contacts a new customer from Sales', text: 'Ada in TSI sees Kora Pay, assigned on the CRM a few minutes ago. She contacts the customer inside the 30-min standard and books the demo.', run: () => { dispatch({ type: 'ONB_NEXT', id: 'ob1', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
+    { who: 'Human', title: 'TSI picks up a technical issue', text: 'QuickLoan asked about rotating API keys. Ada acknowledges the ticket inside the 20-min standard; anything she cannot settle goes to QA, and she keeps the AM updated.', run: () => { dispatch({ type: 'TKT_ACT', id: 'TKT-314', act: 'ack', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
+    { who: 'Human', title: 'TSI hands a live customer to the AM', text: 'Zenith Fleet goes live inside the 5-day standard. Ada hands it to the Scale AM with the onboarding history attached.', run: () => { dispatch({ type: 'ONB_NEXT', id: 'ob3', by: 'Ada Okafor', ts: now }); dispatch({ type: 'ONB_NEXT', id: 'ob3', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
     { who: 'Auto', title: 'Brightpay drop detected', text: 'The daily usage feed flags Brightpay as Dropped and prepares a check-in draft. It is a Key account, so nothing is sent without Amaka.', run: () => { setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Human', title: 'AM approves the check-in', text: 'Amaka reviews the draft and approves it. The mock send is logged to the timeline and the signal-to-action time is recorded.', run: () => { dispatch({ type: 'SIG_APPROVE', accountId: 'brightpay', ts: now, by: 'Amaka Eze' }); setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Auto', title: 'Reply logged, follow-up task created', text: 'Folake replies. The system logs the reply to the timeline, tags it, and creates a follow-up task.', run: () => { dispatch({ type: 'SIG_REPLY', accountId: 'brightpay', ts: now }); setRole('AM'); go({ page: 'account', id: 'brightpay', tab: 'Timeline' }); } },
@@ -1611,7 +1651,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     { who: 'Human', title: 'AM approves the upsell', text: 'Amaka approves the draft. It sends automatically, logs to the timeline, and the opportunity moves to Sales handoff.', run: () => { dispatch({ type: 'OPP_APPROVE', okey: 'brightpay:addr', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'opportunities' }); } },
     { who: 'Auto', title: 'Weekly operational report generated', text: 'The weekly report compiles itself: week-on-week transactions and revenue, customers to worry about, escalations, complaints and opportunities. Only the general and strategic updates are left for Amaka.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
     { who: 'Human', title: 'AM adds commentary and approves', text: 'Amaka adds her updates and approves. The report publishes to the Head of AM with no re-keying.', run: () => { dispatch({ type: 'REP_COMMENT', id: 'health', text: 'Brightpay re-engaged after the check-in and is restarting onboarding. Savannah address-verification upsell is with Sales.' }); dispatch({ type: 'REP_APPROVE', id: 'health', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'reports', id: 'health' }); } },
-    { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows the first response from VS, the invoice turnaround, the signal-to-action time, the opportunity moving through the funnel, and the weekly report already in the submission tracker. The monthly portfolio report is under Reports.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
+    { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows TSI onboarding and ticket times, the first response from VS, the invoice turnaround, the signal-to-action time, the opportunity moving through the funnel, and the weekly report already in the submission tracker. The monthly portfolio report is under Reports.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
   ];
   const s = STEPS[i]; const tone = { Auto: 'auto', Human: 'info', Reset: 'mute', 'Head of AM': 'ok' }[s.who];
   const run = () => { s.run(); setDone({ ...done, [i]: true }); };
@@ -1628,7 +1668,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
 const INP = 'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm';
 const REPORTS = [
   { id: 'health', name: 'Weekly operational report', short: 'Weekly', cadence: 'Weekly', dueH: 32, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 85, manualMin: 90, need: 'general and strategic updates' },
-  { id: 'golive', name: 'Go-live tracking', short: 'Go-live', cadence: 'Bi-weekly', dueH: 80, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 75, manualMin: 45, need: 'blockers' },
+  { id: 'golive', name: 'Go-live tracking', short: 'Go-live', cadence: 'Bi-weekly', dueH: 80, owner: 'TSI', aud: 'internal', to: 'Head of AM', autoPct: 75, manualMin: 45, need: 'blockers' },
   { id: 'dormant', name: 'Dormant and API-pending follow-up log', short: 'Dormant', cadence: 'Bi-monthly', dueH: 240, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 80, manualMin: 60, need: 'outcome of calls' },
   { id: 'issues', name: 'Customer issues log', short: 'Issues', cadence: 'Ongoing', dueH: 56, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 100, manualMin: 60, opt: true, need: 'nothing required' },
   { id: 'mrv', name: 'MRV against target', short: 'MRV', cadence: 'Monthly', dueH: 384, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 100, manualMin: 75, opt: true, need: 'nothing required' },
@@ -1653,7 +1693,7 @@ function repSections(r, st, now, accts) {
   const sigs = computeSignals(ACCOUNTS, st.incidents), cs = st.escalations.filter(c => accts.some(a => a.id === c.accountId)), pc = n => chg(n);
   switch (r.id) {
     case 'health': return [['Account health and signals', accts.map(a => { const h = healthOf(a, sigs, st.escalations, now), s = sigs.find(x => x.accountId === a.id); return a.name + ': ' + HEALTH[h].label + (s ? (s.suppressed ? '. Signal held back during a provider incident.' : '. ' + s.kind + ': ' + s.detail) : ''); })]];
-    case 'golive': return [['Go-live status', accts.map(a => a.name + ': live since ' + a.since + ', ' + a.services.length + ' services active')]];
+    case 'golive': return [['Onboarding and go-live', st.onboarding.map(o => o.name + ' (' + o.segment + '): ' + o.stage + ', assigned from Sales ' + dur(now - o.assignedAt) + ' ago' + (o.liveAt ? ', live in ' + dur(o.liveAt - o.assignedAt) : '') + (o.handedTo ? ', handed to ' + o.handedTo : ''))]];
     case 'dormant': { const d = accts.filter(a => a.stats.daysSinceLast >= ACTIVE.th[a.segment].dropDays); return [['Dormant accounts', d.length ? d.map(a => a.name + ': no requests for ' + a.stats.daysSinceLast + ' days; ' + (st.sigWork[a.id] && st.sigWork[a.id].sentAt ? 'check-in sent ' + fmtDay(st.sigWork[a.id].sentAt) : 'no check-in sent yet')) : ['No dormant accounts in scope.']]]; }
     case 'issues': return [['Cases with logged and resolved times', cs.map(c => c.id + ' ' + ACC[c.accountId].name + ': ' + c.status + ', raised ' + fmtDay(c.openedAt) + ', first response ' + (c.ackAt ? hrsTxt(c.ackAt - c.openedAt) : 'awaited') + (c.resolvedAt ? ', resolved in ' + hrsTxt(c.resolvedAt - c.openedAt) : ''))]];
     case 'mrv': { const ag = sum(accts.map(a => a.agreed)), ac = sum(accts.map(a => a.stats.last30)); return [['Monthly recurring volume', ['Portfolio: ' + num(ac) + ' requests in the last 30 days against ' + num(ag) + ' agreed (' + p1(ac / ag * 100) + '%)', ...accts.map(a => a.name + ': ' + num(a.stats.last30) + ' of ' + num(a.agreed) + ' (' + pc(a.stats.mom) + ' on the previous 30 days)')]]]; }
@@ -1761,9 +1801,9 @@ function WeeklyReport({ st, accts }) {
     <${Card}><${SecHead} q="Retention" title="Customers to worry about" sub="Declining performance, dissatisfaction or business intelligence from the timeline" />
       ${worry.length === 0 ? html`<${Empty}>No customers flagged this week.<//>` : worry.map(x => html`<div key=${x.a.id} className="px-4 py-3 border-b border-line last:border-0"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${x.a.name}</span><${SegPill} segment=${x.a.segment} />${x.why.map(w => html`<${Pill} key=${w} tone="warn">${w}<//>`)}</div>
         ${x.intel && html`<p className="text-xs text-mute mt-1.5">Latest from ${x.intel.author}, ${fmtDay(x.intel.ts)}: “${x.intel.body.length > 150 ? x.intel.body.slice(0, 147) + '...' : x.intel.body}”</p>`}</div>`)}<//>
-    <${Card}><${SecHead} q="Service delivery" title="Open escalations and complaints" sub="Escalations with their SLA clock, and customer complaints from the last 14 days" />
+    <${Card}><${SecHead} q="Service delivery" title="Escalations, technical tickets and complaints" sub="VS escalations with their clock, TSI tickets, and customer complaints from the last 14 days" />
       ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.map(c => html`<div key=${c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-line"><div className="text-sm"><span className="font-semibold">${c.id}</span> <span className="text-mute">${ACC[c.accountId].name} · ${c.issue}</span></div><${SlaClock} c=${c} now=${now} compact=${true} /></div>`)}
-      <div className="px-4 py-3 space-y-1.5"><div className="text-xs font-medium">Complaints (${complaints.length})</div>${complaints.length === 0 ? html`<div className="text-xs text-mute">None logged.</div>` : complaints.map(t => html`<div key=${t.id} className="text-xs"><span className="font-medium">${ACC[t.accountId].name}</span> <span className="text-mute">${fmtDay(t.ts)}: ${t.channel === 'slack' ? (t.body.length > 90 ? t.body.slice(0, 87) + '...' : t.body) : t.subject}</span></div>`)}</div><//>
+      <div className="px-4 py-3 space-y-1.5 border-b border-line"><div className="text-xs font-medium">Technical tickets with TSI (${st.tickets.filter(k => ids.has(k.accountId) && k.status !== 'Resolved').length} open)</div>${st.tickets.filter(k => ids.has(k.accountId) && k.status !== 'Resolved').map(k => html`<div key=${k.id} className="text-xs"><span className="font-medium">${k.id} ${ACC[k.accountId].name}</span> <span className="text-mute">${k.level} · ${k.status} · ${k.issue}</span></div>`)}</div><div className="px-4 py-3 space-y-1.5"><div className="text-xs font-medium">Complaints (${complaints.length})</div>${complaints.length === 0 ? html`<div className="text-xs text-mute">None logged.</div>` : complaints.map(t => html`<div key=${t.id} className="text-xs"><span className="font-medium">${ACC[t.accountId].name}</span> <span className="text-mute">${fmtDay(t.ts)}: ${t.channel === 'slack' ? (t.body.length > 90 ? t.body.slice(0, 87) + '...' : t.body) : t.subject}</span></div>`)}</div><//>
     <${Card}><${SecHead} q="Growth" title="New business opportunities" sub="Flagged by the rules, plus opportunities already with Sales" />
       ${opps.length + prog.length === 0 ? html`<${Empty}>No open opportunities this week.<//>` : html`<div>${opps.map(o => html`<div key=${o.key} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[o.accountId].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === o.rule).name}</span><${Pill} tone="info">To review<//><span className="text-xs text-mute">est. ${ngn(oppValue(ACC[o.accountId], o.rule))} a month</span></div>`)}${prog.map(([k, w]) => html`<div key=${k} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[k.split(':')[0]].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === k.split(':')[1]).name}</span><${Pill} tone=${w.status === 'Addendum filed' ? 'ok' : 'info'}>${w.status}<//></div>`)}</div>`}<//>
     <${Card}><${SecHead} q="Execution" title="Is the portfolio being actively managed?" sub="Contact, follow-through and overdue actions" />
@@ -1858,8 +1898,46 @@ function ReportsPage({ st, dispatch, role, route, go }) {
   return r ? html`<${ReportDraft} key=${r.id} r=${r} st=${st} dispatch=${dispatch} role=${role} go=${go} />` : html`<${ReportsHub} st=${st} dispatch=${dispatch} role=${role} go=${go} />`;
 }
 
+
+/* ============================ TSI: ONBOARDING AND TECHNICAL SUPPORT ============================ */
+const ONB_NEXT_LABEL = { Assigned: 'Contact customer', Contacted: 'Mark demo done', 'Demo done': 'Start integration', 'Integration and testing': 'Mark live', Live: 'Hand over to AM' };
+function TsiPage({ st, dispatch, role }) {
+  const now = useNow(); const me = ROLES[role]; const can = role === 'TSI';
+  const ids = new Set(scopeAccounts(role).map(a => a.id));
+  const tickets = st.tickets.filter(k => ids.has(k.accountId)).sort((x, y) => (x.status === 'Resolved') - (y.status === 'Resolved') || y.openedAt - x.openedAt);
+  const onb = st.onboarding;
+  const fresh = onb.filter(o => o.stage === 'Assigned').length, inOnb = onb.filter(o => !['Assigned', 'Live', 'Handed to AM'].includes(o.stage)).length;
+  const openT = tickets.filter(k => k.status !== 'Resolved'), qa = tickets.filter(k => k.status === 'Pushed to QA');
+  const stTone = { Open: 'warn', 'In progress': 'info', 'Pushed to QA': 'auto', Resolved: 'ok' };
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Onboarding and technical support</h1><p className="text-sm text-mute">TSI receives new customers from Sales on the CRM, demos and onboards them, then hands them to the Key or Scale AM. TSI is also the first point for technical issues and pushes what it cannot settle to QA.</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="New from Sales, not yet contacted" value=${fresh} tone=${fresh ? 'warn' : undefined} sub="Standard: contact within 30 mins" /><${Tile} label="In onboarding" value=${inOnb} sub="Standard: live within 5 days" /><${Tile} label="Open technical tickets" value=${openT.length} sub="First response within 20 mins" /><${Tile} label="Pushed to QA" value=${qa.length} sub="TSI keeps customer and AM updated" /></div>
+    <${Card}><${CardHead} title="Onboarding pipeline" sub="From CRM assignment to AM handover" />
+      ${onb.map(o => { const i = ONB_STAGES.indexOf(o.stage), done = o.stage === 'Handed to AM'; const am = o.segment === 'Key' ? 'Amaka Eze' : 'Segun Bakare';
+        const clk = o.stage === 'Assigned' ? { openedAt: o.assignedAt, slaHours: ONB_RESP_H, resolvedAt: null } : { openedAt: o.assignedAt, slaHours: ONB_DAYS * 24, resolvedAt: o.liveAt || null };
+        return html`<div key=${o.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-line last:border-0">
+          <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${o.name}</span><${SegPill} segment=${o.segment} /><${Pill} tone=${done ? 'ok' : i === 0 ? 'warn' : 'info'}>${o.stage}<//></div>
+            <div className="text-xs text-mute mt-0.5">${o.industry} · ${o.services.map(x => SVC[x].name).join(', ')} · assigned from Sales ${relAgo(o.assignedAt, now)}${o.respondedAt ? ' · contacted in ' + dur(o.respondedAt - o.assignedAt) : ''}${done ? ' · handed to ' + o.handedTo : ''}</div>
+            <div className="flex gap-1 mt-2" aria-label=${'Stage ' + (i + 1) + ' of ' + ONB_STAGES.length}>${ONB_STAGES.map((g, k) => html`<span key=${g} title=${g} className="h-1.5 w-8 rounded-full" style=${{ background: k <= i ? 'var(--brand)' : 'var(--surface2)' }}></span>`)}</div></div>
+          <div className="text-[11px] text-mute w-full sm:w-auto">${o.stage === 'Assigned' ? 'First contact' : 'Assignment to go-live'}<${SlaClock} c=${clk} now=${now} /></div>
+          ${can && !done && html`<${Btn} kind=${o.stage === 'Live' ? 'primary' : 'default'} onClick=${() => dispatch({ type: 'ONB_NEXT', id: o.id, by: me.name, ts: now })}>${o.stage === 'Live' ? 'Hand over to ' + am : ONB_NEXT_LABEL[o.stage]}<//>`}
+        </div>`; })}<//>
+    <${Card}><${CardHead} title="Technical tickets" sub="First response within 20 mins. Resolution: L1 2 hrs, L2 3 hrs, L3 48 hrs with updates" />
+      ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.map(k => { const a = ACC[k.accountId], openNow = k.status !== 'Resolved';
+        const clk = !k.ackAt && openNow ? { openedAt: k.openedAt, slaHours: TSI_FR_H, resolvedAt: null } : { openedAt: k.openedAt, slaHours: TSI_RES_H[k.level], resolvedAt: k.resolvedAt || null };
+        return html`<div key=${k.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-line last:border-0">
+          <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${k.id}</span><${Pill} tone="mute">${k.level}<//><${Pill} tone=${stTone[k.status]}>${k.status}<//><span className="text-mute">${a.name}</span></div>
+            <div className="text-xs text-mute mt-0.5">${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div>
+            ${k.status === 'Pushed to QA' && html`<div className="text-xs mt-1">With QA since ${relAgo(k.qaAt, now)}. TSI keeps the customer and ${a.am} updated.</div>`}</div>
+          <div className="text-[11px] text-mute w-full sm:w-auto">${!k.ackAt && openNow ? 'First response' : 'Resolution'}<${SlaClock} c=${clk} now=${now} /></div>
+          ${can && openNow && html`<div className="flex flex-wrap gap-2">${!k.ackAt && html`<${Btn} onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'ack', by: me.name, ts: now })}>Acknowledge<//>`}${k.status !== 'Pushed to QA' && k.ackAt && html`<${Btn} onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'qa', by: me.name, ts: now })}>Push to QA<//>`}<${Btn} kind="primary" onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'resolve', by: me.name, ts: now })}>Mark resolved<//></div>`}
+        </div>`; })}<//>
+    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Escalation path: </span>Customer or AM, then TSI (first line), then QA, then Product. QA and Product work outside this workspace; TSI owns the update to the customer and the AM.<//>
+  </div>`;
+}
+
 // Screen registry: later stages register their screens here (and bump STAGE_DONE)
-const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage };
+const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage };
 
 /* ============================ 8 APP SHELL ============================ */
 function App() {
@@ -1880,6 +1958,7 @@ function App() {
   const planned = NAV.find(n => n.id === route.page && n.stage > STAGE_DONE);
   let screen;
   if (planned) screen = html`<${Planned} item=${planned} />`;
+  else if (route.page === 'home' && role === 'TSI') screen = html`<${TsiPage} st=${st} dispatch=${dispatch} role=${role} />`;
   else if (route.page === 'home' && role === 'VS') screen = html`<${VsHome} st=${st} go=${go} />`;
   else if (route.page === 'home' && role === 'FIN') screen = html`<${FinHome3} st=${st} dispatch=${dispatch} go=${go} />`;
   else { const S = SCREENS[route.page] || Home; screen = html`<${S} st=${st} dispatch=${dispatch} go=${go} role=${role} route=${route} />`; }
