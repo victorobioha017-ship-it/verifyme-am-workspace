@@ -141,7 +141,7 @@ const NAV = [
   { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
   { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
   { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
-  { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'FIN', 'HEAD'], blurb: 'Raise a request, validate against contract rules, auto-approve standard requests, route exceptions to Finance, generate the pack and share it, with request-to-delivery time.' },
+  { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'TSI', 'FIN', 'HEAD'], blurb: 'Invoice requests validated against contract rules, usage logs on request for any customer, AM portfolio or TSI onboarding list over any date range, and automatic daily, weekly or monthly log delivery to customers.' },
   { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
   { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'TSI', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
   { id: 'dashboard',     label: 'Manager dashboard', icon: 'chart',    stage: 3, roles: ['HEAD'], blurb: 'First-response and resolution time per unit, escalation aging, breaches, signal-to-action rate, opportunities and retention tiles. Includes the guided demo.' },
@@ -337,10 +337,10 @@ const tktWho = k => k.accountId ? ACC[k.accountId].am : k.raisedBy;
 const tktName = k => k.accountId ? ACC[k.accountId].name : 'Internal (VS tools)';
 const TKT_LEVELS = [['L1', 'Question or set-up help'], ['L2', 'Service slow or partly failing'], ['L3', 'Outage or bug, needs QA']];
 const TICKETS_SEED = [
-  { id: 'TKT-312', accountId: null, level: 'L2', issue: 'Field agent app not syncing completed address checks', raisedBy: 'Tunde Bello', source: 'VS', openedAt: DEMO_NOW - 25 * 60e3, ackAt: DEMO_NOW - 13 * 60e3, status: 'In progress' },
+  { id: 'TKT-312', accountId: null, level: 'L2', issue: 'Field agent app not syncing completed address checks', raisedBy: 'Tunde Bello', source: 'VS', openedAt: DEMO_NOW - 25 * 60e3, ackAt: DEMO_NOW - 13 * 60e3, status: 'In progress', notes: [{ by: 'Ada Okafor', ts: DEMO_NOW - 12 * 60e3, text: 'Reproduced on two agent phones. The sync queue is stuck after the latest app update. Workaround: log out and back in. Next update by 10:00.' }] },
   { id: 'TKT-314', accountId: 'quickloan', level: 'L1', issue: 'Question on rotating API keys', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 7 * 60e3, status: 'Open' },
-  { id: 'TKT-311', accountId: 'lumen', level: 'L2', issue: 'Liveness responses slower since last week', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 50 * 60e3, ackAt: DEMO_NOW - 38 * 60e3, status: 'In progress' },
-  { id: 'TKT-309', accountId: 'orchid', level: 'L3', issue: 'NIN requests still failing after partial recovery (INC-2291)', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 30 * H, ackAt: DEMO_NOW - 30 * H + 16 * 60e3, qaAt: DEMO_NOW - 26 * H, status: 'Pushed to QA' },
+  { id: 'TKT-311', accountId: 'lumen', level: 'L2', issue: 'Liveness responses slower since last week', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 50 * 60e3, ackAt: DEMO_NOW - 38 * 60e3, status: 'In progress', notes: [{ by: 'Ada Okafor', ts: DEMO_NOW - 31 * 60e3, text: 'Slowness traced to the liveness provider. Half of the traffic now goes through the backup route. Next update within the hour.' }] },
+  { id: 'TKT-309', accountId: 'orchid', level: 'L3', issue: 'NIN requests still failing after partial recovery (INC-2291)', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 30 * H, ackAt: DEMO_NOW - 30 * H + 16 * 60e3, qaAt: DEMO_NOW - 26 * H, status: 'Pushed to QA', notes: [{ by: 'Ada Okafor', ts: DEMO_NOW - 5 * H, text: 'QA has confirmed the fix. It goes out in Friday\'s release. I will tell Ngozi once it is live.' }] },
   { id: 'TKT-305', accountId: 'meridian', level: 'L1', issue: 'Sandbox credentials for the new branch app', raisedBy: 'Kemi Adeyemi', openedAt: DEMO_NOW - 2 * D, ackAt: DEMO_NOW - 2 * D + 9 * 60e3, resolvedAt: DEMO_NOW - 2 * D + 70 * 60e3, status: 'Resolved' },
 ];
 const TASKS_SEED = [
@@ -471,6 +471,7 @@ const initState = () => ({
   oppWork: {},
   log: [...seedStage3().log, ...seedStage2().log, ...LOG_SEED],
   onboarding: ONB_SEED, tickets: TICKETS_SEED,
+  logRequests: seedLogReqs(), schedules: seedSchedules(),
   simHours: 0,       // advanced by "Simulate time passing"
   base: Date.now(),  // real-time clock restarts on Reset demo
   thresholds: JSON.parse(JSON.stringify(THRESHOLDS)),
@@ -507,7 +508,27 @@ function reducer(s, a) {
       if (a.act === 'ack') { patch = { ackAt: t, status: 'In progress' }; txt = k.id + ' acknowledged in ' + dur(t - k.openedAt) + ' (standard 20 mins).'; }
       if (a.act === 'resolve') { patch = { resolvedAt: t, status: 'Resolved', ackAt: k.ackAt || t }; txt = k.id + ' resolved in ' + dur(t - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + '). ' + tktWho(k) + ' told.'; }
       if (a.act === 'qa') { patch = { qaAt: t, status: 'Pushed to QA', ackAt: k.ackAt || t }; txt = k.id + ' pushed to QA. TSI keeps ' + (k.accountId ? 'the customer and ' : '') + tktWho(k) + ' updated.'; }
+      if (a.text) patch.notes = [...(k.notes || []), { by: a.by, ts: t, text: a.text }];
       return { ...s, seq, tickets: s.tickets.map(x => x.id === a.id ? { ...x, ...patch } : x), log: [{ id: 'tk' + seq, ts: t, actor: a.by, auto: false, accountId: k.accountId, text: txt }, ...s.log], toast: { id: seq, text: txt } };
+    }
+    case 'ULOG_NEW': {
+      const seq = s.seq + 1, n = Math.max(...s.logRequests.map(r => +r.id.slice(4))) + 1, id = 'LOG-' + n;
+      const r = { id, scope: a.scope, from: a.from, to: a.to, services: null, raisedBy: a.by, raisedAt: a.ts, status: 'Ready' };
+      const aid = a.scope.startsWith('acc:') ? a.scope.slice(4) : undefined; const recs = logCount(logScope(a.scope), a.from, a.to);
+      const txt = id + ': usage logs for ' + scopeName(a.scope) + ', ' + fmtD(a.from) + (a.to !== a.from ? ' to ' + fmtD(a.to) : '') + ' (' + num(recs) + ' requests). Generated and ready.';
+      return { ...s, seq, logRequests: [r, ...s.logRequests], log: [...mkLogs([{ actor: a.by, auto: false, accountId: aid, text: 'Requested ' + id + ' for ' + scopeName(a.scope) + '.' }, { actor: 'System', auto: true, accountId: aid, text: txt }], a.ts, seq), ...s.log], toast: { id: seq, text: txt } };
+    }
+    case 'ULOG_SEND': {
+      const r = s.logRequests.find(x => x.id === a.id); if (!r || r.status !== 'Ready') return s; const seq = s.seq + 1; const acc = ACC[r.scope.slice(4)]; const c = acc.contacts.find(x => x.id === a.contactId) || acc.contacts[0];
+      const rng0 = fmtD(r.from) + (r.to !== r.from ? ' to ' + fmtD(r.to) : ''); const subject = 'Usage log, ' + rng0; const body = 'Hi ' + c.name.split(' ')[0] + ', attached is your usage log for ' + rng0 + ' (' + num(logCount([acc], r.from, r.to)) + ' requests), one line per day and service. Let me know if you need it in another format.';
+      const item = { id: 'tl-u' + seq, accountId: acc.id, channel: 'email', dir: 'out', contactId: c.id, author: a.by, ts: a.ts, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'out') };
+      return { ...s, seq, logRequests: s.logRequests.map(x => x.id === r.id ? { ...x, status: 'Sent', sentAt: a.ts, method: 'Sent to ' + c.name } : x), timeline: [item, ...s.timeline], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Sent ' + r.id + ' to ' + c.name + ' (' + acc.name + '). Mock: nothing was really sent.' }], a.ts, seq), ...s.log], toast: { id: seq, text: r.id + ' sent to ' + c.name + ' (mock email). Logged on the timeline.' } };
+    }
+    case 'SCHED_SET': {
+      const seq = s.seq + 1, acc = ACC[a.accountId], old = s.schedules[a.accountId] || { history: [] }; const c = acc.contacts.find(x => x.id === a.contactId) || acc.contacts[0];
+      const sc = { ...old, freq: a.freq, contactId: c.id, setBy: a.by, setAt: a.ts, nextAt: a.freq === 'Off' ? null : nextSend(a.freq, a.ts), history: old.history || [] };
+      const txt = a.freq === 'Off' ? 'Automatic usage logs turned off for ' + acc.name + '.' : acc.name + ' will receive usage logs ' + a.freq.toLowerCase() + ', sent to ' + c.name + '. Next send ' + fmtFull(sc.nextAt) + '.';
+      return { ...s, seq, schedules: { ...s.schedules, [a.accountId]: sc }, log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Log delivery preference: ' + txt }], a.ts, seq), ...s.log], toast: { id: seq, text: txt } };
     }
     case 'NOTIF_READ': return { ...s, read: { ...s.read, ...Object.fromEntries(a.ids.map(x => [x, true])) } };
     case 'NOTIF_UNREAD': { const r = { ...s.read }; delete r[a.id]; return { ...s, read: r }; }
@@ -535,9 +556,22 @@ function reducer(s, a) {
         }
         return n;
       });
+      let schedules = s.schedules, tl = [];
+      Object.entries(s.schedules).forEach(([aid, x]) => {
+        if (x.freq === 'Off' || !x.nextAt || x.nextAt > nowT) return; const acc = ACC[aid]; const c = acc.contacts.find(q => q.id === x.contactId) || acc.contacts[0]; let n = { ...x, history: [...x.history] }, guard = 0;
+        while (n.nextAt && n.nextAt <= nowT && guard++ < 40) {
+          const [f, t, label] = coverRange(n.freq, n.nextAt); const recs = logCount([acc], f, t);
+          n.history.unshift({ ts: n.nextAt, covers: label, records: recs }); n.lastAt = n.nextAt;
+          nl.push({ actor: 'System', auto: true, accountId: aid, text: n.freq + ' usage log (' + label + ', ' + num(recs) + ' requests) sent automatically to ' + c.name + ' at ' + acc.name + '.' });
+          const subject = n.freq + ' usage log, ' + label, body = 'Hi ' + c.name.split(' ')[0] + ', attached is your usage log for ' + label + ': ' + num(recs) + ' requests, one line per day and service. You receive this ' + n.freq.toLowerCase() + ' as requested.';
+          tl.push({ id: 'tl-s' + aid + n.nextAt, accountId: aid, channel: 'email', dir: 'out', contactId: c.id, author: 'System', ts: n.nextAt, subject, body, auto: true, tags: autoTag(subject + '. ' + body, 'out') });
+          n.nextAt = nextSend(n.freq, n.nextAt + 60e3);
+        }
+        schedules = { ...schedules, [aid]: n }; any = true;
+      });
       if (!any) return s;
       const seq = s.seq + 1;
-      return { ...s, escalations: esc, tasks: [...mkTasks(nt, seq), ...s.tasks], log: [...mkLogs(nl, nowT, seq), ...s.log], seq };
+      return { ...s, escalations: esc, schedules, timeline: tl.length ? [...tl, ...s.timeline] : s.timeline, tasks: [...mkTasks(nt, seq), ...s.tasks], log: [...mkLogs(nl, nowT, seq), ...s.log], seq };
     }
     case 'SET_TH': { const t = JSON.parse(JSON.stringify(s.thresholds)); if (a.seg === 'svcType') t.svcType[a.key] = a.val; else t[a.seg][a.key] = a.val; return { ...s, thresholds: t }; }
     case 'SET_SUPP': return { ...s, suppOn: a.on };
@@ -724,6 +758,8 @@ const ICONS = {
   lock: 'M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4',
   reset: 'M23 4v6h-6 M1 20v-6h6 M3.5 9a9 9 0 0 1 14.9-3.4L23 10 M1 14l4.6 4.4A9 9 0 0 0 20.5 15',
   users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
   inbox: 'M22 12h-6l-2 3h-4l-2-3H2 M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1z',
 };
@@ -1174,6 +1210,22 @@ const ESC_CATEGORIES = ['Delayed verification', 'Unreachable address', 'Result d
 // Real VerifyMe standards (from the AM and VS team): AMs reply to a VS query within 15 minutes;
 // VS resolves an escalated address check in about 2 hours; verification itself runs 24 to 72 hours.
 const AM_REPLY_H = 0.25, VS_RESOLVE_H = 2, VS_ACK_H = 0.5; // VS acknowledgement target is a proposal
+/* ----- feedback to the person who raised it: latest typed update from the owner side ----- */
+const StCtx = createContext(null);
+const whoLabel = by => by === ROLES.TSI.name ? by + ' (TSI)' : by;
+const escWatchers = c => [c.raisedBy, ...(c.direction === 'AM_TO_VS' ? [ACC[c.accountId].am] : [])];
+const escUpdate = c => [...c.thread].filter(t => !t.auto && t.by !== c.raisedBy).sort((x, y) => y.ts - x.ts)[0] || null;
+function tktEvents(k) {
+  const T = ROLES.TSI.name;
+  return [[k.openedAt, k.raisedBy, 'Raised: ' + k.issue], k.ackAt && [k.ackAt, T, 'Acknowledged in ' + dur(k.ackAt - k.openedAt) + ' (standard 20 mins)'], k.qaAt && [k.qaAt, T, 'Pushed to QA. TSI keeps ' + (k.accountId ? 'the customer and ' : '') + tktWho(k) + ' updated'], ...(k.notes || []).map(n => [n.ts, n.by, n.text, true]), k.resolvedAt && [k.resolvedAt, T, 'Resolved in ' + dur(k.resolvedAt - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + ')']].filter(Boolean).sort((x, y) => x[0] - y[0] || (x[3] ? 1 : 0) - (y[3] ? 1 : 0));
+}
+const tktWatchers = k => [k.raisedBy, ...(k.accountId ? [ACC[k.accountId].am] : [])];
+const tktUpdate = k => { const e = tktEvents(k).filter(x => x[1] !== k.raisedBy && x[1] !== (k.accountId && ACC[k.accountId].am)); const typed = e.filter(x => x[3]); const last = (typed.length ? typed : e).slice(-1)[0]; return last ? { ts: last[0], by: last[1], text: last[2] } : null; };
+const updId = (id, u) => 'upd:' + id + ':' + u.ts;
+function LatestUpdate({ id, u, watch, now }) {
+  const ctx = useContext(StCtx); if (!u) return null; const fresh = watch && ctx && !ctx.st.read[updId(id, u)];
+  return html`<div className="mt-1.5 flex items-start gap-1.5 text-xs rounded-md px-2 py-1" style=${{ background: fresh ? 'var(--brandsoft)' : 'transparent' }}><span className="text-brand mt-px"><${Icon} n="chat" s=${12} /></span><span className="min-w-0"><span className="font-medium">${fresh ? 'New update from ' : 'Latest from '}${whoLabel(u.by)}</span><span className="text-mute">, ${relAgo(u.ts, now)}: </span>${u.text.length > 120 ? u.text.slice(0, 117) + '...' : u.text}</span></div>`;
+}
 const caseSla = dir => dir === 'AM_TO_VS' ? VS_RESOLVE_H : AM_REPLY_H;
 const frTarget = c => c.direction === 'AM_TO_VS' ? VS_ACK_H : AM_REPLY_H;
 const hLabel = h => dur(h * H);
@@ -1354,10 +1406,12 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
   const statusTone = c.status === 'Closed' || c.status === 'Resolved' ? 'ok' : c.status === 'Awaiting AM' ? 'warn' : 'info';
   const canComment = !done && !mine && (isAM || isVS || role === 'HEAD');
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  const upd = escUpdate(c), watch = escWatchers(c).includes(me.name) && upd && upd.by !== me.name;
+  const toggle = () => { if (!open && watch) dispatch({ type: 'NOTIF_READ', ids: [updId(c.id, upd)] }); setOpen(!open); };
   return html`<${Card}>
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${() => setOpen(!open)}>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${toggle}>
       <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone=${statusTone}>${c.status}<//>${c.breached && html`<${Pill} tone="bad">Breached<//>`}<span className="text-mute">${a.name}</span></div>
-        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · with ${c.owner}</div></div>
+        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · raised by ${c.raisedBy} · with ${c.owner}</div><${LatestUpdate} id=${c.id} u=${upd} watch=${watch} now=${now} /></div>
       <${SlaClock} c=${c} now=${now} />
     </div>
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
@@ -1386,9 +1440,10 @@ function EscalationsPage({ st, dispatch, role, route }) {
   const now = useNow(); const me = ROLES[role];
   const scoped = st.escalations.filter(c => role !== 'AM' || ACC[c.accountId].am === me.name);
   const mineF = c => isOpen(c) && ((role === 'VS' && c.owner === 'VS Team') || (role === 'AM' && c.owner === me.name));
+  const raisedF = c => c.raisedBy === me.name;
   const fc = route && route.focus ? st.escalations.find(c => c.id === route.focus) : null; const [tab, setTab] = useState(fc ? (isOpen(fc) ? 'open' : 'done') : role === 'HEAD' ? 'open' : 'mine'); const [showNew, setShowNew] = useState(false);
   const open = scoped.filter(isOpen), closed = scoped.filter(c => !isOpen(c));
-  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
+  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'raised' ? scoped.filter(raisedF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
   const near = open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, breached = open.filter(c => slaPct(c, now) >= 1).length;
   const acked = scoped.filter(c => c.ackAt); const avgFr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
   const resolved = scoped.filter(c => c.resolvedAt); const within = resolved.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length;
@@ -1402,8 +1457,8 @@ function EscalationsPage({ st, dispatch, role, route }) {
       ${[0.25, 1, 2, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}
       <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + fmtDur(st.simHours * H) : 'Real time'}<//>
       <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
-    <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !(t[0] === 'mine' && role === 'HEAD')).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
-    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
+    <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['raised', 'Raised by me', scoped.filter(raisedF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !((t[0] === 'mine' || t[0] === 'raised') && role === 'HEAD')).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
+    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
     <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Standards:</span> AMs reply to a VS query within 15 minutes. VS resolves an escalated address check in about 2 hours. Verification itself runs 24 to 72 hours (guarantor 5 days).</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and a VS acknowledgement target (30 minutes proposed).</div><//>
   </div>`;
 }
@@ -1467,6 +1522,127 @@ function seedStage3() {
   return { reqs, seen, log };
 }
 
+/* ----- usage logs: on request (any date range) and on a schedule (customer preference) ----- */
+const LOG_MIN = sod(DEMO_NOW) - 90 * D, LOG_MAX = sod(DEMO_NOW) - D;
+const dayIdx = ts => Math.min(89, Math.max(0, 90 - Math.round((sod(DEMO_NOW) - sod(ts)) / D)));
+const ymd = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const fromYmd = v => { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+const fmtD = ts => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const AMS = ['Amaka Eze', 'Kemi Adeyemi', 'Segun Bakare'];
+function logScope(scope, role) {
+  if (scope === 'tsi') return ACCOUNTS.filter(a => a.obId);
+  if (scope.startsWith('am:')) { const n = scope.slice(3); return ACCOUNTS.filter(a => a.am === n && (!a.obId || ACTIVE.handed.has(a.id))); }
+  return [ACC[scope.slice(4)]];
+}
+const scopeName = (scope) => scope === 'tsi' ? 'Customers onboarded by TSI' : scope.startsWith('am:') ? 'All customers for ' + scope.slice(3) : ACC[scope.slice(4)].name;
+function logRows(accts, from, to, svcs) {
+  const rows = []; for (let t = sod(from); t <= sod(to); t += D) { const i = dayIdx(t); accts.forEach(a => a.services.filter(x => !svcs || svcs.includes(x)).forEach(x => rows.push([t, a.id, x, a.series[x][i]]))); } return rows;
+}
+const logCount = (accts, from, to, svcs) => sum(logRows(accts, from, to, svcs).map(r => r[3]));
+function downloadCsv(name, rows) {
+  const csv = ['Date,Customer,Account Manager,Service,Requests', ...rows.map(([t, aid, x, n]) => [ymd(t), '"' + ACC[aid].name + '"', ACC[aid].am, '"' + SVC[x].name + '"', n].join(','))].join('\n');
+  try { const u = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const l = document.createElement('a'); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 1000); } catch (e) {}
+}
+const FREQS = ['Off', 'Daily', 'Weekly', 'Monthly'];
+const FREQ_TXT = { Daily: 'every day at 07:00, covers the day before', Weekly: 'every Monday at 07:00, covers the week before', Monthly: '1st of the month at 07:00, covers the month before' };
+function nextSend(freq, from) {
+  const d = new Date(sod(from) + 7 * H);
+  if (freq === 'Daily') { if (d.getTime() <= from) d.setDate(d.getDate() + 1); return d.getTime(); }
+  if (freq === 'Weekly') { while (d.getDay() !== 1 || d.getTime() <= from) d.setDate(d.getDate() + 1); return d.getTime(); }
+  if (freq === 'Monthly') { d.setDate(1); if (d.getTime() <= from) d.setMonth(d.getMonth() + 1); return d.getTime(); }
+  return null;
+}
+function coverRange(freq, at) {
+  const day = sod(at) - D;
+  if (freq === 'Daily') return [day, day, fmtDay(day)];
+  if (freq === 'Weekly') return [day - 6 * D, day, fmtDay(day - 6 * D) + ' to ' + fmtDay(day)];
+  const f = new Date(at); f.setDate(1); f.setMonth(f.getMonth() - 1); const st0 = sod(f.getTime()); return [st0, day, f.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })];
+}
+const canSched = (a, role) => (role === 'AM' && a.am === ROLES.AM.name && (!a.obId || ACTIVE.handed.has(a.id))) || (role === 'TSI' && !!a.obId && !ACTIVE.handed.has(a.id));
+function seedSchedules() {
+  const mk = (id, freq, contactId, setBy, lastAt) => [id, { freq, contactId, setBy, setAt: DEMO_NOW - 20 * D, lastAt, nextAt: nextSend(freq, DEMO_NOW), history: lastAt ? [{ ts: lastAt, covers: coverRange(freq, lastAt)[2], records: logCount([ACC[id]], ...coverRange(freq, lastAt).slice(0, 2)) }] : [] }];
+  const t7 = sod(DEMO_NOW) + 7 * H;
+  return Object.fromEntries([mk('quickloan', 'Daily', 'ql2', 'Amaka Eze', t7), mk('lumen', 'Weekly', 'lu1', 'Amaka Eze', t7 - 3 * D), mk('meridian', 'Monthly', 'me2', 'Kemi Adeyemi', new Date(2026, 9, 1, 7).getTime()), mk('orchid', 'Monthly', 'or2', 'Amaka Eze', new Date(2026, 9, 1, 7).getTime()), mk('paynest', 'Weekly', 'pn2', 'Segun Bakare', t7 - 3 * D), mk('crest', 'Daily', 'cr1', 'Ada Okafor', t7)]);
+}
+function seedLogReqs() {
+  const t1 = DEMO_NOW - 26 * H, t2 = DEMO_NOW - 50 * 60e3, sep1 = new Date(2026, 8, 1).getTime(), sep30 = new Date(2026, 8, 30).getTime();
+  return [
+    { id: 'LOG-412', scope: 'acc:zenith', from: sod(DEMO_NOW) - 3 * D, to: LOG_MAX, services: null, raisedBy: 'Ada Okafor', raisedAt: t2, status: 'Sent', sentAt: t2 + 4 * 60e3, method: 'Sent to Grace Udo', note: 'First days live, requested by the integration engineer' },
+    { id: 'LOG-410', scope: 'acc:northgate', from: sep1, to: sep30, services: null, raisedBy: 'Amaka Eze', raisedAt: t1, status: 'Sent', sentAt: t1 + 6 * 60e3, method: 'Sent to Dayo Fashola', note: 'Finance reconciling September' },
+    { id: 'LOG-409', scope: 'am:Amaka Eze', from: sod(DEMO_NOW) - 7 * D, to: LOG_MAX, services: null, raisedBy: 'Amaka Eze', raisedAt: DEMO_NOW - 2 * D, status: 'Ready', note: 'Portfolio check before the weekly report' },
+  ];
+}
+function UsageLogForm({ role, dispatch, now, onDone, fixedAccount }) {
+  const me = ROLES[role];
+  const accts = fixedAccount ? [ACC[fixedAccount]] : role === 'AM' ? scopeAccounts('AM') : role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD');
+  const scopes = fixedAccount ? [] : role === 'AM' ? [['am:' + me.name, 'All my customers']] : role === 'TSI' ? [['tsi', 'All customers onboarded by TSI']] : [...AMS.map(n => ['am:' + n, 'All customers for ' + n]), ['tsi', 'All customers onboarded by TSI']];
+  const [scope, setScope] = useState(fixedAccount ? 'acc:' + fixedAccount : 'acc:' + accts[0].id);
+  const [preset, setPreset] = useState('7'); const [from, setFrom] = useState(LOG_MAX - 6 * D); const [to, setTo] = useState(LOG_MAX);
+  const pick = v => { setPreset(v); if (v === '1') { setFrom(LOG_MAX); setTo(LOG_MAX); } if (v === '7') { setFrom(LOG_MAX - 6 * D); setTo(LOG_MAX); } if (v === '30') { setFrom(LOG_MAX - 29 * D); setTo(LOG_MAX); } if (v === 'sep') { setFrom(new Date(2026, 8, 1).getTime()); setTo(new Date(2026, 8, 30).getTime()); } };
+  const list = logScope(scope, role); const days = Math.round((to - from) / D) + 1; const ok = from <= to;
+  const recs = ok ? logCount(list, from, to) : 0; const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><${CardHead} title="Request usage logs" sub="Any customer or group of customers, any date range in the last 90 days. Generated straight from the usage data." /><div className="p-4 space-y-3">
+    <div className="flex flex-wrap gap-2.5">
+      <select className=${inp} value=${scope} disabled=${!!fixedAccount} onChange=${e => setScope(e.target.value)} aria-label="Customers">
+        ${scopes.length > 0 && html`<optgroup label="Groups">${scopes.map(([v, l]) => html`<option key=${v} value=${v}>${l}</option>`)}</optgroup>`}
+        <optgroup label="One customer">${accts.map(a => html`<option key=${a.id} value=${'acc:' + a.id}>${a.name}${a.obId && !ACTIVE.handed.has(a.id) ? ' (in onboarding)' : ''}</option>`)}</optgroup></select>
+      <select className=${inp} value=${preset} onChange=${e => pick(e.target.value)} aria-label="Period"><option value="1">Yesterday</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="sep">September 2026</option><option value="custom">Custom dates</option></select>
+      <label className="flex items-center gap-1.5 text-xs text-mute">From<input type="date" className=${inp} min=${ymd(LOG_MIN)} max=${ymd(LOG_MAX)} value=${ymd(from)} onChange=${e => { if (e.target.value) { setFrom(fromYmd(e.target.value)); setPreset('custom'); } }} /></label>
+      <label className="flex items-center gap-1.5 text-xs text-mute">To<input type="date" className=${inp} min=${ymd(LOG_MIN)} max=${ymd(LOG_MAX)} value=${ymd(to)} onChange=${e => { if (e.target.value) { setTo(fromYmd(e.target.value)); setPreset('custom'); } }} /></label></div>
+    <div className="rounded-md bg-surface2 p-3 text-xs flex flex-wrap items-center gap-2"><${AutoBadge} label="Auto" />${ok ? html`<span>${list.length === 1 ? list[0].name : list.length + ' customers'} · ${plural(days, 'day')} · <span className="font-medium">${num(recs)} requests</span> across ${[...new Set(list.flatMap(a => a.services))].length} services. Ready as soon as you request it.</span>` : html`<span className="text-bad">The start date must be on or before the end date.</span>`}</div>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!ok || !list.length} onClick=${() => { dispatch({ type: 'ULOG_NEW', scope, from, to, by: me.name, ts: now }); onDone(); }}>Generate logs<//><${Btn} onClick=${onDone}>Cancel<//></div>
+  </div><//>`;
+}
+function UsageLogCard({ r, dispatch, role, defaultOpen }) {
+  const now = useNow(); const me = ROLES[role]; const [open, setOpen] = useState(!!defaultOpen);
+  const list = logScope(r.scope, role); const rows = logRows(list, r.from, r.to, r.services); const total = sum(rows.map(x => x[3]));
+  const single = r.scope.startsWith('acc:') ? list[0] : null; const [cid, setCid] = useState(single ? single.contacts[0].id : '');
+  const mayShare = single && r.status === 'Ready' && (canSched(single, role) || (role === 'TSI') || (role === 'AM' && single.am === me.name));
+  const svcs = [...new Set(list.flatMap(a => a.services))];
+  const per = list.map(a => ({ a, by: Object.fromEntries(svcs.map(x => [x, sum(rows.filter(q => q[1] === a.id && q[2] === x).map(q => q[3]))])) }));
+  const fname = 'usage-log_' + (single ? single.id : r.scope.replace(/[^a-z]/gi, '-').toLowerCase()) + '_' + ymd(r.from) + '_to_' + ymd(r.to) + '.csv';
+  return html`<${Card}>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer hover:bg-surface2" onClick=${() => setOpen(!open)} role="button" aria-expanded=${open}>
+      <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${r.id}</span><${Pill} tone=${r.status === 'Sent' ? 'ok' : 'info'}>${r.status === 'Sent' ? 'Sent' : 'Ready'}<//>${!single && html`<${Pill} tone="mute">Internal<//>`}<span className="text-mute">${scopeName(r.scope)}</span></div>
+        <div className="text-xs text-mute mt-0.5">${fmtD(r.from)}${r.to !== r.from ? ' to ' + fmtD(r.to) : ''} · ${num(total)} requests · requested by ${whoLabel(r.raisedBy)} ${relAgo(r.raisedAt, now)}${r.note ? ' · ' + r.note : ''}</div></div>
+      <span className="text-xs text-brand">${open ? 'Hide' : 'Preview'}</span>
+    </div>
+    ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
+      <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute border-b border-line"><th className="py-1.5 font-medium">Customer</th>${svcs.map(x => html`<th key=${x} className="font-medium text-right px-2">${SVC[x].name}</th>`)}<th className="font-medium text-right">Total</th></tr></thead><tbody>
+        ${per.map(({ a, by }) => html`<tr key=${a.id} className="border-b border-line last:border-0"><td className="py-1.5">${a.name}<span className="text-mute"> · ${a.am}</span></td>${svcs.map(x => html`<td key=${x} className="text-right tabular-nums px-2">${a.services.includes(x) ? num(by[x]) : '-'}</td>`)}<td className="text-right tabular-nums font-medium">${num(sum(Object.values(by)))}</td></tr>`)}</tbody></table></div>
+      <div className="text-[11px] text-mute">The file has one line per day, customer and service (${num(rows.length)} lines). ${single && single.obId ? 'Early volumes are low while the customer ramps up.' : ''}</div>
+      <div className="flex flex-wrap items-center gap-2"><${Btn} onClick=${() => downloadCsv(fname, rows)}><${Icon} n="download" s=${12} />Download CSV<//>
+        ${mayShare && html`<select className="rounded-md border border-line bg-bg px-2 py-1.5 text-sm" value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Send to">${single.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}</select><${Btn} kind="primary" onClick=${() => dispatch({ type: 'ULOG_SEND', id: r.id, contactId: cid, by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//>`}
+        ${r.status === 'Sent' && html`<span className="text-xs text-mute">${r.method} ${relAgo(r.sentAt, now)}. Mock: nothing was really sent.</span>`}</div>
+    </div>`}
+  <//>`;
+}
+function ScheduleRow({ a, sc, dispatch, role, now, showAm }) {
+  const me = ROLES[role]; const can = canSched(a, role); const x = sc || { freq: 'Off', contactId: a.contacts[0].id, history: [] };
+  const set = patch => dispatch({ type: 'SCHED_SET', accountId: a.id, freq: patch.freq || x.freq, contactId: patch.contactId || x.contactId, by: me.name, ts: now });
+  const c = a.contacts.find(q => q.id === x.contactId) || a.contacts[0]; const sel = 'rounded-md border border-line bg-bg px-2 py-1 text-xs';
+  return html`<tr className="border-b border-line last:border-0 align-top">
+    <td className="px-4 py-2"><div className="font-medium text-sm">${a.name}</div><div className="text-[11px] text-mute">${showAm ? a.am + ' · ' : ''}${a.obId && !ACTIVE.handed.has(a.id) ? 'In onboarding, set by TSI' : a.segment}</div></td>
+    <td className="px-2 py-2">${can ? html`<select className=${sel} value=${x.freq} onChange=${e => set({ freq: e.target.value })} aria-label=${'Frequency for ' + a.name}>${FREQS.map(f => html`<option key=${f}>${f}</option>`)}</select>` : html`<${Pill} tone=${x.freq === 'Off' ? 'mute' : 'ok'}>${x.freq}<//>`}${x.freq !== 'Off' && html`<div className="text-[11px] text-mute mt-0.5">${FREQ_TXT[x.freq]}</div>`}</td>
+    <td className="px-2 py-2">${can && x.freq !== 'Off' ? html`<select className=${sel} value=${x.contactId} onChange=${e => set({ contactId: e.target.value })} aria-label=${'Recipient for ' + a.name}>${a.contacts.map(q => html`<option key=${q.id} value=${q.id}>${q.name}</option>`)}</select>` : x.freq !== 'Off' ? html`<span className="text-xs">${c.name}</span>` : html`<span className="text-xs text-mute">-</span>`}</td>
+    <td className="px-2 py-2 text-xs">${x.freq !== 'Off' && x.nextAt ? html`<span>${fmtFull(x.nextAt)}</span>` : html`<span className="text-mute">-</span>`}</td>
+    <td className="px-2 py-2 text-xs">${x.history && x.history.length ? html`<span>${fmtFull(x.history[0].ts)}</span><div className="text-[11px] text-mute">${x.history[0].covers} · ${num(x.history[0].records)} requests</div>` : html`<span className="text-mute">Not sent yet</span>`}</td>
+  </tr>`;
+}
+function ScheduleTable({ accts, st, dispatch, role, now, showAm }) {
+  return html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium">Frequency</th><th className="px-2 font-medium">Send to</th><th className="px-2 font-medium">Next send</th><th className="px-2 font-medium">Last sent</th></tr></thead><tbody>
+    ${accts.map(a => html`<${ScheduleRow} key=${a.id} a=${a} sc=${st.schedules[a.id]} dispatch=${dispatch} role=${role} now=${now} showAm=${showAm} />`)}</tbody></table></div>`;
+}
+function AccountUsageLogs({ a, st, dispatch, role }) {
+  const now = useNow(); const [show, setShow] = useState(false); const reqs = st.logRequests.filter(r => r.scope === 'acc:' + a.id).sort((x, y) => y.raisedAt - x.raisedAt);
+  const can = (role === 'AM' && a.am === ROLES.AM.name) || role === 'TSI' || role === 'HEAD' || role === 'FIN';
+  return html`<${Card}><${CardHead} title="Usage logs" sub="Request logs for any dates, or set how often the customer receives them automatically" right=${can && html`<${Btn} onClick=${() => setShow(!show)}><${Icon} n="download" s=${12} />Request usage logs<//>`} />
+    ${show && html`<div className="px-4 pb-3"><${UsageLogForm} role=${role} dispatch=${dispatch} now=${now} fixedAccount=${a.id} onDone=${() => setShow(false)} /></div>`}
+    <${ScheduleTable} accts=${[a]} st=${st} dispatch=${dispatch} role=${role} now=${now} />
+    ${reqs.length > 0 && html`<div className="px-4 py-3 space-y-2 border-t border-line">${reqs.map(r => html`<${UsageLogCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} />`)}</div>`}
+  <//>`;
+}
+
 function PackPreview({ r }) {
   const a = ACC[r.accountId]; const p = packData(a, r.period, r.services);
   return html`<div className="rounded-md border border-line bg-bg p-3 space-y-3 text-sm">
@@ -1527,14 +1703,49 @@ function RequestCard({ r, dispatch, role, defaultOpen }) {
 }
 
 function InvoicesPage({ st, dispatch, role }) {
+  const [sec, setSec] = useState(role === 'TSI' ? 'logs' : 'inv');
+  const secs = [['inv', 'Invoice requests'], ['logs', 'Usage logs'], ['sched', 'Automatic log delivery']].filter(x => !(x[0] === 'inv' && role === 'TSI'));
+  return html`<div className="space-y-5">
+    <div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Invoices with contract checks, usage logs on request, and automatic log delivery at the frequency each customer prefers.</p></div>
+    <div className="flex flex-wrap gap-1 border-b border-line">${secs.map(([k, l]) => html`<button key=${k} onClick=${() => setSec(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', sec === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}</button>`)}</div>
+    ${sec === 'inv' && html`<${InvoiceRequests} st=${st} dispatch=${dispatch} role=${role} />`}
+    ${sec === 'logs' && html`<${UsageLogsSection} st=${st} dispatch=${dispatch} role=${role} />`}
+    ${sec === 'sched' && html`<${ScheduleSection} st=${st} dispatch=${dispatch} role=${role} />`}
+  </div>`;
+}
+function UsageLogsSection({ st, dispatch, role }) {
+  const now = useNow(); const me = ROLES[role]; const [show, setShow] = useState(false); const [mineOnly, setMine] = useState(false);
+  const ids = new Set((role === 'AM' ? scopeAccounts('AM') : ACCOUNTS).map(a => a.id));
+  const vis = st.logRequests.filter(r => role !== 'AM' || (r.scope.startsWith('acc:') ? ids.has(r.scope.slice(4)) : r.scope === 'am:' + me.name)).filter(r => !mineOnly || r.raisedBy === me.name).sort((x, y) => y.raisedAt - x.raisedAt);
+  const sent = st.logRequests.filter(r => r.sentAt); const schedN = Object.values(st.schedules).filter(x => x.freq !== 'Off').length;
+  return html`<div className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-mute max-w-2xl">Pick one customer, a whole AM portfolio, or the customers TSI is onboarding, then any dates in the last 90 days. The file is ready straight away to download or send.</p>
+      <${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request usage logs<//></div>
+    ${show && html`<${UsageLogForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShow(false)} />`}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Log requests" value=${st.logRequests.length} /><${Tile} label="Sent to customers" value=${sent.length} /><${Tile} label="Avg request to sent" value=${sent.length ? fmtDur(avg(sent.map(r => r.sentAt - r.raisedAt))) : 'n/a'} sub="Generated instantly; sending is the AM or TSI" /><${Tile} label="Customers on automatic delivery" value=${schedN} sub="Daily, weekly or monthly" /></div>
+    <div className="flex items-center gap-2"><label className="text-xs flex items-center gap-1"><input type="checkbox" checked=${mineOnly} onChange=${e => setMine(e.target.checked)} />Only the ones I requested</label></div>
+    ${vis.length === 0 ? html`<${Card}><${Empty}>No usage log requests yet.<//><//>` : vis.map(r => html`<${UsageLogCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} />`)}
+  </div>`;
+}
+function ScheduleSection({ st, dispatch, role }) {
+  const now = useNow(); const accts = role === 'AM' ? scopeAccounts('AM') : role === 'TSI' ? ACCOUNTS.filter(a => a.obId) : ACCOUNTS.filter(a => !a.obId || ACTIVE.handed.has(a.id) || role === 'HEAD');
+  const on = accts.filter(a => st.schedules[a.id] && st.schedules[a.id].freq !== 'Off');
+  return html`<div className="space-y-4">
+    <p className="text-sm text-mute max-w-3xl">Set how often each customer receives their usage log, and who receives it. Sending is automatic and every send is logged on the account. ${role === 'TSI' ? 'TSI captures the preference during onboarding; the AM owns it after handover.' : role === 'AM' ? 'For customers still in onboarding, TSI sets this until handover.' : ''}</p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">${['Daily', 'Weekly', 'Monthly', 'Off'].map(f => html`<${Tile} key=${f} label=${f === 'Off' ? 'Not set' : f} value=${accts.filter(a => ((st.schedules[a.id] || {}).freq || 'Off') === f).length} />`)}</div>
+    <${Card}><${CardHead} title="Automatic log delivery" sub=${on.length + ' of ' + accts.length + ' customers receive logs automatically. Every send is logged on the account timeline.'} right=${html`<${Btn} onClick=${() => dispatch({ type: 'SIM', hours: 24 })}><${Icon} n="clock" s=${12} />Simulate +1 day<//>`} />
+      <${ScheduleTable} accts=${accts} st=${st} dispatch=${dispatch} role=${role} now=${now} showAm=${role !== 'AM'} /><//>
+  </div>`;
+}
+function InvoiceRequests({ st, dispatch, role }) {
   const now = useNow(); const me = ROLES[role]; const [show, setShow] = useState(false); const [tab, setTab] = useState('action');
   const mine = st.invoiceRequests.filter(r => role !== 'AM' || ACC[r.accountId].am === me.name);
   const needs = r => (role === 'FIN' && r.status === 'Awaiting Finance') || (role === 'AM' && r.status === 'Ready') || (role === 'HEAD' && (r.status === 'Awaiting Finance' || r.status === 'Ready'));
   const list = (tab === 'action' ? mine.filter(needs) : tab === 'done' ? mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected') : mine).sort((x, y) => y.raisedAt - x.raisedAt);
   const delivered = mine.filter(r => r.deliveredAt); const stdN = mine.filter(r => r.standard).length;
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p></div>
-      ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New request<//>`}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p>
+      ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New invoice request<//>`}</div>
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} onDone=${() => setShow(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? p1(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Standard: about 1 hr" /></div>
     <div className="flex gap-1 border-b border-line">${[['action', 'Needs action', mine.filter(needs).length], ['all', 'All requests', mine.length], ['done', 'Delivered or rejected', mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected').length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
@@ -1546,10 +1757,11 @@ function AccountInvoices({ a, st, dispatch, role }) {
   const now = useNow(); const [show, setShow] = useState(false); const reqs = st.invoiceRequests.filter(r => r.accountId === a.id).sort((x, y) => y.raisedAt - x.raisedAt);
   const can = role === 'AM' && a.am === ROLES.AM.name;
   return html`<div className="space-y-4">
-    ${can && html`<div className="flex justify-end"><${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request invoice and logs<//></div>`}
+    ${can && html`<div className="flex justify-end"><${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request invoice<//></div>`}
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} fixedAccount=${a.id} onDone=${() => setShow(false)} />`}
     <${Card}><${CardHead} title="Invoices" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Invoice</th><th className="px-2 font-medium">Period</th><th className="px-2 font-medium text-right">Amount</th><th className="px-2 font-medium">Issued</th><th className="px-2 font-medium">Due</th><th className="px-2 font-medium">Status</th></tr></thead><tbody>
       ${a.invoices.map(i => html`<tr key=${i.no} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${i.no}</td><td className="px-2">${i.period}</td><td className="px-2 text-right tabular-nums">${ngn(i.amount)}</td><td className="px-2 text-mute">${i.issued}</td><td className="px-2 text-mute">${i.due}</td><td className="px-2"><${Pill} tone=${i.status === 'Paid' ? 'ok' : 'warn'}>${i.status}<//></td></tr>`)}</tbody></table></div><//>
+    <${AccountUsageLogs} a=${a} st=${st} dispatch=${dispatch} role=${role} />
     ${reqs.length > 0 && html`<div className="space-y-3"><h3 className="text-sm font-semibold">Requests for this account</h3>${reqs.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${true} />`)}</div>`}
   </div>`;
 }
@@ -1733,7 +1945,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
   const STEPS = [
     { who: 'Reset', title: 'Start from a clean demo', text: 'Amaka opens her Home. Brightpay is Critical: 12,000 requests agreed per month, none for the last 21 days.', run: () => { dispatch({ type: 'RESET' }); setRole('AM'); go({ page: 'home' }); } },
     { who: 'Human', title: 'TSI contacts a new customer from Sales', text: 'Ada in TSI sees Kora Pay, assigned on the CRM a few minutes ago. She contacts the customer inside the 30-min standard and books the demo.', run: () => { dispatch({ type: 'ONB_NEXT', id: 'ob1', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
-    { who: 'Human', title: 'TSI picks up a technical issue', text: 'QuickLoan asked about rotating API keys. Ada acknowledges the ticket inside the 20-min standard; anything she cannot settle goes to QA, and she keeps the AM updated.', run: () => { dispatch({ type: 'TKT_ACT', id: 'TKT-314', act: 'ack', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
+    { who: 'Human', title: 'TSI picks up a technical issue', text: 'QuickLoan asked about rotating API keys. Ada acknowledges the ticket inside the 20-min standard with a typed update. Amaka, who raised it, sees that update on the ticket and in her notifications. Anything TSI cannot settle goes to QA.', run: () => { dispatch({ type: 'TKT_ACT', id: 'TKT-314', act: 'ack', by: 'Ada Okafor', ts: now, text: 'Keys can be rotated in the dashboard under Settings, API keys. I am on a call with their engineer at 11:00 to walk through it.' }); setRole('TSI'); go({ page: 'home' }); } },
     { who: 'Human', title: 'TSI hands a live customer to the AM', text: 'Zenith Fleet goes live inside the 5-day standard. Ada hands it to Amaka, the Key AM, with the onboarding history attached.', run: () => { dispatch({ type: 'ONB_NEXT', id: 'ob3', by: 'Ada Okafor', ts: now }); dispatch({ type: 'ONB_NEXT', id: 'ob3', by: 'Ada Okafor', ts: now }); setRole('TSI'); go({ page: 'home' }); } },
     { who: 'Human', title: 'AM picks up the new customer', text: 'Amaka gets a handover notification. She sees Zenith Fleet from the moment Sales assigned it: every TSI step with its time, the demo notes and the integration emails. A welcome call task is already in her list.', run: () => { setRole('AM'); go({ page: 'account', id: 'zenith', tab: 'Onboarding' }); } },
     { who: 'Auto', title: 'Brightpay drop detected', text: 'The daily usage feed flags Brightpay as Dropped and prepares a check-in draft. It is a Key account, so nothing is sent without Amaka.', run: () => { setRole('AM'); go({ page: 'signals' }); } },
@@ -1743,6 +1955,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     { who: 'Human', title: 'VS acknowledges', text: 'Tunde sees the case in the VS queue and acknowledges it. First-response time is logged for the manager view.', run: () => { const c = latest(st.escalations, x => x.accountId === 'brightpay' && x.owner === 'VS Team' && !x.ackAt); if (c) dispatch({ type: 'ESC_ACT', id: c.id, act: 'ack', by: 'Tunde Bello', ts: now, text: '' }); setRole('VS'); go({ page: 'escalations' }); } },
     { who: 'Auto', title: 'Invoice requested and auto-approved', text: 'Back as Amaka: she requests the September invoice and logs. It passes every contract rule, so it is approved automatically and the pack is generated.', run: () => { dispatch({ type: 'INV_NEW', accountId: 'brightpay', period: 'Sep 2026', services: ACC.brightpay.services, adjust: false, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
     { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. Delivery stops the request clock, so request-to-delivery time is recorded.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
+    { who: 'Human', title: 'Usage logs on request or on a schedule', text: 'QuickLoan asks for last week\'s usage logs. Amaka picks the exact dates and the file is ready in seconds to download or send. QuickLoan also gets a daily log at 07:00 automatically, because that is their preference.', run: () => { dispatch({ type: 'ULOG_NEW', scope: 'acc:quickloan', from: LOG_MAX - 6 * D, to: LOG_MAX, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'account', id: 'quickloan', tab: 'Invoices' }); } },
     { who: 'Auto', title: 'Upsell proposed', text: 'The customer has replied, so the hold on Brightpay lifts. The rules match field agent onboarding with address verification and draft an email using the account context.', run: () => { setRole('AM'); go({ page: 'opportunities' }); } },
     { who: 'Human', title: 'AM approves the upsell', text: 'Amaka approves the draft. It sends automatically, logs to the timeline, and the opportunity moves to Sales handoff.', run: () => { dispatch({ type: 'OPP_APPROVE', okey: 'brightpay:addr', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'opportunities' }); } },
     { who: 'Auto', title: 'Weekly operational report generated', text: 'The weekly report compiles itself: week-on-week transactions and revenue, customers to worry about, escalations, complaints and opportunities. Only the general and strategic updates are left for Amaka.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
@@ -2015,19 +2228,21 @@ function TicketCard({ k, dispatch, role, defaultOpen }) {
   const can = role === 'TSI', openNow = k.status !== 'Resolved'; const stTone = { Open: 'warn', 'In progress': 'info', 'Pushed to QA': 'auto', Resolved: 'ok' };
   const mayNote = openNow && (can || k.raisedBy === me.name || (k.accountId && ACC[k.accountId].am === me.name) || role === 'HEAD');
   const clk = !k.ackAt && openNow ? { openedAt: k.openedAt, slaHours: TSI_FR_H, resolvedAt: null } : { openedAt: k.openedAt, slaHours: TSI_RES_H[k.level], resolvedAt: k.resolvedAt || null };
-  const events = [[k.openedAt, k.raisedBy, 'Raised: ' + k.issue], k.ackAt && [k.ackAt, 'TSI', 'Acknowledged in ' + dur(k.ackAt - k.openedAt) + ' (standard 20 mins)'], k.qaAt && [k.qaAt, 'TSI', 'Pushed to QA. TSI keeps ' + (k.accountId ? 'the customer and ' : '') + tktWho(k) + ' updated'], ...(k.notes || []).map(n => [n.ts, n.by, n.text]), k.resolvedAt && [k.resolvedAt, 'TSI', 'Resolved in ' + dur(k.resolvedAt - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + ')']].filter(Boolean).sort((x, y) => x[0] - y[0]);
-  const act = x => dispatch({ type: 'TKT_ACT', id: k.id, act: x, by: me.name, ts: now });
+  const events = tktEvents(k);
+  const upd = tktUpdate(k), watch = tktWatchers(k).includes(me.name) && upd && upd.by !== me.name;
+  const toggle = () => { if (!open && watch) dispatch({ type: 'NOTIF_READ', ids: [updId(k.id, upd)] }); setOpen(!open); };
+  const act = x => { dispatch({ type: 'TKT_ACT', id: k.id, act: x, by: me.name, ts: now, text: msg.trim() }); setMsg(''); };
   return html`<div className="border-b border-line last:border-0">
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer hover:bg-surface2" onClick=${() => setOpen(!open)} role="button" aria-expanded=${open}>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer hover:bg-surface2" onClick=${toggle} role="button" aria-expanded=${open}>
       <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${k.id}</span><${Pill} tone="mute">${k.level}<//><${Pill} tone=${stTone[k.status]}>${k.status}<//><span className="text-mute">${tktName(k)}</span>${k.source === 'VS' && html`<${Pill} tone="mute">From VS<//>`}</div>
-        <div className="text-xs text-mute mt-0.5">${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div></div>
+        <div className="text-xs text-mute mt-0.5">${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div><${LatestUpdate} id=${k.id} u=${upd} watch=${watch} now=${now} /></div>
       <div className="text-[11px] text-mute w-full sm:w-auto">${!k.ackAt && openNow ? 'First response' : 'Resolution'}<${SlaClock} c=${clk} now=${now} /></div>
       <span className="text-xs text-brand">${open ? 'Hide details' : 'Details'}</span>
     </div>
     ${open && html`<div className="px-4 pb-4 space-y-3">
       <div className="grid sm:grid-cols-3 gap-2 text-xs"><div><span className="text-mute">Level: </span>${(TKT_LEVELS.find(l => l[0] === k.level) || [])[1]}</div><div><span className="text-mute">Owner: </span>TSI (Ada Okafor)</div><div><span className="text-mute">Keep updated: </span>${tktWho(k)}</div></div>
-      <div className="space-y-2">${events.map(([ts, by, text], i) => html`<div key=${i} className="text-sm rounded-md px-3 py-2 bg-surface2"><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${by}</span><span>${fmtFull(ts)}</span></div><div className="mt-0.5">${text}</div></div>`)}</div>
-      ${mayNote && html`<div className="space-y-2"><textarea className="w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm" rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder=${can ? 'Update for the customer and AM' : 'Add information for TSI (error message, reference, screenshot link)'} aria-label="Update"></textarea>
+      <div className="space-y-2">${events.map(([ts, by, text, typed], i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', typed && by !== k.raisedBy ? 'bg-brandsoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${whoLabel(by)}</span>${typed && html`<span>typed update</span>`}<span>${fmtFull(ts)}</span></div><div className="mt-0.5">${text}</div></div>`)}</div>
+      ${mayNote && html`<div className="space-y-2"><textarea className="w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm" rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder=${can ? 'Typed update for ' + tktWho(k) + '. Also sent with Acknowledge, Push to QA or Mark resolved.' : 'Add information for TSI (error message, reference, screenshot link)'} aria-label="Update"></textarea>
         <div className="flex flex-wrap gap-2"><${Btn} disabled=${!msg.trim()} onClick=${() => { dispatch({ type: 'TKT_NOTE', id: k.id, by: me.name, text: msg.trim(), ts: now }); setMsg(''); }}>${can ? 'Post update' : 'Add information'}<//>
           ${can && !k.ackAt && html`<${Btn} onClick=${() => act('ack')}>Acknowledge<//>`}${can && k.ackAt && k.status !== 'Pushed to QA' && html`<${Btn} onClick=${() => act('qa')}>Push to QA<//>`}${can && html`<${Btn} kind="primary" onClick=${() => act('resolve')}>Mark resolved<//>`}</div></div>`}
     </div>`}
@@ -2035,7 +2250,7 @@ function TicketCard({ k, dispatch, role, defaultOpen }) {
 }
 const ONB_NEXT_LABEL = { Assigned: 'Contact customer', Contacted: 'Mark demo done', 'Demo done': 'Start integration', 'Integration and testing': 'Mark live', Live: 'Hand over to AM' };
 function TsiPage({ st, dispatch, role, route, go }) {
-  const now = useNow(); const me = ROLES[role]; const can = role === 'TSI'; const [showNew, setShowNew] = useState(false); const focus = route && route.focus; const [obOpen, setObOpen] = useState(null);
+  const now = useNow(); const me = ROLES[role]; const can = role === 'TSI'; const [showNew, setShowNew] = useState(false); const focus = route && route.focus; const [obOpen, setObOpen] = useState(null); const [tf, setTf] = useState('all');
   const ids = new Set(scopeAccounts(role).map(a => a.id));
   const tickets = st.tickets.filter(k => k.accountId ? ids.has(k.accountId) : role !== 'AM').sort((x, y) => (x.status === 'Resolved') - (y.status === 'Resolved') || y.openedAt - x.openedAt);
   const onb = st.onboarding;
@@ -2057,8 +2272,8 @@ function TsiPage({ st, dispatch, role, route, go }) {
           <div className="text-[11px] text-mute w-full sm:w-auto">${o.stage === 'Assigned' ? 'First contact' : 'Assignment to go-live'}<${SlaClock} c=${clk} now=${now} /></div>
           ${can && !done && html`<${Btn} kind=${o.stage === 'Live' ? 'primary' : 'default'} onClick=${() => dispatch({ type: 'ONB_NEXT', id: o.id, by: me.name, ts: now })}>${o.stage === 'Live' ? 'Hand over to ' + am : ONB_NEXT_LABEL[o.stage]}<//>`}
         </div>`; })}<//>
-    <${Card}><${CardHead} title="Technical tickets" sub="First response within 20 mins. Resolution: L1 2 hrs, L2 3 hrs, L3 48 hrs with updates" />
-      ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} defaultOpen=${focus === k.id} />`)}<//>
+    <${Card}><${CardHead} title="Technical tickets" sub="First response within 20 mins. Resolution: L1 2 hrs, L2 3 hrs, L3 48 hrs with updates" right=${role !== 'TSI' && role !== 'HEAD' && html`<div className="flex gap-1">${[['all', 'All'], ['mine', 'Raised by me']].map(([v, l]) => html`<button key=${v} onClick=${() => setTf(v)} className=${cx('px-2.5 py-1 rounded-full text-xs border', tf === v ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${l}</button>`)}</div>`} />
+      ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.filter(k => tf === 'all' || k.raisedBy === me.name).map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} defaultOpen=${focus === k.id} />`)}<//>
     <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Who raises what: </span>AMs raise technical problems customers report. VS raises system problems (field agent app, portal, API). Customer issues such as an unreachable address stay as VS to AM escalations. <span className="font-medium text-ink">Path: </span>AM or VS, then TSI (first line), then QA, then Product. QA and Product work outside this workspace; TSI owns the update to the customer and the AM.<//>
   </div>`;
 }
@@ -2066,7 +2281,7 @@ function TsiPage({ st, dispatch, role, route, go }) {
 
 /* ============================ NOTIFICATIONS: every pending action in one place ============================ */
 const N_LEVELS = { Critical: 'bad', High: 'warn', Normal: 'info', Info: 'mute' };
-const N_TYPES = { 'Customer messages': 'mail', Escalations: 'flag', 'Technical tickets': 'bolt', Handovers: 'users', Onboarding: 'users', 'Customer health': 'trend', Upsell: 'spark', Invoices: 'file', Reports: 'note' };
+const N_TYPES = { 'Customer messages': 'mail', Escalations: 'flag', 'Technical tickets': 'bolt', Handovers: 'users', Onboarding: 'users', Updates: 'chat', 'Usage logs': 'download', 'Customer health': 'trend', Upsell: 'spark', Invoices: 'file', Reports: 'note' };
 function buildNotifs(st, role, now) {
   const me = ROLES[role], out = [], accts = scopeAccounts(role), ids = new Set(accts.map(a => a.id)), lv = p => p >= 1 ? 'Critical' : p >= .8 ? 'High' : 'Normal';
   const add = (id, type, level, title, detail, ts, go, action) => out.push({ id, type, level, title, detail, ts, go, action });
@@ -2087,6 +2302,9 @@ function buildNotifs(st, role, now) {
     const side = (role === 'AM' && k.accountId && ids.has(k.accountId)) || (role === 'VS' && k.raisedBy === me.name);
     if (side && (k.status === 'Pushed to QA' || (k.resolvedAt && now - k.resolvedAt < 2 * D))) add('tkt:' + k.id + ':' + k.status, 'Technical tickets', 'Info', k.id + ' · ' + tktName(k) + ': ' + k.status.toLowerCase(), k.issue, k.resolvedAt || k.qaAt, { page: 'tsi', focus: k.id }, 'View ticket');
   });
+  st.escalations.forEach(c => { const u = escUpdate(c); if (u && u.by !== me.name && escWatchers(c).includes(me.name) && now - u.ts <= 3 * D) add(updId(c.id, u), 'Updates', 'Normal', 'Update from ' + whoLabel(u.by) + ' on ' + c.id + ' · ' + ACC[c.accountId].name, u.text.length > 110 ? u.text.slice(0, 107) + '...' : u.text, u.ts, { page: 'escalations', focus: c.id }, 'View update'); });
+  st.tickets.forEach(k => { const u = tktUpdate(k); if (u && u.by !== me.name && tktWatchers(k).includes(me.name) && now - u.ts <= 3 * D) add(updId(k.id, u), 'Updates', 'Normal', 'Update from ' + whoLabel(u.by) + ' on ' + k.id + ' · ' + tktName(k), u.text.length > 110 ? u.text.slice(0, 107) + '...' : u.text, u.ts, { page: 'tsi', focus: k.id }, 'View update'); });
+  if (role === 'AM' || role === 'TSI') Object.entries(st.schedules).forEach(([aid, x]) => { const a = ACC[aid]; const h = x.history && x.history[0]; if (!h || now - h.ts > D) return; const mine = role === 'AM' ? ids.has(aid) : !!a.obId && !ACTIVE.handed.has(aid); if (mine) add('ulog:' + aid + ':' + h.ts, 'Usage logs', 'Info', x.freq + ' usage log sent to ' + a.name, h.covers + ' · ' + num(h.records) + ' requests · sent automatically to ' + (a.contacts.find(q => q.id === x.contactId) || a.contacts[0]).name, h.ts, { page: 'account', id: aid, tab: 'Invoices' }, 'View account'); });
   st.onboarding.forEach(o => {
     if ((role === 'TSI' || role === 'HEAD') && o.stage === 'Assigned') { const p = (now - o.assignedAt) / H / ONB_RESP_H; if (role === 'TSI' || p >= .8) add('onb:new:' + o.id, 'Onboarding', p >= 1 ? 'Critical' : 'High', o.name + ' assigned from Sales', 'Contact within 30 mins · ' + dur(now - o.assignedAt) + ' so far', o.assignedAt, { page: 'tsi' }, 'Open pipeline'); }
     if ((role === 'TSI' || role === 'HEAD') && !o.liveAt && o.stage !== 'Assigned') { const p = (now - o.assignedAt) / D / ONB_DAYS; if (p >= .8) add('onb:late:' + o.id, 'Onboarding', p >= 1 ? 'Critical' : 'High', o.name + ' is near the 5-day go-live standard', o.stage + ' · ' + dur(now - o.assignedAt) + ' since assignment', o.assignedAt, { page: 'tsi' }, 'Open pipeline'); }
@@ -2153,7 +2371,7 @@ function App() {
   else { const S = SCREENS[route.page] || Home; screen = html`<${S} st=${st} dispatch=${dispatch} go=${go} role=${role} route=${route} />`; }
   const active = route.page === 'account' ? 'accounts' : route.page;
 
-  return html`<${NowCtx.Provider} value=${now}>
+  return html`<${NowCtx.Provider} value=${now}><${StCtx.Provider} value=${{ st, dispatch }}>
     <div className="min-h-screen flex">
       <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-line bg-surface sticky top-0 h-screen">
         <div className="px-4 py-4 border-b border-line"><div className="font-semibold text-sm leading-tight flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style=${{ background: 'var(--fern)' }}></span>VerifyMe</div><div className="text-xs text-mute">Account Management Workspace</div></div>
@@ -2175,7 +2393,7 @@ function App() {
       ${guide && html`<${GuidedDemo} st=${st} dispatch=${dispatch} go=${go} setRole=${setRole} now=${now} onClose=${() => setGuide(false)} />`}
       ${st.toast && html`<div key=${st.toast.id} className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] max-w-[90vw] rounded-lg bg-ink text-bg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2" role="status"><${Icon} n="check" s=${15} />${st.toast.text}</div>`}
     </div>
-  <//>`;
+  <//><//>`;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
 </script>
