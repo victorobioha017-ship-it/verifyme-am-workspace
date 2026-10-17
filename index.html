@@ -22,30 +22,42 @@ tailwind.config = {
 };
 </script>
 <style>
+  /* VerifyMe brand: Tiber #0A243B (primary), Fern #6BC177 (positive, accent), Porsche #E9AF5F (attention).
+     Text shades of Fern and Porsche are darkened so words stay readable (4.5:1) on light backgrounds. */
   :root {
-    --bg:#f4f5f7; --surface:#ffffff; --surface2:#eceef2; --ink:#15202b; --mute:#5d6b7a; --line:#dde1e7;
-    --brand:#0b6b61; --brandsoft:#dcf0ec; --onbrand:#ffffff;
-    --ok:#157a46; --oksoft:#dff3e7; --warn:#9a5b00; --warnsoft:#fdeccb; --bad:#b3261e; --badsoft:#fbe0dd;
-    --auto:#5b3fd0; --autosoft:#e9e4fb;
+    --bg:#f3f6f9; --surface:#ffffff; --surface2:#e9eef3; --ink:#0a243b; --mute:#52667a; --line:#dbe3ea;
+    --brand:#0a243b; --brandsoft:#e3ebf3; --onbrand:#ffffff;
+    --ok:#2f7d3d; --oksoft:#e2f3e6; --warn:#94590f; --warnsoft:#fbeed9; --bad:#b3261e; --badsoft:#fbe0dd;
+    --auto:#2b5c8a; --autosoft:#e2ecf6;
+    --fern:#6bc177; --porsche:#e9af5f; --tiber:#0a243b;
     box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg:#0f151c; --surface:#17202a; --surface2:#212c38; --ink:#e8edf2; --mute:#98a6b5; --line:#2b3745;
-      --brand:#4fd1c0; --brandsoft:#143a37; --onbrand:#06201d;
-      --ok:#5fd394; --oksoft:#14301f; --warn:#f2b64d; --warnsoft:#3a2a0c; --bad:#ff8a80; --badsoft:#3d1815;
-      --auto:#b3a1ff; --autosoft:#2a2250;
+      --bg:#071a2b; --surface:#0d2a43; --surface2:#143452; --ink:#e8eef4; --mute:#9fb3c8; --line:#21425f;
+      --brand:#6bc177; --brandsoft:#173b2c; --onbrand:#0a243b;
+      --ok:#7fd08a; --oksoft:#153823; --warn:#f0bb73; --warnsoft:#3b2a10; --bad:#ff8a80; --badsoft:#3d1815;
+      --auto:#8db8e8; --autosoft:#16304a;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg:#0f151c; --surface:#17202a; --surface2:#212c38; --ink:#e8edf2; --mute:#98a6b5; --line:#2b3745;
-    --brand:#4fd1c0; --brandsoft:#143a37; --onbrand:#06201d;
-    --ok:#5fd394; --oksoft:#14301f; --warn:#f2b64d; --warnsoft:#3a2a0c; --bad:#ff8a80; --badsoft:#3d1815;
-    --auto:#b3a1ff; --autosoft:#2a2250;
+    --bg:#071a2b; --surface:#0d2a43; --surface2:#143452; --ink:#e8eef4; --mute:#9fb3c8; --line:#21425f;
+    --brand:#6bc177; --brandsoft:#173b2c; --onbrand:#0a243b;
+    --ok:#7fd08a; --oksoft:#153823; --warn:#f0bb73; --warnsoft:#3b2a10; --bad:#ff8a80; --badsoft:#3d1815;
+    --auto:#8db8e8; --autosoft:#16304a;
     color-scheme: dark;
   }
+  /* Brand sidebar: Tiber background, Fern for the active item */
+  aside { background: var(--tiber) !important; color: #e8eef4; border-color: rgba(255,255,255,.08) !important; }
+  aside .text-mute { color: #9fb3c8 !important; }
+  aside .border-line { border-color: rgba(255,255,255,.12) !important; }
+  aside button:hover { background: rgba(255,255,255,.08) !important; }
+  aside .bg-brandsoft { background: var(--fern) !important; color: var(--tiber) !important; }
+  aside button.bg-brandsoft:hover { background: var(--fern) !important; }
+  aside .bg-surface2 { background: rgba(255,255,255,.1) !important; }
+  header { border-top: 3px solid var(--fern); }
   html { scroll-padding-top: env(safe-area-inset-top, 0px); }
   html, body { background: var(--bg); color: var(--ink); }
   body { font-family: "IBM Plex Sans", system-ui, sans-serif; font-feature-settings: "tnum"; margin: 0; }
@@ -76,6 +88,7 @@ const LOADED_AT = Date.now();
 const p1 = v => Math.round(v * 10) / 10;
 // Change as plain words with an arrow: ↓ 26.4% down, ↑ 2.4% up, No change
 const chg = n => n == null || !isFinite(n) ? 'n/a' : p1(n * 100) === 0 ? 'No change' : n < 0 ? '↓ ' + p1(-n * 100) + '% down' : '↑ ' + p1(n * 100) + '% up'; // percentages: one decimal place only when needed (48.8%, 50%)
+const fillVar = t => t === 'ok' ? 'var(--fern)' : t === 'warn' ? 'var(--porsche)' : 'var(--' + t + ')'; // brand colours for bars and fills
 const cx = (...a) => a.filter(Boolean).join(' ');
 const num = n => Math.round(n).toLocaleString('en-US');
 const ngn = n => 'NGN ' + num(n);
@@ -124,7 +137,7 @@ const SUPPRESSION_RULES = [{ id: 'incident', label: 'Open provider incident or d
 const NAV = [
   { id: 'home',          label: 'Home',              icon: 'home',     stage: 1 },
   { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
-  { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
+  { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
   { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
   { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
   { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'FIN', 'HEAD'], blurb: 'Raise a request, validate against contract rules, auto-approve standard requests, route exceptions to Finance, generate the pack and share it, with request-to-delivery time.' },
@@ -297,7 +310,11 @@ const ONB_SEED = [
   { id: 'ob4', name: 'Crest Savings', segment: 'Key', industry: 'Savings and loans', services: ['NIN', 'BVN', 'CAC'], assignedAt: DEMO_NOW - 12 * D, respondedAt: DEMO_NOW - 12 * D + 18 * 60e3, liveAt: DEMO_NOW - 8 * D, handedAt: DEMO_NOW - 8 * D + 3 * H, handedTo: 'Amaka Eze', stage: 'Handed to AM' },
 ];
 const TSI_FR_H = 20 / 60, TSI_RES_H = { L1: 2, L2: 3, L3: 48 }, ONB_RESP_H = 0.5, ONB_DAYS = 5; // TSI standards: first response 15 to 20 mins; resolution L1 1 to 2 hrs, L2 2 to 3 hrs, L3 24 to 48 hrs; new assignment response 30 mins, onboard in 2 to 5 days
+const tktWho = k => k.accountId ? ACC[k.accountId].am : k.raisedBy;
+const tktName = k => k.accountId ? ACC[k.accountId].name : 'Internal (VS tools)';
+const TKT_LEVELS = [['L1', 'Question or set-up help'], ['L2', 'Service slow or partly failing'], ['L3', 'Outage or bug, needs QA']];
 const TICKETS_SEED = [
+  { id: 'TKT-312', accountId: null, level: 'L2', issue: 'Field agent app not syncing completed address checks', raisedBy: 'Tunde Bello', source: 'VS', openedAt: DEMO_NOW - 25 * 60e3, ackAt: DEMO_NOW - 13 * 60e3, status: 'In progress' },
   { id: 'TKT-314', accountId: 'quickloan', level: 'L1', issue: 'Question on rotating API keys', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 7 * 60e3, status: 'Open' },
   { id: 'TKT-311', accountId: 'lumen', level: 'L2', issue: 'Liveness responses slower since last week', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 50 * 60e3, ackAt: DEMO_NOW - 38 * 60e3, status: 'In progress' },
   { id: 'TKT-309', accountId: 'orchid', level: 'L3', issue: 'NIN requests still failing after partial recovery (INC-2291)', raisedBy: 'Amaka Eze', openedAt: DEMO_NOW - 30 * H, ackAt: DEMO_NOW - 30 * H + 16 * 60e3, qaAt: DEMO_NOW - 26 * H, status: 'Pushed to QA' },
@@ -453,11 +470,17 @@ function reducer(s, a) {
         : next === 'Handed to AM' ? o.name + ' handed over to ' + am + ' (' + o.segment + ') with the onboarding history attached.' : o.name + ' moved to ' + next + '.';
       return { ...s, seq, onboarding: s.onboarding.map(x => x.id === a.id ? { ...x, ...patch } : x), log: [{ id: 'ob' + seq, ts: t, actor: a.by, auto: false, text: txt }, ...s.log], toast: { id: seq, text: txt } };
     }
+    case 'TKT_NEW': {
+      const seq = s.seq + 1, n = Math.max(...s.tickets.map(k => +k.id.slice(4))) + 1, id = 'TKT-' + n;
+      const k = { id, accountId: a.accountId || null, level: a.level, issue: a.issue, raisedBy: a.by, source: a.source, openedAt: a.ts, status: 'Open' };
+      const txt = id + ' raised to TSI by ' + a.by + ' (' + a.level + ', ' + tktName(k) + '). First response clock: 20 mins.';
+      return { ...s, seq, tickets: [k, ...s.tickets], log: [{ id: 'tn' + seq, ts: a.ts, actor: a.by, auto: false, accountId: k.accountId || undefined, text: txt }, ...s.log], toast: { id: seq, text: txt } };
+    }
     case 'TKT_ACT': {
       const k = s.tickets.find(x => x.id === a.id); const seq = s.seq + 1, t = a.ts; let patch = {}, txt = '';
       if (a.act === 'ack') { patch = { ackAt: t, status: 'In progress' }; txt = k.id + ' acknowledged in ' + dur(t - k.openedAt) + ' (standard 20 mins).'; }
-      if (a.act === 'resolve') { patch = { resolvedAt: t, status: 'Resolved', ackAt: k.ackAt || t }; txt = k.id + ' resolved in ' + dur(t - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + '). ' + ACC[k.accountId].am + ' told.'; }
-      if (a.act === 'qa') { patch = { qaAt: t, status: 'Pushed to QA', ackAt: k.ackAt || t }; txt = k.id + ' pushed to QA. TSI keeps the customer and ' + ACC[k.accountId].am + ' updated.'; }
+      if (a.act === 'resolve') { patch = { resolvedAt: t, status: 'Resolved', ackAt: k.ackAt || t }; txt = k.id + ' resolved in ' + dur(t - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + '). ' + tktWho(k) + ' told.'; }
+      if (a.act === 'qa') { patch = { qaAt: t, status: 'Pushed to QA', ackAt: k.ackAt || t }; txt = k.id + ' pushed to QA. TSI keeps ' + (k.accountId ? 'the customer and ' : '') + tktWho(k) + ' updated.'; }
       return { ...s, seq, tickets: s.tickets.map(x => x.id === a.id ? { ...x, ...patch } : x), log: [{ id: 'tk' + seq, ts: t, actor: a.by, auto: false, accountId: k.accountId, text: txt }, ...s.log], toast: { id: seq, text: txt } };
     }
     case 'TOGGLE_TASK': return { ...s, tasks: s.tasks.map(t => t.id === a.id ? { ...t, done: !t.done } : t) };
@@ -689,11 +712,11 @@ const HealthPill = ({ h }) => html`<${Pill} tone=${HEALTH[h].tone}><span classNa
 
 function SlaClock({ c, now, compact }) {
   const el = ((c.resolvedAt || now) - c.openedAt) / H, p = el / c.slaHours, st = slaState(p), rem = c.slaHours - el;
-  const tone = st === 'breached' ? 'bad' : st === 'near' ? 'warn' : 'ok';
+  const tone = st === 'breached' ? 'bad' : st === 'near' && !c.resolvedAt ? 'warn' : 'ok';
   const remTxt = c.resolvedAt ? 'Clock stopped' : rem > 0 ? fmtDur(rem * H) + ' left' : fmtDur(-rem * H) + ' over the standard';
   return html`<div className="min-w-[190px]">
     <div className="flex items-center justify-between gap-2 text-xs mb-1"><span className="font-medium tabular-nums">${fmtDur(el * H)} of ${hLabel(c.slaHours)}</span><${Pill} tone=${tone}>${c.resolvedAt ? (st === 'breached' ? 'Outside standard' : 'Within standard') : st === 'breached' ? 'Missed' : st === 'near' ? 'Near breach' : 'On track'}<//></div>
-    <div className="relative h-2 rounded-full bg-surface2 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, p * 100) + '%', background: 'var(--' + tone + ')' }}></div>
+    <div className="relative h-2 rounded-full bg-surface2 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, p * 100) + '%', background: fillVar(tone) }}></div>
       <div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '50%' }}></div><div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '80%' }}></div></div>
     ${!compact && html`<div className="text-[11px] text-mute mt-1 tabular-nums">${remTxt}</div>`}
   </div>`;
@@ -752,7 +775,7 @@ function Home({ st, dispatch, go, role }) {
 
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       <${Tile} label="Portfolio health" value=${accts.length + ' accounts'}>
-        <div className="flex h-2 rounded-full overflow-hidden bg-surface2 mt-1">${['green', 'amber', 'red'].map(k => hc[k] ? html`<div key=${k} style=${{ width: hc[k] / accts.length * 100 + '%', background: 'var(--' + HEALTH[k].tone + ')' }}></div>` : null)}</div>
+        <div className="flex h-2 rounded-full overflow-hidden bg-surface2 mt-1">${['green', 'amber', 'red'].map(k => hc[k] ? html`<div key=${k} style=${{ width: hc[k] / accts.length * 100 + '%', background: fillVar(HEALTH[k].tone) }}></div>` : null)}</div>
         <div className="flex gap-3 text-xs mt-1"><span className="text-ok">${hc.green} healthy</span><span className="text-warn">${hc.amber} at risk</span><span className="text-bad">${hc.red} critical</span></div>
       <//>
       <${Tile} label="Open signals" value=${signals.length} sub=${signals.filter(s => s.suppressed).length + ' suppressed · target: action within 1 working day'} />
@@ -858,7 +881,7 @@ function Account360({ st, dispatch, go, role, route }) {
         <div className="min-w-[260px] w-full sm:w-80">
           <div className="flex items-baseline justify-between text-sm"><span className="text-mute">Agreed vs actual, last 30 days</span><span className=${cx('text-xs font-medium', mom < -20 ? 'text-bad' : 'text-mute')}>${chg(a.stats.mom)} vs prior 30 days</span></div>
           <div className="mt-1 text-lg font-semibold tabular-nums">${num(a.stats.last30)} <span className="text-sm font-normal text-mute">of ${num(a.agreed)} agreed (${pct}%)</span></div>
-          <div className="h-2 rounded-full bg-surface2 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: pct >= 85 ? 'var(--ok)' : pct >= 55 ? 'var(--warn)' : 'var(--bad)' }}></div></div>
+          <div className="h-2 rounded-full bg-surface2 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: pct >= 85 ? 'var(--fern)' : pct >= 55 ? 'var(--porsche)' : 'var(--bad)' }}></div></div>
         </div>
       </div>
       ${sig && html`<div className=${cx('mt-3.5 rounded-md px-3 py-2 text-sm flex flex-wrap items-center gap-2', sig.suppressed ? 'bg-surface2' : sig.kind === 'Dropped' ? 'bg-badsoft' : 'bg-warnsoft')}><${Icon} n=${sig.suppressed ? 'lock' : 'alert'} s=${15} /><span className="font-medium">${sig.suppressed ? 'Signal suppressed' : 'Signal: ' + sig.kind}.</span><span>${sig.detail}</span>${sig.suppressed && html`<span>Cause: ${sig.incident.id}, ${sig.incident.title}. No customer email is sent.</span>`}</div>`}
@@ -1585,7 +1608,7 @@ function TodoCard({ st, go, role }) {
 
 /* ----- manager dashboard ----- */
 const BASE = { vs: { n: 26, fr: 0.9, res: 3.6 }, am: { n: 9, fr: 0.6, res: 0.6 }, fin: { n: 31, fr: 0.5, res: 1.4 }, tsi: { n: 44, fr: 0.4, res: 3.2 }, onb: { resp: 81, live5: 70 }, breaches: 17, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
-function Bar({ pct, tone = 'brand', h = 'h-2' }) { return html`<div className=${cx('rounded-full bg-surface2 overflow-hidden', h)}><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: 'var(--' + tone + ')' }}></div></div>`; }
+function Bar({ pct, tone = 'brand', h = 'h-2' }) { return html`<div className=${cx('rounded-full bg-surface2 overflow-hidden', h)}><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: fillVar(tone) }}></div></div>`; }
 function DashboardPage({ st }) {
   const now = useNow(); const esc = st.escalations; const sigs = computeSignals(ACCOUNTS, st.incidents);
   const vsC = esc.filter(c => c.direction === 'AM_TO_VS'), amC = esc.filter(c => c.direction === 'VS_TO_AM');
@@ -1659,7 +1682,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-line"><div className="text-sm font-semibold">Guided demo: the Brightpay story</div><button onClick=${onClose} className="text-xs text-mute hover:text-ink" aria-label="Close guided demo">Close</button></div>
     <div className="p-4 space-y-3"><div className="flex items-center gap-2 text-xs text-mute">Step ${i + 1} of ${STEPS.length}<${Pill} tone=${tone}>${s.who === 'Auto' ? 'System does this' : s.who === 'Human' ? 'A person does this' : s.who}<//>${done[i] && html`<${Pill} tone="ok">Done<//>`}</div>
       <div><div className="font-semibold text-sm">${s.title}</div><p className="text-sm text-mute mt-1">${s.text}</p></div>
-      <div className="flex gap-1">${STEPS.map((_, k) => html`<span key=${k} className="h-1.5 flex-1 rounded-full" style=${{ background: k === i ? 'var(--brand)' : done[k] ? 'var(--ok)' : 'var(--surface2)' }}></span>`)}</div>
+      <div className="flex gap-1">${STEPS.map((_, k) => html`<span key=${k} className="h-1.5 flex-1 rounded-full" style=${{ background: k === i ? 'var(--brand)' : done[k] ? 'var(--fern)' : 'var(--surface2)' }}></span>`)}</div>
       <div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${run}>${i === 0 ? 'Reset and start' : 'Run this step'}<//><${Btn} disabled=${i === 0} onClick=${() => setI(i - 1)}>Back<//><${Btn} disabled=${i === STEPS.length - 1} onClick=${() => setI(i + 1)}>Next<//></div></div>
   </div>`;
 }
@@ -1900,17 +1923,32 @@ function ReportsPage({ st, dispatch, role, route, go }) {
 
 
 /* ============================ TSI: ONBOARDING AND TECHNICAL SUPPORT ============================ */
+function NewTicketForm({ role, dispatch, now, onDone }) {
+  const me = ROLES[role]; const accts = scopeAccounts(role); const vs = role === 'VS';
+  const [aid, setAid] = useState(vs ? '' : accts[0].id); const [lvl, setLvl] = useState('L1'); const [txt, setTxt] = useState('');
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<${Card}><${CardHead} title="Raise a technical ticket to TSI" sub=${vs ? 'For system problems: the field agent app, portal or API errors, results not coming through. Customer issues (address, landmark, guarantor) go to the AM as an escalation.' : 'For technical problems a customer reports: errors, slow responses, integration or set-up questions.'} /><div className="p-4 space-y-2.5">
+    <div className="grid sm:grid-cols-2 gap-2.5">
+      <select className=${inp} value=${aid} onChange=${e => setAid(e.target.value)} aria-label="Customer">${vs && html`<option value="">Internal (VS tools, no customer)</option>`}${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select className=${inp} value=${lvl} onChange=${e => setLvl(e.target.value)} aria-label="Level">${TKT_LEVELS.map(([l, d]) => html`<option key=${l} value=${l}>${l}: ${d}</option>`)}</select></div>
+    <textarea className=${inp} rows="3" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder="What is happening, since when, and any error message or reference" aria-label="Issue"></textarea>
+    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />TSI must respond within 20 mins and resolve within ${hLabel(TSI_RES_H[lvl])} (${lvl}). You see every update here.</p>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!txt.trim()} onClick=${() => { dispatch({ type: 'TKT_NEW', accountId: aid, level: lvl, issue: txt.trim(), by: me.name, source: role, ts: now }); onDone(); }}>Raise ticket<//><${Btn} onClick=${onDone}>Cancel<//></div>
+  </div><//>`;
+}
 const ONB_NEXT_LABEL = { Assigned: 'Contact customer', Contacted: 'Mark demo done', 'Demo done': 'Start integration', 'Integration and testing': 'Mark live', Live: 'Hand over to AM' };
 function TsiPage({ st, dispatch, role }) {
-  const now = useNow(); const me = ROLES[role]; const can = role === 'TSI';
+  const now = useNow(); const me = ROLES[role]; const can = role === 'TSI'; const [showNew, setShowNew] = useState(false);
   const ids = new Set(scopeAccounts(role).map(a => a.id));
-  const tickets = st.tickets.filter(k => ids.has(k.accountId)).sort((x, y) => (x.status === 'Resolved') - (y.status === 'Resolved') || y.openedAt - x.openedAt);
+  const tickets = st.tickets.filter(k => k.accountId ? ids.has(k.accountId) : role !== 'AM').sort((x, y) => (x.status === 'Resolved') - (y.status === 'Resolved') || y.openedAt - x.openedAt);
   const onb = st.onboarding;
   const fresh = onb.filter(o => o.stage === 'Assigned').length, inOnb = onb.filter(o => !['Assigned', 'Live', 'Handed to AM'].includes(o.stage)).length;
   const openT = tickets.filter(k => k.status !== 'Resolved'), qa = tickets.filter(k => k.status === 'Pushed to QA');
   const stTone = { Open: 'warn', 'In progress': 'info', 'Pushed to QA': 'auto', Resolved: 'ok' };
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Onboarding and technical support</h1><p className="text-sm text-mute">TSI receives new customers from Sales on the CRM, demos and onboards them, then hands them to the Key or Scale AM. TSI is also the first point for technical issues and pushes what it cannot settle to QA.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Onboarding and technical support</h1><p className="text-sm text-mute max-w-3xl">TSI receives new customers from Sales on the CRM, demos and onboards them, then hands them to the Key or Scale AM. TSI is also the first point for technical issues and pushes what it cannot settle to QA.</p></div>
+      ${(role === 'AM' || role === 'VS' || role === 'TSI') && html`<${Btn} kind="primary" onClick=${() => setShowNew(!showNew)}><${Icon} n="plus" s=${12} />Raise technical ticket<//>`}</div>
+    ${showNew && html`<${NewTicketForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShowNew(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="New from Sales, not yet contacted" value=${fresh} tone=${fresh ? 'warn' : undefined} sub="Standard: contact within 30 mins" /><${Tile} label="In onboarding" value=${inOnb} sub="Standard: live within 5 days" /><${Tile} label="Open technical tickets" value=${openT.length} sub="First response within 20 mins" /><${Tile} label="Pushed to QA" value=${qa.length} sub="TSI keeps customer and AM updated" /></div>
     <${Card}><${CardHead} title="Onboarding pipeline" sub="From CRM assignment to AM handover" />
       ${onb.map(o => { const i = ONB_STAGES.indexOf(o.stage), done = o.stage === 'Handed to AM'; const am = o.segment === 'Key' ? 'Amaka Eze' : 'Segun Bakare';
@@ -1923,16 +1961,16 @@ function TsiPage({ st, dispatch, role }) {
           ${can && !done && html`<${Btn} kind=${o.stage === 'Live' ? 'primary' : 'default'} onClick=${() => dispatch({ type: 'ONB_NEXT', id: o.id, by: me.name, ts: now })}>${o.stage === 'Live' ? 'Hand over to ' + am : ONB_NEXT_LABEL[o.stage]}<//>`}
         </div>`; })}<//>
     <${Card}><${CardHead} title="Technical tickets" sub="First response within 20 mins. Resolution: L1 2 hrs, L2 3 hrs, L3 48 hrs with updates" />
-      ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.map(k => { const a = ACC[k.accountId], openNow = k.status !== 'Resolved';
+      ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.map(k => { const openNow = k.status !== 'Resolved';
         const clk = !k.ackAt && openNow ? { openedAt: k.openedAt, slaHours: TSI_FR_H, resolvedAt: null } : { openedAt: k.openedAt, slaHours: TSI_RES_H[k.level], resolvedAt: k.resolvedAt || null };
         return html`<div key=${k.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-line last:border-0">
-          <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${k.id}</span><${Pill} tone="mute">${k.level}<//><${Pill} tone=${stTone[k.status]}>${k.status}<//><span className="text-mute">${a.name}</span></div>
+          <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${k.id}</span><${Pill} tone="mute">${k.level}<//><${Pill} tone=${stTone[k.status]}>${k.status}<//><span className="text-mute">${tktName(k)}</span>${k.source === 'VS' && html`<${Pill} tone="mute">From VS<//>`}</div>
             <div className="text-xs text-mute mt-0.5">${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div>
-            ${k.status === 'Pushed to QA' && html`<div className="text-xs mt-1">With QA since ${relAgo(k.qaAt, now)}. TSI keeps the customer and ${a.am} updated.</div>`}</div>
+            ${k.status === 'Pushed to QA' && html`<div className="text-xs mt-1">With QA since ${relAgo(k.qaAt, now)}. TSI keeps ${k.accountId ? 'the customer and ' : ''}${tktWho(k)} updated.</div>`}</div>
           <div className="text-[11px] text-mute w-full sm:w-auto">${!k.ackAt && openNow ? 'First response' : 'Resolution'}<${SlaClock} c=${clk} now=${now} /></div>
           ${can && openNow && html`<div className="flex flex-wrap gap-2">${!k.ackAt && html`<${Btn} onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'ack', by: me.name, ts: now })}>Acknowledge<//>`}${k.status !== 'Pushed to QA' && k.ackAt && html`<${Btn} onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'qa', by: me.name, ts: now })}>Push to QA<//>`}<${Btn} kind="primary" onClick=${() => dispatch({ type: 'TKT_ACT', id: k.id, act: 'resolve', by: me.name, ts: now })}>Mark resolved<//></div>`}
         </div>`; })}<//>
-    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Escalation path: </span>Customer or AM, then TSI (first line), then QA, then Product. QA and Product work outside this workspace; TSI owns the update to the customer and the AM.<//>
+    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Who raises what: </span>AMs raise technical problems customers report. VS raises system problems (field agent app, portal, API). Customer issues such as an unreachable address stay as VS to AM escalations. <span className="font-medium text-ink">Path: </span>AM or VS, then TSI (first line), then QA, then Product. QA and Product work outside this workspace; TSI owns the update to the customer and the AM.<//>
   </div>`;
 }
 
@@ -1967,7 +2005,7 @@ function App() {
   return html`<${NowCtx.Provider} value=${now}>
     <div className="min-h-screen flex">
       <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-line bg-surface sticky top-0 h-screen">
-        <div className="px-4 py-4 border-b border-line"><div className="font-semibold text-sm leading-tight">VerifyMe</div><div className="text-xs text-mute">Account Management Workspace</div></div>
+        <div className="px-4 py-4 border-b border-line"><div className="font-semibold text-sm leading-tight flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style=${{ background: 'var(--fern)' }}></span>VerifyMe</div><div className="text-xs text-mute">Account Management Workspace</div></div>
         <nav className="p-2 space-y-0.5 flex-1">${nav.map(n => { const locked = n.stage > STAGE_DONE; return html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-left', active === n.id ? 'bg-brandsoft text-brand font-medium' : locked ? 'text-mute hover:bg-surface2' : 'hover:bg-surface2')}><${Icon} n=${n.icon} s=${16} /><span className="flex-1">${n.label}</span>${locked && html`<span className="text-[10px] rounded bg-surface2 text-mute px-1.5 py-0.5">Stage ${n.stage}</span>`}</button>`; })}</nav>
         <div className="p-3 text-[11px] text-mute border-t border-line">Concept prototype. All data and actions are mock. Currency in NGN.</div>
       </aside>
