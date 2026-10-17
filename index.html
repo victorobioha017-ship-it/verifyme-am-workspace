@@ -248,7 +248,7 @@ const TL_RAW = {
     [38, 'email', 'in', 'no2', 'Invoice query', 'The August invoice shows a minimum charge. Can you explain how it is calculated?'],
     [37, 'email', 'out', 'no2', 'Re: Invoice query', 'The minimum applies on the agreed plan. We will send the usage logs tomorrow.'],
     [21, 'slack', 'in', 'no1', '#northgate-shared', 'We paused hiring until the new depot opens in November. Volume will stay low until then.'],
-    [1, 'email', 'in', 'no1', 'Address check for driver', 'VS says the address could not be found. We will send a landmark and a phone number for the guarantor today.'],
+    [1, 'email', 'in', 'no1', 'Address check for driver', 'One of our driver applicants in Ojota gave a short address. We can share a landmark and the guarantor phone number if VS needs them.'],
   ],
   quickloan: [
     [62, 'meeting', 'note', 'ql1', 'Onboarding call', 'Live with NIN, BVN, Liveness and physical address checks. Amaka will review turnaround with VS after the first month.'],
@@ -257,7 +257,7 @@ const TL_RAW = {
     [30, 'slack', 'in', 'ql2', '#quickloan-shared', 'Thanks, the last batch was better.'],
     [18, 'email', 'out', 'ql1', 'September invoice and usage logs', 'Hi Tobi, invoice and logs attached for your records.'],
     [2.5, 'email', 'in', 'ql2', '14 addresses pending', 'We submitted 14 address checks on Tuesday evening and have no update. Our loan officers are asking and this is the second delay. We are frustrated.'],
-    [2.4, 'email', 'out', 'ql2', 'Re: 14 addresses pending', 'I have raised this with VS as ESC-1042. I will update you today and again tomorrow morning.'],
+    [2.4, 'email', 'out', 'ql2', 'Re: 14 addresses pending', 'I am following up with VS on the batch and will update you today and again tomorrow morning.'],
     [0.6, 'slack', 'in', 'ql2', '#quickloan-shared', 'Any news? Customers are calling us.'],
   ],
   paynest: [
@@ -272,18 +272,18 @@ const TL_RAW = {
 
 // Open escalation cases (one model for both directions; Stage 2 adds actions)
 const ESCALATIONS_SEED = [
-  { id: 'ESC-1042', accountId: 'quickloan', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Batch of 14 address checks in Ikeja pending beyond 48 hours', raisedBy: 'Amaka Eze', owner: 'VS Team', openedAt: DEMO_NOW - 61 * H, slaHours: 72, status: 'In investigation',
-    thread: [{ by: 'Amaka Eze', ts: DEMO_NOW - 61 * H, text: 'Raising 14 address checks submitted Tuesday evening. Customer is asking for an update. Batch ref QL-0913.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 58 * H, text: 'Acknowledged. 9 of 14 completed, 5 awaiting field agent in Ikeja.' }] },
-  { id: 'ESC-1047', accountId: 'northgate', direction: 'VS_TO_AM', type: 'Physical address verification', issue: 'Address unreachable: landmark not found for driver applicant', raisedBy: 'Tunde Bello', owner: 'Amaka Eze', openedAt: DEMO_NOW - 20 * H, slaHours: 72, status: 'Awaiting AM',
-    thread: [{ by: 'Tunde Bello', ts: DEMO_NOW - 20 * H, text: 'Agent could not locate the address in Ojota. Please ask the customer for a nearby landmark and a guarantor phone number.' }] },
-  { id: 'ESC-1039', accountId: 'meridian', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Priority check for a corporate director address', raisedBy: 'Kemi Adeyemi', owner: 'VS Team', openedAt: DEMO_NOW - 14 * H, slaHours: 72, status: 'Acknowledged',
-    thread: [{ by: 'Kemi Adeyemi', ts: DEMO_NOW - 14 * H, text: 'Director address check needed ahead of a compliance filing.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 12 * H, text: 'Acknowledged, agent assigned.' }] },
+  { id: 'ESC-1042', accountId: 'quickloan', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Batch of 14 address checks in Ikeja pending beyond 48 hours', raisedBy: 'Amaka Eze', owner: 'VS Team', openedAt: DEMO_NOW - 84 * 60e3, submittedAt: DEMO_NOW - 61 * H, slaHours: 2, status: 'In investigation',
+    thread: [{ by: 'Amaka Eze', ts: DEMO_NOW - 84 * 60e3, text: 'Escalating 14 address checks submitted Tuesday evening, now 61 hours old against the 72-hour SLA. Customer is asking for an update. Batch ref QL-0913.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 66 * 60e3, text: 'Acknowledged. 9 of 14 completed, 5 awaiting field agent in Ikeja.' }] },
+  { id: 'ESC-1047', accountId: 'northgate', direction: 'VS_TO_AM', type: 'Physical address verification', issue: 'Address unreachable: landmark not found for driver applicant', raisedBy: 'Tunde Bello', owner: 'Amaka Eze', openedAt: DEMO_NOW - 4 * 60e3, slaHours: 0.25, status: 'Awaiting AM',
+    thread: [{ by: 'Tunde Bello', ts: DEMO_NOW - 4 * 60e3, text: 'Agent could not locate the address in Ojota. Please ask the customer for a nearby landmark and a guarantor phone number.' }] },
+  { id: 'ESC-1039', accountId: 'meridian', direction: 'AM_TO_VS', type: 'Physical address verification', issue: 'Priority check for a corporate director address', raisedBy: 'Kemi Adeyemi', owner: 'VS Team', openedAt: DEMO_NOW - 35 * 60e3, submittedAt: DEMO_NOW - 14 * H, slaHours: 2, status: 'Acknowledged',
+    thread: [{ by: 'Kemi Adeyemi', ts: DEMO_NOW - 35 * 60e3, text: 'Director address check needed ahead of a compliance filing.' }, { by: 'Tunde Bello', ts: DEMO_NOW - 22 * 60e3, text: 'Acknowledged, agent assigned.' }] },
 ];
 const INCIDENTS_SEED = [{ id: 'INC-2291', service: 'NIN', title: 'NIN provider gateway downtime', openedAt: DEMO_NOW - 9 * D, status: 'Open', note: 'Provider-side intermittent failures. TSI is tracking.' }];
 const TASKS_SEED = [
   { id: 't1', accountId: 'brightpay', text: 'Call Folake or Emeka about 21 days without requests', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'Signal' },
   { id: 't2', accountId: 'lumen', text: 'Review benchmark pack before sending to Ifeanyi', owner: 'Amaka Eze', dueOff: 0, src: 'Meeting notes' },
-  { id: 't3', accountId: 'quickloan', text: 'Chase VS on ESC-1042 (61 of 72 hours used)', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'SLA reminder' },
+  { id: 't3', accountId: 'quickloan', text: 'Chase VS on ESC-1042 (1h 24m of the 2-hour standard used)', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'SLA reminder' },
   { id: 't4', accountId: 'orchid', text: 'Confirm NIN recovery with TSI (INC-2291)', owner: 'Amaka Eze', dueOff: 0, src: 'Meeting notes' },
   { id: 't5', accountId: 'northgate', text: 'Reply to VS on ESC-1047 with landmark and guarantor phone', owner: 'Amaka Eze', dueOff: 0, auto: true, src: 'Escalation' },
   { id: 't6', accountId: 'savannah', text: 'Draft address verification proposal for Adaora', owner: 'Amaka Eze', dueOff: 2, src: 'Meeting notes' },
@@ -296,10 +296,10 @@ const INVOICE_REQ_SEED = [
 ];
 const LOG_SEED = [
   { id: 'l1', ts: DEMO_NOW - 3 * H, actor: 'System', auto: true, text: 'Daily usage feed processed. 4 signals detected, 1 suppressed (open incident INC-2291).' },
-  { id: 'l2', ts: DEMO_NOW - 3.4 * H, actor: 'System', auto: true, text: 'ESC-1042 reached 80% of SLA. Reminder sent to VS Team.', accountId: 'quickloan' },
+  { id: 'l2', ts: DEMO_NOW - 24 * 60e3, actor: 'System', auto: true, text: 'ESC-1042 reached 50% of its 2-hour standard. Reminder sent to VS Team.', accountId: 'quickloan' },
   { id: 'l3', ts: DEMO_NOW - 0.6 * D, actor: 'System', auto: true, text: 'Slack message from Mariam Sule synced to the QuickLoan timeline, matched by contact.', accountId: 'quickloan' },
-  { id: 'l4', ts: DEMO_NOW - 20 * H, actor: 'Tunde Bello', auto: false, text: 'Raised ESC-1047 to Amaka Eze: unreachable address (Northgate).', accountId: 'northgate' },
-  { id: 'l5', ts: DEMO_NOW - 61 * H, actor: 'Amaka Eze', auto: false, text: 'Raised ESC-1042 to VS Team (QuickLoan, physical address verification).', accountId: 'quickloan' },
+  { id: 'l4', ts: DEMO_NOW - 4 * 60e3, actor: 'Tunde Bello', auto: false, text: 'Raised ESC-1047 to Amaka Eze: unreachable address (Northgate).', accountId: 'northgate' },
+  { id: 'l5', ts: DEMO_NOW - 84 * 60e3, actor: 'Amaka Eze', auto: false, text: 'Escalated ESC-1042 to VS Team (QuickLoan, 14 checks 61 hours into the 72-hour SLA).', accountId: 'quickloan' },
 ];
 
 /* ============================ 3 LOGIC ============================ */
@@ -407,6 +407,7 @@ const initState = () => ({
   oppWork: {},
   log: [...seedStage3().log, ...seedStage2().log, ...LOG_SEED],
   simHours: 0,       // advanced by "Simulate time passing"
+  base: Date.now(),  // real-time clock restarts on Reset demo
   thresholds: JSON.parse(JSON.stringify(THRESHOLDS)),
   suppOn: true,
   reports: {}, visits: [], referrals: [],
@@ -427,17 +428,17 @@ function reducer(s, a) {
       return { ...s, seq, timeline: [{ ...a.item, id: 'tl-new-' + seq }, ...s.timeline], tasks: [...tasks, ...s.tasks], log: [...logs.reverse(), ...s.log], toast: a.toast ? { id: seq, text: a.toast } : s.toast };
     }
     case 'TOAST': return { ...s, toast: a.text ? { id: s.seq + 1, text: a.text } : null, seq: s.seq + 1 };
-    case 'SIM': return { ...s, simHours: s.simHours + a.hours, seq: s.seq + 1, toast: { id: s.seq + 1, text: 'Clock advanced by ' + a.hours + ' hours. Reminders and breach escalation fire automatically.' } };
+    case 'SIM': return { ...s, simHours: s.simHours + a.hours, seq: s.seq + 1, toast: { id: s.seq + 1, text: 'Clock advanced by ' + hLabel(a.hours) + '. Reminders and breach escalation fire automatically.' } };
     case 'CLOCK_TICK': {
       const nowT = a.now, nt = [], nl = []; let any = false;
       const esc = s.escalations.map(c => {
         if (!isOpen(c)) return c;
         const p = slaPct(c, nowT); let n = c;
         const upd = (patch, text, at, logText) => { n = { ...n, ...patch, thread: [...n.thread, { by: 'System', auto: true, ts: at, text }] }; nl.push({ actor: 'System', auto: true, accountId: c.accountId, text: logText }); any = true; };
-        if (p >= .5 && !n.rem50) upd({ rem50: true }, 'Reminder at 50% of the SLA sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .5, c.id + ' reached 50% of its SLA. Reminder sent to ' + n.owner + '.');
-        if (p >= .8 && !n.rem80) upd({ rem80: true }, 'Reminder at 80% of the SLA sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .8, c.id + ' reached 80% of its SLA. Reminder sent to ' + n.owner + '.');
+        if (p >= .5 && !n.rem50) upd({ rem50: true }, 'Reminder at 50% of the ' + hLabel(c.slaHours) + ' standard sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .5, c.id + ' reached 50% of its ' + hLabel(c.slaHours) + ' standard. Reminder sent to ' + n.owner + '.');
+        if (p >= .8 && !n.rem80) upd({ rem80: true }, 'Reminder at 80% of the ' + hLabel(c.slaHours) + ' standard sent to ' + n.owner + '.', c.openedAt + c.slaHours * H * .8, c.id + ' reached 80% of its ' + hLabel(c.slaHours) + ' standard. Reminder sent to ' + n.owner + '.');
         if (p >= 1 && !n.breached) {
-          upd({ breached: true }, 'SLA breached. Auto-escalated to the Director of Verification Services and the Head of AM.', c.openedAt + c.slaHours * H, c.id + ' breached its ' + c.slaHours + 'h SLA. Auto-escalated to the Director of Verification Services and the Head of AM.');
+          { const to = c.direction === 'AM_TO_VS' ? 'the Director of Verification Services and the Head of AM' : 'the Head of AM'; upd({ breached: true }, 'Standard missed. Auto-escalated to ' + to + '.', c.openedAt + c.slaHours * H, c.id + ' missed its ' + hLabel(c.slaHours) + ' standard. Auto-escalated to ' + to + '.'); }
           nt.push({ accountId: c.accountId, text: 'Review breached case ' + c.id + ' (' + ACC[c.accountId].name + ')', owner: 'Chidi Obi', due: sod(nowT), src: 'Breach escalation', auto: true });
         }
         return n;
@@ -492,8 +493,8 @@ function reducer(s, a) {
     }
     case 'ESC_NEW': {
       const seq = s.seq + 1; const n = Math.max(...s.escalations.map(c => +c.id.slice(4))) + 1; const acc = ACC[a.accountId]; const vs = a.direction === 'AM_TO_VS';
-      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: SVC[a.svc].slaHours[1], status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, thread: [{ by: a.by, ts: a.ts, text: a.issue }] };
-      return { ...s, seq, escalations: [c, ...s.escalations], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + c.id + ' to ' + c.owner + ' (' + acc.name + ', ' + a.category + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: c.id + ' created, routed to ' + c.owner + ' and SLA clock started (' + c.slaHours + 'h).' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.id + ' raised to ' + c.owner + '. SLA clock started at ' + c.slaHours + 'h.' } };
+      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: caseSla(a.direction), status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, thread: [{ by: a.by, ts: a.ts, text: a.issue }] };
+      return { ...s, seq, escalations: [c, ...s.escalations], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + c.id + ' to ' + c.owner + ' (' + acc.name + ', ' + a.category + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: c.id + ' created, routed to ' + c.owner + ' and clock started (' + stdLabel(c) + ').' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.id + ' raised to ' + c.owner + '. Clock started: ' + stdLabel(c) + '.' } };
     }
     case 'ESC_ACT': {
       const c = s.escalations.find(x => x.id === a.id); if (!c) return s;
@@ -504,10 +505,10 @@ function reducer(s, a) {
         case 'reply': u = { status: 'In investigation', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Posted an update on ' + c.id + '.' }); toast = 'Update sent on ' + c.id + '.'; break;
         case 'query': u = { owner: acc.am, status: 'Awaiting AM', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Raised a query to ' + acc.am + ' on ' + c.id + ' (' + acc.name + ').' });
           tk.push({ accountId: acc.id, text: 'Reply to VS on ' + c.id + ': ' + (msg.length > 60 ? msg.slice(0, 57) + '...' : msg), owner: acc.am, due: sod(t), auto: true, src: 'Escalation' }); toast = 'Query sent to ' + acc.am + '. Task created for the AM.'; break;
-        case 'info': u = { owner: 'VS Team', status: 'In investigation', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Supplied information to VS on ' + c.id + '. Response time logged.' });
-          tasks = tasks.map(x => x.accountId === acc.id && x.text.includes(c.id) && x.owner === acc.am && !/Update customer/.test(x.text) && !/Review breached/.test(x.text) ? { ...x, done: true } : x); toast = 'Information sent to VS. Case is back with the VS Team.'; break;
+        case 'info': u = c.direction === 'VS_TO_AM' ? { status: 'Closed', resolvedAt: t, ackAt: c.ackAt || t } : { owner: 'VS Team', status: 'In investigation', ackAt: c.ackAt || t }; lg.push({ actor: a.by, auto: false, text: 'Supplied information to VS on ' + c.id + ' in ' + fmtDur(t - c.openedAt) + (c.direction === 'VS_TO_AM' ? ((t - c.openedAt) / H <= AM_REPLY_H ? ', within' : ', outside') + ' the 15-minute standard.' : '.') });
+          tasks = tasks.map(x => x.accountId === acc.id && x.text.includes(c.id) && x.owner === acc.am && !/Update customer/.test(x.text) && !/Review breached/.test(x.text) ? { ...x, done: true } : x); toast = c.direction === 'VS_TO_AM' ? 'Information sent to VS in ' + fmtDur(t - c.openedAt) + '. Query closed and VS continues the verification.' : 'Information sent to VS. Case is back with the VS Team.'; break;
         case 'resolve': { u = { status: 'Resolved', resolvedAt: t }; const hrs = (t - c.openedAt) / H; msg = msg || 'Verification completed. Results are available.';
-          lg.push({ actor: a.by, auto: false, text: 'Resolved ' + c.id + ' in ' + fmtDur(t - c.openedAt) + ', ' + (hrs <= c.slaHours ? 'within' : 'after') + ' the ' + c.slaHours + 'h SLA.' });
+          lg.push({ actor: a.by, auto: false, text: 'Resolved ' + c.id + ' in ' + fmtDur(t - c.openedAt) + ', ' + (hrs <= c.slaHours ? 'within' : 'outside') + ' the ' + hLabel(c.slaHours) + ' standard.' });
           tk.push({ accountId: acc.id, text: 'Update customer and close ' + c.id + ' (' + acc.name + ')', owner: acc.am, due: sod(t), auto: true, src: 'Escalation' }); toast = c.id + ' resolved. The AM is asked to update the customer.'; break; }
         case 'close': { u = { status: 'Closed' }; const cn = acc.contacts[0]; msg = msg || 'Customer updated and case closed.';
           tl = { accountId: acc.id, channel: 'email', dir: 'out', contactId: cn.id, author: a.by, ts: t, subject: 'Update on address verification (' + c.id + ')', body: 'Hi ' + cn.name.split(' ')[0] + ', the address verification case ' + c.id + ' is complete and the results are in your dashboard. Thank you for your patience.', auto: false };
@@ -649,9 +650,9 @@ const HealthPill = ({ h }) => html`<${Pill} tone=${HEALTH[h].tone}><span classNa
 function SlaClock({ c, now, compact }) {
   const el = ((c.resolvedAt || now) - c.openedAt) / H, p = el / c.slaHours, st = slaState(p), rem = c.slaHours - el;
   const tone = st === 'breached' ? 'bad' : st === 'near' ? 'warn' : 'ok';
-  const remTxt = c.resolvedAt ? 'Clock stopped at resolution' : rem > 0 ? Math.floor(rem) + 'h ' + Math.floor((rem % 1) * 60) + 'm left' : Math.floor(-rem) + 'h over SLA';
+  const remTxt = c.resolvedAt ? 'Clock stopped' : rem > 0 ? fmtDur(rem * H) + ' left' : fmtDur(-rem * H) + ' over the standard';
   return html`<div className="min-w-[190px]">
-    <div className="flex items-center justify-between gap-2 text-xs mb-1"><span className="font-medium tabular-nums">${Math.floor(el)}h of ${c.slaHours}h</span><${Pill} tone=${tone}>${c.resolvedAt ? (st === 'breached' ? 'Resolved late' : 'Resolved in SLA') : st === 'breached' ? 'Breached' : st === 'near' ? 'Near breach' : 'On track'}<//></div>
+    <div className="flex items-center justify-between gap-2 text-xs mb-1"><span className="font-medium tabular-nums">${fmtDur(el * H)} of ${hLabel(c.slaHours)}</span><${Pill} tone=${tone}>${c.resolvedAt ? (st === 'breached' ? 'Outside standard' : 'Within standard') : st === 'breached' ? 'Missed' : st === 'near' ? 'Near breach' : 'On track'}<//></div>
     <div className="relative h-2 rounded-full bg-surface2 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, p * 100) + '%', background: 'var(--' + tone + ')' }}></div>
       <div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '50%' }}></div><div className="absolute top-0 h-full w-px bg-ink opacity-40" style=${{ left: '80%' }}></div></div>
     ${!compact && html`<div className="text-[11px] text-mute mt-1 tabular-nums">${remTxt}</div>`}
@@ -1024,7 +1025,7 @@ function FinHome({ st, go }) {
   const now = useNow(); const open = st.invoiceRequests.filter(r => r.status === 'Awaiting Finance');
   return html`<div className="space-y-5">
     <div><h1 className="text-xl font-semibold">Finance queue</h1><p className="text-sm text-mute">Invoice and usage-log requests that need your approval</p></div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} /><${Tile} label="Auto-approved today" value=${st.invoiceRequests.filter(r => r.status === 'Delivered').length} sub="Standard rules, no Finance touch" /><${Tile} label="Proposed clock" value="Same day" sub="Standard requests" /><${Tile} label="Exceptions" value="To agree" sub="Open decision" /></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} /><${Tile} label="Auto-approved today" value=${st.invoiceRequests.filter(r => r.status === 'Delivered').length} sub="Standard rules, no Finance touch" /><${Tile} label="Standard turnaround" value="About 1 hour" sub="Generate 30 min · confirm 30 min" /><${Tile} label="Exceptions" value="To agree" sub="Open decision" /></div>
     <${Card}><${CardHead} title="Approval queue" />${open.length ? open.map(r => html`<div key=${r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: r.accountId, tab: 'Invoices' })}><div><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${r.id}</span><span>${ACC[r.accountId].name}</span><span className="text-mute">${r.period}</span></div><div className="text-xs text-mute mt-0.5">${r.reason}. Raised by ${r.raisedBy} ${relAgo(r.raisedAt, now)}.</div></div><${Pill} tone="warn">Awaiting Finance<//></div>`) : html`<${Empty}>Nothing to approve.<//>`}<//>
     <p className="text-xs text-mute flex items-center gap-1"><${Icon} n="lock" s=${12} />Validation against contract rules, approve and reject, and invoice pack generation arrive in Stage 3.</p>
   </div>`;
@@ -1039,7 +1040,13 @@ function Planned({ item }) {
 /* ============================ STAGE 2: ESCALATIONS (Flow 3) AND SIGNALS (Flow 4) ============================ */
 const isOpen = c => c.status !== 'Resolved' && c.status !== 'Closed';
 const ESC_CATEGORIES = ['Delayed verification', 'Unreachable address', 'Result dispute', 'Priority request', 'Missing customer information', 'Other'];
-const FIRST_RESPONSE_TARGET_H = 4; // proposed, to set with VS
+// Real VerifyMe standards (from the AM and VS team): AMs reply to a VS query within 15 minutes;
+// VS resolves an escalated address check in about 2 hours; verification itself runs 24 to 72 hours.
+const AM_REPLY_H = 0.25, VS_RESOLVE_H = 2, VS_ACK_H = 0.5; // VS acknowledgement target is a proposal
+const caseSla = dir => dir === 'AM_TO_VS' ? VS_RESOLVE_H : AM_REPLY_H;
+const frTarget = c => c.direction === 'AM_TO_VS' ? VS_ACK_H : AM_REPLY_H;
+const hLabel = h => h < 1 ? Math.round(h * 60) + ' min' : h + (h === 1 ? ' hour' : ' hours');
+const stdLabel = c => c.direction === 'AM_TO_VS' ? 'VS resolves within 2 hours' : 'AM replies within 15 minutes';
 const fmtDur = ms => { const m = Math.max(0, Math.round(ms / 60000)); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
 function syncActive(s) { ACTIVE.th = s.thresholds; ACTIVE.supp = s.suppOn; }
 const mkTasks = (list, seq) => list.map((t, i) => ({ done: false, ...t, id: 't' + seq + '-' + i }));
@@ -1047,10 +1054,10 @@ const mkLogs = (list, ts, seq) => list.map((l, i) => ({ ts, ...l, id: 'g' + seq 
 
 function seedCases() {
   const X = {
-    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 58 * H, rem50: true, rem80: true,
-      add: [{ by: 'System', auto: true, ts: DEMO_NOW - 25 * H, text: 'Reminder at 50% of the SLA sent to VS Team.' }, { by: 'System', auto: true, ts: DEMO_NOW - 3.4 * H, text: 'Reminder at 80% of the SLA sent to VS Team.' }] },
+    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 66 * 60e3, rem50: true,
+      add: [{ by: 'System', auto: true, ts: DEMO_NOW - 24 * 60e3, text: 'Reminder at 50% of the 2-hour standard sent to VS Team.' }] },
     'ESC-1047': { category: 'Unreachable address' },
-    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 12 * H },
+    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 22 * 60e3 },
   };
   return ESCALATIONS_SEED.map(c => { const x = X[c.id] || {}; const { add, ...rest } = x; return { ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, ...c, ...rest, thread: [...c.thread, ...(add || [])] }; });
 }
@@ -1199,7 +1206,7 @@ function NewCaseForm({ role, dispatch, now, onDone, fixedAccount }) {
       <select className=${inp} value=${svc} onChange=${e => setSvc(e.target.value)} aria-label="Service">${SERVICES.filter(s => s.type === 'lastmile').map(s => html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</select>
       <select className=${inp} value=${cat} onChange=${e => setCat(e.target.value)} aria-label="Issue type">${ESC_CATEGORIES.map(c => html`<option key=${c}>${c}</option>`)}</select></div>
     <textarea className=${inp} rows="3" value=${text} onChange=${e => setText(e.target.value)} placeholder="Case details: batch reference, applicant, what is missing or late" aria-label="Case details"></textarea>
-    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the SLA clock starts at ${sl.slaHours[1]}h (${sl.slaLabel}).</p>
+    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the clock starts: ${toVS ? 'VS resolves within 2 hours' : 'AM replies within 15 minutes'}. The verification itself runs ${sl.slaLabel}.</p>
     <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
   </div><//>`;
 }
@@ -1224,7 +1231,7 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
     </div>
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        ${c.ackAt ? html`<${Pill} tone=${(c.ackAt - c.openedAt) / H <= FIRST_RESPONSE_TARGET_H ? 'ok' : 'warn'}>First response ${fmtDur(c.ackAt - c.openedAt)} (target ${FIRST_RESPONSE_TARGET_H}h, proposed)<//>` : html`<${Pill} tone=${elapsed > FIRST_RESPONSE_TARGET_H ? 'warn' : 'mute'}>Awaiting first response, ${fmtDur(elapsed * H)} so far (target ${FIRST_RESPONSE_TARGET_H}h, proposed)<//>`}
+        <${Pill} tone="info">Standard: ${stdLabel(c)}<//>${c.submittedAt && html`<${Pill} tone="mute">Verification submitted ${fmtDur((c.resolvedAt || now) - c.submittedAt)} ago (SLA 24 to 72 hours)<//>`}${c.ackAt ? html`<${Pill} tone=${(c.ackAt - c.openedAt) / H <= frTarget(c) ? 'ok' : 'warn'}>First response ${fmtDur(c.ackAt - c.openedAt)} (target ${hLabel(frTarget(c))}${c.direction === 'AM_TO_VS' ? ', proposed' : ''})<//>` : html`<${Pill} tone=${elapsed > frTarget(c) ? 'warn' : 'mute'}>Awaiting first response, ${fmtDur(elapsed * H)} so far (target ${hLabel(frTarget(c))})<//>`}
         <${Pill} tone=${c.rem50 ? 'ok' : 'mute'}>${c.rem50 ? 'Reminder sent at 50%' : 'Reminder due at 50%'}<//>${c.rem50 && html`<${AutoBadge} />`}
         <${Pill} tone=${c.rem80 ? 'warn' : 'mute'}>${c.rem80 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${c.rem80 && html`<${AutoBadge} />`}
         ${c.breached ? html`<${Pill} tone="bad">Auto-escalated to Director of Verification Services and Head of AM<//><${AutoBadge} />` : html`<${Pill} tone="mute">On breach: escalates to Director of VS and Head of AM<//>`}
@@ -1239,7 +1246,7 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
           ${mine && isAM && html`<${Btn} kind="primary" disabled=${!m} onClick=${() => act('info')}>Send info to VS<//>`}
           ${canComment && html`<${Btn} disabled=${!m} onClick=${() => act('comment')}>Add comment<//>`}
         </div></div>`}
-      ${done && c.status === 'Closed' && html`<p className="text-xs text-mute">Closed. Resolved in ${fmtDur(c.resolvedAt - c.openedAt)} against a ${c.slaHours}h SLA.</p>`}
+      ${done && c.status === 'Closed' && html`<p className="text-xs text-mute">Closed. Handled in ${fmtDur(c.resolvedAt - c.openedAt)} against the ${hLabel(c.slaHours)} standard.</p>`}
     </div>`}
   <//>`;
 }
@@ -1259,14 +1266,14 @@ function EscalationsPage({ st, dispatch, role, route }) {
     <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalations</h1><p className="text-sm text-mute">Address verification, both directions. One case, one clock, one thread.</p></div>
       ${canRaise && html`<${Btn} kind="primary" onClick=${() => setShowNew(!showNew)}><${Icon} n="plus" s=${12} />${role === 'VS' ? 'Raise query to AM' : 'Raise escalation to VS'}<//>`}</div>
     ${showNew && html`<${NewCaseForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShowNew(false)} />`}
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open cases" value=${open.length} /><${Tile} label="Near breach (80%+)" value=${near} tone=${near ? 'warn' : ''} /><${Tile} label="Breached" value=${breached} tone=${breached ? 'bad' : ''} sub=${breached ? 'Auto-escalated' : 'None'} /><${Tile} label="Avg first response" value=${avgFr == null ? 'n/a' : fmtDur(avgFr)} sub=${'Target ' + FIRST_RESPONSE_TARGET_H + 'h (proposed)'} /><${Tile} label="Resolved within SLA" value=${resolved.length ? within + ' of ' + resolved.length : 'n/a'} /></div>
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open cases" value=${open.length} /><${Tile} label="Near breach (80%+)" value=${near} tone=${near ? 'warn' : ''} /><${Tile} label="Breached" value=${breached} tone=${breached ? 'bad' : ''} sub=${breached ? 'Auto-escalated' : 'None'} /><${Tile} label="Avg first response" value=${avgFr == null ? 'n/a' : fmtDur(avgFr)} sub="AM 15 min · VS acknowledge 30 min (proposed)" /><${Tile} label="Handled within standard" value=${resolved.length ? within + ' of ' + resolved.length : 'n/a'} sub="VS 2 hours · AM 15 minutes" /></div>
     <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>
-      ${[6, 12, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h} hours<//>`)}
-      <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + st.simHours + 'h' : 'Real time'}<//>
+      ${[0.25, 1, 2, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}
+      <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + fmtDur(st.simHours * H) : 'Real time'}<//>
       <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
     <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !(t[0] === 'mine' && role === 'HEAD')).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
     ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
-    <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Clock:</span> physical address verification 24 to 72 hours, guarantor verification 5 days. The case clock runs to the upper bound.</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and the first-response target.</div><//>
+    <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Standards:</span> AMs reply to a VS query within 15 minutes. VS resolves an escalated address check in about 2 hours. Verification itself runs 24 to 72 hours (guarantor 5 days).</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and a VS acknowledgement target (30 minutes proposed).</div><//>
   </div>`;
 }
 function AccountCases({ a, cases, st, dispatch, role }) {
@@ -1286,7 +1293,7 @@ const hrsTxt = ms => ms == null ? 'n/a' : (ms / H).toFixed(1) + 'h';
 /* ----- invoices and logs ----- */
 const PERIODS = { 'Aug 2026': { m: 7, closed: true, code: '0826' }, 'Sep 2026': { m: 8, closed: true, code: '0926' }, 'Oct 2026': { m: 9, closed: false, code: '1026' } };
 const LOG_PACK_LIMIT = 50000;
-const STANDARD_CLOCK_H = 8; // proposed: standard requests the same working day
+const STANDARD_CLOCK_H = 1; // real: about 30 minutes to generate plus 30 minutes to confirm
 function monthRecords(a, month, services) {
   let t = 0; for (let i = 0; i < 90; i++) { if (new Date(DEMO_NOW - (90 - i) * D).getMonth() === month) services.forEach(s => { t += a.series[s] ? a.series[s][i] : 0; }); } return t;
 }
@@ -1395,7 +1402,7 @@ function InvoicesPage({ st, dispatch, role }) {
     <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p></div>
       ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New request<//>`}</div>
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} onDone=${() => setShow(false)} />`}
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? Math.round(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Proposed: same day for standard" /></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? Math.round(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Standard: about 1 hour" /></div>
     <div className="flex gap-1 border-b border-line">${[['action', 'Needs action', mine.filter(needs).length], ['all', 'All requests', mine.length], ['done', 'Delivered or rejected', mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected').length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
     ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'action' ? 'Nothing needs your action.' : 'No requests here.'}<//><//>` : list.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${tab === 'action'} />`)}
     <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Open decisions:</span> approval rules, invoice source system, withholding-tax rule for international customers, and the customer-facing sharing method.<//>
@@ -1417,7 +1424,7 @@ function FinHome3({ st, dispatch, go }) {
   const apr = all.filter(r => r.approvedAt); const std = all.filter(r => r.standard).length;
   return html`<div className="space-y-5">
     <div><h1 className="text-xl font-semibold">Finance queue</h1><p className="text-sm text-mute">Invoice and usage-log requests that fall outside the standard rules</p></div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} tone=${open.length ? 'warn' : ''} /><${Tile} label="Auto-approved" value=${std} sub="No Finance touch" /><${Tile} label="Avg approval time" value=${apr.length ? fmtDur(avg(apr.map(r => r.approvedAt - r.raisedAt))) : 'n/a'} sub="Exception clock to agree" /><${Tile} label="Proposed clock" value="Same day" sub="Standard requests" /></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Awaiting approval" value=${open.length} tone=${open.length ? 'warn' : ''} /><${Tile} label="Auto-approved" value=${std} sub="No Finance touch" /><${Tile} label="Avg approval time" value=${apr.length ? fmtDur(avg(apr.map(r => r.approvedAt - r.raisedAt))) : 'n/a'} sub="Exception clock to agree" /><${Tile} label="Standard turnaround" value="About 1 hour" sub="Generate 30 min · confirm 30 min" /></div>
     <div className="space-y-3"><h2 className="text-sm font-semibold">Approval queue</h2>${open.length ? open.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role="FIN" defaultOpen=${true} />`) : html`<${Card}><${Empty}>Nothing to approve.<//><//>`}</div>
     <div><${Btn} onClick=${() => go({ page: 'invoices' })}>Open all requests<//></div>
   </div>`;
@@ -1537,7 +1544,7 @@ function TodoCard({ st, go, role }) {
 }
 
 /* ----- manager dashboard ----- */
-const BASE = { vs: { n: 26, fr: 2.8, res: 38.5 }, am: { n: 9, fr: 5.2, res: 20 }, fin: { n: 31, fr: 6.5, res: 7.9 }, breaches: 3, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
+const BASE = { vs: { n: 26, fr: 0.9, res: 3.6 }, am: { n: 9, fr: 0.6, res: 0.6 }, fin: { n: 31, fr: 0.5, res: 1.4 }, breaches: 17, cases: 38, sigRate: 74, opp: { flagged: 12, approved: 7, converted: 3 }, retention: 94, churned: 1, invAuto: 71 };
 function Bar({ pct, tone = 'brand', h = 'h-2' }) { return html`<div className=${cx('rounded-full bg-surface2 overflow-hidden', h)}><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: 'var(--' + tone + ')' }}></div></div>`; }
 function DashboardPage({ st }) {
   const now = useNow(); const esc = st.escalations; const sigs = computeSignals(ACCOUNTS, st.incidents);
@@ -1545,7 +1552,7 @@ function DashboardPage({ st }) {
   const fr = cs => avg(cs.filter(c => c.ackAt).map(c => c.ackAt - c.openedAt)), rs = cs => avg(cs.filter(c => c.resolvedAt).map(c => c.resolvedAt - c.openedAt));
   const reqs = st.invoiceRequests; const frFin = avg(reqs.filter(r => r.approvedAt).map(r => r.approvedAt - r.raisedAt)), rsFin = avg(reqs.filter(r => r.deliveredAt).map(r => r.deliveredAt - r.raisedAt));
   const open = esc.filter(isOpen); const el = c => (now - c.openedAt) / H;
-  const buckets = [['0 to 24h', open.filter(c => el(c) < 24).length, 'ok'], ['24 to 48h', open.filter(c => el(c) >= 24 && el(c) < 48).length, 'ok'], ['48 to 72h', open.filter(c => el(c) >= 48 && el(c) < 72).length, 'warn'], ['Over 72h', open.filter(c => el(c) >= 72).length, 'bad']];
+  const buckets = [['Within standard', open.filter(c => slaPct(c, now) < .8).length, 'ok'], ['Near the standard (80%+)', open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, 'warn'], ['Up to 1 day over', open.filter(c => slaPct(c, now) >= 1 && el(c) - c.slaHours < 24).length, 'bad'], ['More than 1 day over', open.filter(c => el(c) - c.slaHours >= 24).length, 'bad']];
   const liveBreach = esc.filter(c => c.breached).length; const breachRate = (BASE.breaches + liveBreach) / (BASE.cases + esc.length) * 100;
   const live = sigs.filter(s => !s.suppressed); const works = live.map(s => st.sigWork[s.accountId]).filter(w => w && w.sentAt); const within = works.filter(w => w.sentAt - w.detectedAt <= 24 * H).length;
   const sigRate = live.length ? Math.round(within / live.length * 100) : null; const sigAvg = avg(works.map(w => w.sentAt - w.detectedAt));
@@ -1567,7 +1574,7 @@ function DashboardPage({ st }) {
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Unit</th><th className="px-2 font-medium text-right">Baseline first response</th><th className="px-2 font-medium text-right">Baseline resolution</th><th className="px-2 font-medium text-right">Live first response</th><th className="px-2 font-medium text-right">Live resolution</th><th className="px-2 font-medium text-right">Live cases</th></tr></thead><tbody>
         ${rows.map(r => html`<tr key=${r[0]} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r[0]}</div><div className="text-xs text-mute">${r[1]}</div></td><td className="px-2 text-right tabular-nums">${hrsTxt(r[2])}</td><td className="px-2 text-right tabular-nums">${hrsTxt(r[3])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[4])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[5])}</td><td className="px-2 text-right tabular-nums">${r[6]}</td></tr>`)}</tbody></table></div><//>
     <div className="grid lg:grid-cols-3 gap-5">
-      <${Card}><${CardHead} title="Escalation aging" sub="Open cases by time since raised" /><div className="p-4 space-y-3">${buckets.map(b => html`<div key=${b[0]}><div className="flex justify-between text-xs mb-1"><span>${b[0]}</span><span className="tabular-nums font-medium">${b[1]}</span></div><${Bar} pct=${b[1] / maxB * 100} tone=${b[2]} /></div>`)}
+      <${Card}><${CardHead} title="Escalation aging" sub="Open cases against their standard (VS 2 hours, AM 15 minutes)" /><div className="p-4 space-y-3">${buckets.map(b => html`<div key=${b[0]}><div className="flex justify-between text-xs mb-1"><span>${b[0]}</span><span className="tabular-nums font-medium">${b[1]}</span></div><${Bar} pct=${b[1] / maxB * 100} tone=${b[2]} /></div>`)}
         ${open.length > 0 && html`<div className="text-xs text-mute border-t border-line pt-2">Oldest: ${[...open].sort((x, y) => el(y) - el(x)).slice(0, 2).map(c => c.id + ' (' + ACC[c.accountId].name + ', ' + Math.floor(el(c)) + 'h)').join(', ')}</div>`}</div><//>
       <${Card}><${CardHead} title="Opportunities, quarter to date" sub="Baseline plus live activity" /><div className="p-4 space-y-3">${[['Flagged', oppF, 'brand'], ['Approved', oppA, 'brand'], ['Converted', oppC, 'ok']].map(([l, v, t]) => html`<div key=${l}><div className="flex justify-between text-xs mb-1"><span>${l}</span><span className="tabular-nums font-medium">${v}</span></div><${Bar} pct=${v / Math.max(1, oppF) * 100} tone=${t} /></div>`)}
         <div className="text-xs text-mute border-t border-line pt-2">Upsell KPI: ${oppC} of ${ACCOUNTS.length} live customers (target 50%, so ${Math.ceil(ACCOUNTS.length / 2)}).</div></div><//>
@@ -1590,7 +1597,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     { who: 'Auto', title: 'Brightpay drop detected', text: 'The daily usage feed flags Brightpay as Dropped and prepares a check-in draft. It is a Key account, so nothing is sent without Amaka.', run: () => { setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Human', title: 'AM approves the check-in', text: 'Amaka reviews the draft and approves it. The mock send is logged to the timeline and the signal-to-action time is recorded.', run: () => { dispatch({ type: 'SIG_APPROVE', accountId: 'brightpay', ts: now, by: 'Amaka Eze' }); setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Auto', title: 'Reply logged, follow-up task created', text: 'Folake replies. The system logs the reply to the timeline, tags it, and creates a follow-up task.', run: () => { dispatch({ type: 'SIG_REPLY', accountId: 'brightpay', ts: now }); setRole('AM'); go({ page: 'account', id: 'brightpay', tab: 'Timeline' }); } },
-    { who: 'Human', title: 'AM raises an escalation to VS', text: 'Brightpay is restarting onboarding and needs priority address checks for field agents. Amaka raises a case; the SLA clock starts at 72 hours.', run: () => { dispatch({ type: 'ESC_NEW', accountId: 'brightpay', svc: 'PHYADDR', category: 'Priority request', issue: 'Brightpay is restarting onboarding. 6 field agent addresses need priority physical verification.', direction: 'AM_TO_VS', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'escalations' }); } },
+    { who: 'Human', title: 'AM raises an escalation to VS', text: 'Brightpay is restarting onboarding and needs priority address checks for field agents. Amaka raises a case; VS has 2 hours to resolve it.', run: () => { dispatch({ type: 'ESC_NEW', accountId: 'brightpay', svc: 'PHYADDR', category: 'Priority request', issue: 'Brightpay is restarting onboarding. 6 field agent addresses need priority physical verification.', direction: 'AM_TO_VS', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'escalations' }); } },
     { who: 'Human', title: 'VS acknowledges', text: 'Tunde sees the case in the VS queue and acknowledges it. First-response time is logged for the manager view.', run: () => { const c = latest(st.escalations, x => x.accountId === 'brightpay' && x.owner === 'VS Team' && !x.ackAt); if (c) dispatch({ type: 'ESC_ACT', id: c.id, act: 'ack', by: 'Tunde Bello', ts: now, text: '' }); setRole('VS'); go({ page: 'escalations' }); } },
     { who: 'Auto', title: 'Invoice requested and auto-approved', text: 'Back as Amaka: she requests the September invoice and logs. It passes every contract rule, so it is approved automatically and the pack is generated.', run: () => { dispatch({ type: 'INV_NEW', accountId: 'brightpay', period: 'Sep 2026', services: ACC.brightpay.services, adjust: false, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
     { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. Delivery stops the request clock, so request-to-delivery time is recorded.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
@@ -1687,7 +1694,7 @@ function ReportsHub({ st, dispatch, role, go }) {
   return html`<div className="space-y-5">
     <div><h1 className="text-xl font-semibold">Reports</h1><p className="text-sm text-mute max-w-3xl">Input once. Activity from every other screen feeds these reports, so you only add what the system cannot know, then review and approve.</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Due in 7 days" value=${due} /><${Tile} label="Awaiting approval" value=${wait} /><${Tile} label="Overdue" value=${late} tone=${late ? 'bad' : undefined} /><${Tile} label="Hours saved so far" value=${repSaved(list, st).toFixed(1) + 'h'} sub="Estimate: manual minutes per report x share auto-filled" /></div>
-    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Reports you own' : 'Your reports'} sub="Reminders go to the owner 12 hours before the due date; overdue reports are flagged to the Head of AM. Use +6 / +12 / +24 hours on Escalations to see it." />
+    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Reports you own' : 'Your reports'} sub="Reminders go to the owner 12 hours before the due date; overdue reports are flagged to the Head of AM. Use +1 day on Escalations to see it." />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2">Report</th><th className="px-4 py-2">Due</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Auto-filled</th><th className="px-4 py-2"></th></tr></thead><tbody>
       ${list.map(r => { const s = stt(r); const rem = s !== 'Submitted' && now > repDue(r) - 12 * H && s !== 'Overdue'; return html`<tr key=${r.id} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r.name}</div><div className="text-xs text-mute">${r.cadence} · to ${r.to}</div></td><td className="px-4 py-2 text-xs whitespace-nowrap">${fmtDay(repDue(r))}</td><td className="px-4 py-2"><div className="flex flex-wrap gap-1"><${Pill} tone=${STATUS_TONE[s]}>${s}<//>${rem && html`<${AutoBadge} label="Reminder sent" />`}${s === 'Overdue' && html`<${Pill} tone="bad">Flagged to Head of AM<//>`}</div></td><td className="px-4 py-2 w-32"><${Bar} pct=${r.autoPct} /><div className="text-[11px] text-mute">${r.autoPct}% auto</div></td><td className="px-4 py-2"><${Btn} onClick=${() => go({ page: 'reports', id: r.id })}>Open<//></td></tr>`; })}
       </tbody></table></div><//>
@@ -1857,9 +1864,9 @@ function App() {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 10000); return () => clearInterval(t); }, []);
   useEffect(() => { if (!st.toast) return; const t = setTimeout(() => dispatch({ type: 'TOAST', text: null }), 4500); return () => clearTimeout(t); }, [st.toast && st.toast.id]);
-  useEffect(() => { dispatch({ type: 'CLOCK_TICK', now: DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT) }); }, [st.simHours, tick]);
-  useEffect(() => { dispatch({ type: 'OPP_SCAN', now: DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT) }); }, [st.sigWork, st.escalations, st.incidents, st.thresholds, st.suppOn, st.timeline, tick]);
-  const now = DEMO_NOW + st.simHours * H + (Date.now() - LOADED_AT);
+  useEffect(() => { dispatch({ type: 'CLOCK_TICK', now: DEMO_NOW + st.simHours * H + (Date.now() - st.base) }); }, [st.simHours, tick]);
+  useEffect(() => { dispatch({ type: 'OPP_SCAN', now: DEMO_NOW + st.simHours * H + (Date.now() - st.base) }); }, [st.sigWork, st.escalations, st.incidents, st.thresholds, st.suppOn, st.timeline, tick]);
+  const now = DEMO_NOW + st.simHours * H + (Date.now() - st.base);
   const role = st.role; const me = ROLES[role];
   const go = r => { setRoute(r); window.scrollTo(0, 0); };
   const setRole = r => { dispatch({ type: 'SET_ROLE', role: r }); setRoute({ page: 'home' }); };
@@ -1885,7 +1892,7 @@ function App() {
             <div className="md:hidden font-semibold text-sm">VerifyMe AM</div>
             <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${me.name}</div><div className="text-xs text-mute">${me.title}</div></div></div>
             <div className="flex items-center gap-1.5 md:ml-auto" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
-            <${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${st.simHours}h<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
+            <${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
           </div>
           <div className="md:hidden flex gap-1 px-3 pb-2 scroll-x">${nav.filter(n => n.stage <= STAGE_DONE).map(n => html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('px-3 py-1 rounded-md text-xs border whitespace-nowrap', active === n.id ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${n.label}</button>`)}</div>
         </header>

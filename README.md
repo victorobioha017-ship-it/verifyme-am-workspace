@@ -10,7 +10,7 @@ A clickable concept prototype for an account management workspace built around i
 - **Accounts:** agreed vs actual volume, a 360 view with timeline, usage, invoices, escalations and opportunities
 - **Timeline:** emails, Slack messages and meeting notes, auto-tagged by topic, sentiment, commitments and risk language
 - **Meeting notes:** action items pulled out of plain notes, with owner and due date
-- **Escalations:** one case model in both directions, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control
+- **Escalations:** one case model in both directions, reminders at 50% and 80%, auto-escalation when a standard is missed, and a "Simulate time passing" control (+15 min to +1 day)
 - **Signals:** dropped, low and reduced volume detection, editable thresholds, and suppression during provider incidents
 - **Invoices and logs:** requests checked against contract rules, auto-approval for standard cases and a Finance queue for exceptions
 - **Opportunities:** rule-based upsell and cross-sell suggestions with drafted emails, then Sales handoff
@@ -23,6 +23,7 @@ Switch between the four roles (Account Manager, Verification Services Agent, Fin
 ## Notes
 
 - All data, people and companies are fictional. Nothing is really sent.
+- Escalation clocks follow real team standards: AMs reply to a VS query within 15 minutes, VS resolves an escalated address check in about 2 hours, invoices take about 1 hour, and verification itself runs 24 to 72 hours. Baseline figures are illustrative.
 - The demo date is fixed at 15 October 2026 so the stories always read the same. Currency is NGN.
 - Single HTML file. React 18, htm and Tailwind load from public CDNs, so there is no build step.
 
