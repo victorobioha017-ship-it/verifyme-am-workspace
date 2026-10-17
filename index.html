@@ -1596,9 +1596,9 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. Delivery stops the request clock, so request-to-delivery time is recorded.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
     { who: 'Auto', title: 'Upsell proposed', text: 'The customer has replied, so the hold on Brightpay lifts. The rules match field agent onboarding with address verification and draft an email using the account context.', run: () => { setRole('AM'); go({ page: 'opportunities' }); } },
     { who: 'Human', title: 'AM approves the upsell', text: 'Amaka approves the draft. It sends automatically, logs to the timeline, and the opportunity moves to Sales handoff.', run: () => { dispatch({ type: 'OPP_APPROVE', okey: 'brightpay:addr', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'opportunities' }); } },
-    { who: 'Auto', title: 'Weekly health check generated', text: 'The weekly customer health check compiles itself from signals, cases and usage. Only a commentary line is left for Amaka.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
-    { who: 'Human', title: 'AM adds commentary and approves', text: 'Amaka adds one line of commentary and approves. The report publishes to the Head of AM with no re-keying.', run: () => { dispatch({ type: 'REP_COMMENT', id: 'health', text: 'Brightpay re-engaged after the check-in and is restarting onboarding. Savannah address-verification upsell is with Sales.' }); dispatch({ type: 'REP_APPROVE', id: 'health', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'reports', id: 'health' }); } },
-    { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows the first response from VS, the invoice turnaround, the signal-to-action time, the opportunity moving through the funnel, and the weekly health check already in the submission tracker.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
+    { who: 'Auto', title: 'Weekly operational report generated', text: 'The weekly report compiles itself: week-on-week transactions and revenue, customers to worry about, escalations, complaints and opportunities. Only the general and strategic updates are left for Amaka.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
+    { who: 'Human', title: 'AM adds commentary and approves', text: 'Amaka adds her updates and approves. The report publishes to the Head of AM with no re-keying.', run: () => { dispatch({ type: 'REP_COMMENT', id: 'health', text: 'Brightpay re-engaged after the check-in and is restarting onboarding. Savannah address-verification upsell is with Sales.' }); dispatch({ type: 'REP_APPROVE', id: 'health', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'reports', id: 'health' }); } },
+    { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows the first response from VS, the invoice turnaround, the signal-to-action time, the opportunity moving through the funnel, and the weekly report already in the submission tracker. The monthly portfolio report is under Reports.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
   ];
   const s = STEPS[i]; const tone = { Auto: 'auto', Human: 'info', Reset: 'mute', 'Head of AM': 'ok' }[s.who];
   const run = () => { s.run(); setDone({ ...done, [i]: true }); };
@@ -1614,7 +1614,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
 /* ============================ STAGE 4: REPORTING (Flow 6) ============================ */
 const INP = 'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm';
 const REPORTS = [
-  { id: 'health', name: 'Weekly customer health check', short: 'Health', cadence: 'Weekly', dueH: 32, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 85, manualMin: 90, need: 'one commentary line' },
+  { id: 'health', name: 'Weekly operational report', short: 'Weekly', cadence: 'Weekly', dueH: 32, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 85, manualMin: 90, need: 'general and strategic updates' },
   { id: 'golive', name: 'Go-live tracking', short: 'Go-live', cadence: 'Bi-weekly', dueH: 80, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 75, manualMin: 45, need: 'blockers' },
   { id: 'dormant', name: 'Dormant and API-pending follow-up log', short: 'Dormant', cadence: 'Bi-monthly', dueH: 240, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 80, manualMin: 60, need: 'outcome of calls' },
   { id: 'issues', name: 'Customer issues log', short: 'Issues', cadence: 'Ongoing', dueH: 56, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 100, manualMin: 60, opt: true, need: 'nothing required' },
@@ -1622,7 +1622,7 @@ const REPORTS = [
   { id: 'qbr', name: 'Quarterly business review pack', short: 'QBR', cadence: 'Quarterly', dueH: 720, owner: 'AM', aud: 'customer', to: 'the customer', autoPct: 70, manualMin: 150, need: 'commentary and asks' },
   { id: 'referrals', name: 'Referral log (minimum 5 per quarter)', short: 'Referrals', cadence: 'Quarterly', dueH: 480, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 0, manualMin: 10, kind: 'log', need: 'a referral entry' },
   { id: 'visits', name: 'Monthly visits log (5 customers per AM)', short: 'Visits', cadence: 'Monthly', dueH: 384, owner: 'AM', aud: 'internal', to: 'Head of AM', autoPct: 20, manualMin: 20, kind: 'log', need: 'a visit entry' },
-  { id: 'mgmt', name: 'Monthly management report', short: 'Management', cadence: 'Monthly', dueH: 400, owner: 'HEAD', aud: 'internal', to: 'Senior Director, Operations', autoPct: 90, manualMin: 180, need: 'risks and decisions' },
+  { id: 'mgmt', name: 'Monthly portfolio report', short: 'Monthly', cadence: 'Monthly', dueH: 400, owner: 'HEAD', aud: 'internal', to: 'Director of Operations', autoPct: 90, manualMin: 180, need: 'risks and decisions' },
   { id: 'scorecard', name: 'AM scorecard and KPI overview', short: 'Scorecard', cadence: 'Monthly', dueH: 400, owner: 'HEAD', aud: 'internal', to: 'the AM team (coaching view)', autoPct: 100, manualMin: 120, opt: true, need: 'nothing required' },
 ];
 const STATUS_TONE = { Submitted: 'ok', 'Awaiting approval': 'info', Approved: 'info', 'Draft ready': 'mute', 'Not started': 'mute', Overdue: 'bad' };
@@ -1697,6 +1697,115 @@ function ReportsHub({ st, dispatch, role, go }) {
     <${MetabaseCard} dispatch=${dispatch} />
   </div>`;
 }
+/* ----- weekly operational and monthly portfolio report layouts ----- */
+const FIVE_Q = [['Revenue', 'Are customers generating more or less revenue?'], ['Retention', 'Who is at risk of reducing or leaving?'], ['Growth', 'Where can we grow existing accounts?'], ['Service delivery', 'Are we meeting customer expectations?'], ['Execution', 'Is the team managing customers proactively?']];
+function FiveQ({ show }) {
+  return html`<div className="grid grid-cols-2 md:grid-cols-5 gap-2">${FIVE_Q.map(([k, q]) => html`<div key=${k} className=${cx('rounded-md border px-3 py-2', show.includes(k) ? 'border-brand bg-brandsoft' : 'border-line bg-surface')}><div className="text-xs font-semibold text-brand">${k}</div><div className="text-[11px] text-mute leading-snug">${q}</div></div>`)}</div>`;
+}
+const SecHead = ({ q, title, sub }) => html`<${CardHead} title=${html`<span><span className="text-brand">${q}:</span> ${title}</span>`} sub=${sub} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} />`;
+const pct = n => n == null || !isFinite(n) ? 'n/a' : (n >= 0 ? '+' : '') + Math.round(n * 100) + '%';
+const chTone = n => n == null || !isFinite(n) ? 'mute' : n <= -0.2 ? 'bad' : n < 0 ? 'warn' : 'ok';
+const wk = a => { const t7 = sum(a.total.slice(83, 90)), p7 = sum(a.total.slice(76, 83)); return { t7, p7, r7: t7 * a.price, rp7: p7 * a.price, ch: p7 ? t7 / p7 - 1 : null }; };
+function worryList(accts, st, now) {
+  const sigs = computeSignals(ACCOUNTS, st.incidents);
+  return accts.map(a => {
+    const w = wk(a), why = [], s = sigs.find(x => x.accountId === a.id);
+    if (s && !s.suppressed) why.push(s.kind);
+    if (s && s.suppressed) why.push('Volume down during a provider incident');
+    if (w.ch != null && w.ch <= -0.2) why.push('Revenue down ' + Math.round(-w.ch * 100) + '% on last week');
+    const neg = st.timeline.filter(t => t.accountId === a.id && t.dir === 'in' && now - t.ts <= 30 * D && (t.tags.risk || t.tags.sentiment === 'Negative')).sort((x, y) => y.ts - x.ts);
+    if (neg.some(t => t.tags.risk)) why.push('Risk language from the customer'); else if (neg.length) why.push('Dissatisfaction raised');
+    const cs = st.escalations.filter(c => c.accountId === a.id && isOpen(c) && slaPct(c, now) >= .8);
+    if (cs.length) why.push(cs.map(c => c.id).join(', ') + ' near or past SLA');
+    return { a, why, intel: neg[0], w };
+  }).filter(x => x.why.length);
+}
+function WeeklyReport({ st, accts }) {
+  const now = useNow(); const ids = new Set(accts.map(a => a.id));
+  const rows = accts.map(a => ({ a, ...wk(a) })).sort((x, y) => (x.ch == null ? -9 : x.ch) - (y.ch == null ? -9 : y.ch));
+  const T = sum(rows.map(r => r.t7)), P = sum(rows.map(r => r.p7)), R = sum(rows.map(r => r.r7)), RP = sum(rows.map(r => r.rp7));
+  const worry = worryList(accts, st, now);
+  const cases = st.escalations.filter(c => ids.has(c.accountId) && isOpen(c)).sort((x, y) => slaPct(y, now) - slaPct(x, now));
+  const complaints = st.timeline.filter(t => ids.has(t.accountId) && t.dir === 'in' && now - t.ts <= 14 * D && (t.tags.sentiment === 'Negative' || t.tags.risk)).sort((x, y) => y.ts - x.ts);
+  const opps = computeOpps(accts, oppCtx(st, now)).filter(o => !o.held && !st.oppWork[o.key]);
+  const prog = Object.entries(st.oppWork).filter(([k, w]) => ids.has(k.split(':')[0]) && w.status !== 'Dismissed');
+  const lastTouch = accts.map(a => { const t = st.timeline.filter(x => x.accountId === a.id).sort((x, y) => y.ts - x.ts)[0]; return { a, d: t ? Math.floor((now - t.ts) / D) : null }; });
+  const quiet = lastTouch.filter(x => x.d == null || x.d >= 14);
+  const tasksOver = st.tasks.filter(t => ids.has(t.accountId) && !t.done && t.due < sod(now));
+  const tasksDone = st.tasks.filter(t => ids.has(t.accountId) && t.done).length;
+  return html`<div className="space-y-4">
+    <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
+    <p className="text-xs text-mute">Weekly focus: operational. Spot issues early so they are acted on before any customer is at risk of leaving. Week of ${fmtDay(now - 7 * D)} to ${fmtDay(now - D)}.</p>
+    <${Card}><${SecHead} q="Revenue" title="Transactions and revenue, week on week" sub="Last 7 days against the 7 days before" />
+      <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+        <${Tile} label="Transactions this week" value=${num(T)} sub=${pct(P ? T / P - 1 : null) + ' on last week'} />
+        <${Tile} label="Revenue this week" value=${ngn(R)} sub=${pct(RP ? R / RP - 1 : null) + ' on last week'} />
+        <${Tile} label="Customers down 20% or more" value=${rows.filter(r => r.ch != null && r.ch <= -0.2).length + rows.filter(r => r.t7 === 0).length} tone=${rows.some(r => r.t7 === 0 || (r.ch != null && r.ch <= -0.2)) ? 'bad' : undefined} sub="Including customers with no transactions" />
+      </div>
+      <div className="scroll-x border-t border-line"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Transactions</th><th className="px-2 font-medium text-right">Last week</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Change</th></tr></thead><tbody>
+        ${rows.map(r => html`<tr key=${r.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${r.a.name}</td><td className="px-2 text-right tabular-nums">${num(r.t7)}</td><td className="px-2 text-right tabular-nums text-mute">${num(r.p7)}</td><td className="px-2 text-right tabular-nums">${ngn(r.r7)}</td><td className="px-2"><${Pill} tone=${r.t7 === 0 ? 'bad' : chTone(r.ch)}>${r.t7 === 0 ? 'No transactions' : pct(r.ch)}<//></td></tr>`)}
+      </tbody></table></div><//>
+    <${Card}><${SecHead} q="Retention" title="Customers to worry about" sub="Declining performance, dissatisfaction or business intelligence from the timeline" />
+      ${worry.length === 0 ? html`<${Empty}>No customers flagged this week.<//>` : worry.map(x => html`<div key=${x.a.id} className="px-4 py-3 border-b border-line last:border-0"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${x.a.name}</span><${SegPill} segment=${x.a.segment} />${x.why.map(w => html`<${Pill} key=${w} tone="warn">${w}<//>`)}</div>
+        ${x.intel && html`<p className="text-xs text-mute mt-1.5">Latest from ${x.intel.author}, ${fmtDay(x.intel.ts)}: “${x.intel.body.length > 150 ? x.intel.body.slice(0, 147) + '...' : x.intel.body}”</p>`}</div>`)}<//>
+    <${Card}><${SecHead} q="Service delivery" title="Open escalations and complaints" sub="Escalations with their SLA clock, and customer complaints from the last 14 days" />
+      ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.map(c => html`<div key=${c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-line"><div className="text-sm"><span className="font-semibold">${c.id}</span> <span className="text-mute">${ACC[c.accountId].name} · ${c.issue}</span></div><${SlaClock} c=${c} now=${now} compact=${true} /></div>`)}
+      <div className="px-4 py-3 space-y-1.5"><div className="text-xs font-medium">Complaints (${complaints.length})</div>${complaints.length === 0 ? html`<div className="text-xs text-mute">None logged.</div>` : complaints.map(t => html`<div key=${t.id} className="text-xs"><span className="font-medium">${ACC[t.accountId].name}</span> <span className="text-mute">${fmtDay(t.ts)}: ${t.channel === 'slack' ? (t.body.length > 90 ? t.body.slice(0, 87) + '...' : t.body) : t.subject}</span></div>`)}</div><//>
+    <${Card}><${SecHead} q="Growth" title="New business opportunities" sub="Flagged by the rules, plus opportunities already with Sales" />
+      ${opps.length + prog.length === 0 ? html`<${Empty}>No open opportunities this week.<//>` : html`<div>${opps.map(o => html`<div key=${o.key} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[o.accountId].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === o.rule).name}</span><${Pill} tone="info">To review<//><span className="text-xs text-mute">est. ${ngn(oppValue(ACC[o.accountId], o.rule))} a month</span></div>`)}${prog.map(([k, w]) => html`<div key=${k} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[k.split(':')[0]].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === k.split(':')[1]).name}</span><${Pill} tone=${w.status === 'Addendum filed' ? 'ok' : 'info'}>${w.status}<//></div>`)}</div>`}<//>
+    <${Card}><${SecHead} q="Execution" title="Is the portfolio being actively managed?" sub="Contact, follow-through and overdue actions" />
+      <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3"><${Tile} label="Customers not contacted in 14+ days" value=${quiet.length} tone=${quiet.length ? 'warn' : undefined} sub=${quiet.map(x => x.a.name).join(', ') || 'All customers contacted'} /><${Tile} label="Overdue tasks" value=${tasksOver.length} tone=${tasksOver.length ? 'bad' : undefined} /><${Tile} label="Tasks completed" value=${tasksDone} /></div><//>
+  </div>`;
+}
+const REP_MONTH = 8, REP_PREV = 7, REP_MONTH_LABEL = 'September 2026';
+const NEWLY_ASSIGNED = { paynest: 'handed over from Sales in September' };
+const UPSOLD = [{ accountId: 'meridian', svc: 'DIGADDR' }, { accountId: 'quickloan', svc: 'PHYADDR' }];
+const monthSvc = (a, svc, m) => sum(a.series[svc].filter((_, i) => new Date(DEMO_NOW - (90 - i) * D).getMonth() === m));
+const isUpsold = (a, svc) => UPSOLD.some(u => u.accountId === a.id && u.svc === svc);
+const monthRev = (a, m, exclUpsold) => sum(Object.keys(a.series).filter(s => !(exclUpsold && isUpsold(a, s))).map(s => monthSvc(a, s, m) * a.price));
+function MonthlyReport({ st }) {
+  const now = useNow(); const sigs = computeSignals(ACCOUNTS, st.incidents);
+  const existing = ACCOUNTS.filter(a => !NEWLY_ASSIGNED[a.id]), newly = ACCOUNTS.filter(a => NEWLY_ASSIGNED[a.id]);
+  const deltas = existing.map(a => { const prev = monthRev(a, REP_PREV, true), cur = monthRev(a, REP_MONTH, true); return { a, prev, cur, d: cur - prev }; });
+  const book = sum(deltas.map(x => x.prev)), inc = sum(deltas.filter(x => x.d > 0).map(x => x.d)), dec = sum(deltas.filter(x => x.d < 0).map(x => x.d));
+  const upsell = UPSOLD.map(u => { const a = ACC[u.accountId]; return { a, svc: u.svc, rev: monthSvc(a, u.svc, REP_MONTH) * a.price }; }), newBiz = sum(upsell.map(u => u.rev));
+  const newlyRev = sum(newly.map(a => monthRev(a, REP_MONTH, false))), total = sum(ACCOUNTS.map(a => monthRev(a, REP_MONTH, false)));
+  const target = Math.round(sum(ACCOUNTS.map(a => a.agreed * a.price)) / 1e5) * 1e5, lastYear = Math.round(total / 1.28 / 1e5) * 1e5;
+  const nrr = (book + inc + dec) / book, grr = (book + dec) / book;
+  const bridge = [['Last month (existing book)', book, 'mute'], ['Growth from existing customers', inc, 'ok'], ['New business from upsells', newBiz, 'ok'], ['Newly assigned accounts', newlyRev, 'ok'], ['Decline and lost business', dec, 'bad'], [REP_MONTH_LABEL.split(' ')[0] + ' total', total, 'brand']];
+  const maxB = Math.max(...bridge.map(b => Math.abs(b[1])));
+  const ams = [...new Set(ACCOUNTS.map(a => a.am))].map(n => { const l = ACCOUNTS.filter(a => a.am === n); const cur = sum(l.map(a => monthRev(a, REP_MONTH, false))), prev = sum(l.filter(a => !NEWLY_ASSIGNED[a.id]).map(a => monthRev(a, REP_PREV, false))); return { n, l, cur, ch: prev ? cur / prev - 1 : null, risk: l.filter(a => healthOf(a, sigs, st.escalations, now) !== 'green').length }; });
+  const lost = deltas.filter(x => x.d < 0).sort((x, y) => x.d - y.d), churned = ACCOUNTS.filter(a => monthRev(a, REP_MONTH, false) === 0);
+  const res = st.escalations.filter(c => c.resolvedAt), within = res.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length, open = st.escalations.filter(isOpen);
+  const acked = st.escalations.filter(c => c.ackAt), fr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
+  return html`<div className="space-y-4">
+    <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
+    <p className="text-xs text-mute">Monthly focus: the health, profitability, retention and growth of the whole team portfolio. Reporting month: ${REP_MONTH_LABEL}. Target and prior-year figures are mock placeholders.</p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <${Tile} label="Total portfolio revenue" value=${ngn(total)} sub=${REP_MONTH_LABEL} />
+      <${Tile} label="Against monthly target" value=${Math.round(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target) + ' · gap ' + ngn(Math.max(0, target - total))} />
+      <${Tile} label="Month on month" value=${pct(total / book - 1)} sub="Against last month’s book" />
+      <${Tile} label="Against same month last year" value=${pct(total / lastYear - 1)} sub=${ngn(lastYear) + ' (mock history)'} />
+    </div>
+    <${Card}><${SecHead} q="Revenue" title="Where this month’s revenue came from" sub="From last month’s book to this month’s total" />
+      <div className="p-4 space-y-2.5">${bridge.map(([l, v, t]) => html`<div key=${l} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-3 text-sm"><span className=${cx(t === 'brand' || t === 'mute' ? 'font-semibold' : '')}>${l}</span><${Bar} pct=${Math.abs(v) / maxB * 100} tone=${t === 'mute' ? 'mute' : t} /><span className=${cx('tabular-nums text-right w-36', v < 0 && 'text-bad')}>${(v < 0 ? '−' : t === 'ok' ? '+' : '') + ngn(Math.abs(v))}</span></div>`)}</div><//>
+    <div className="grid lg:grid-cols-2 gap-4">
+      <${Card}><${SecHead} q="Retention" title="Existing accounts" sub="Revenue kept from customers we already had" />
+        <div className="p-4 grid grid-cols-2 gap-3"><${Tile} label="Net revenue retention" value=${Math.round(nrr * 100) + '%'} tone=${nrr < 1 ? 'warn' : undefined} sub="Includes growth from existing customers" /><${Tile} label="Gross revenue retention" value=${Math.round(grr * 100) + '%'} sub="Before growth" /></div>
+        <div className="px-4 pb-4 text-xs text-mute">Newly assigned this month: ${newly.map(a => a.name + ' (' + NEWLY_ASSIGNED[a.id] + '), ' + ngn(monthRev(a, REP_MONTH, false))).join('; ') || 'none'}.</div><//>
+      <${Card}><${SecHead} q="Growth" title="New business from upselling" sub="Revenue from services customers started using after an AM upsell" />
+        <div className="scroll-x"><table className="w-full text-sm"><tbody>${upsell.map(u => html`<tr key=${u.a.id + u.svc} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${u.a.name}</td><td className="px-2 text-mute">${SVC[u.svc].name}</td><td className="px-4 text-right tabular-nums">${ngn(u.rev)}</td></tr>`)}</tbody></table></div>
+        <div className="px-4 py-3 text-xs text-mute border-t border-line">Upsells converted this quarter: ${3 + Object.values(st.oppWork).filter(w => w.status === 'Addendum filed').length} (3 baseline, the rest live).</div><//>
+    </div>
+    <${Card}><${SecHead} q="Retention" title="Lost business, decline and churn" sub="The opposite of growth: where revenue went down" />
+      ${lost.length === 0 ? html`<${Empty}>No declining accounts this month.<//>` : html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Last month</th><th className="px-2 font-medium text-right">This month</th><th className="px-2 font-medium text-right">Change</th><th className="px-4 font-medium">AM</th></tr></thead><tbody>${lost.map(x => html`<tr key=${x.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.a.name}</td><td className="px-2 text-right tabular-nums text-mute">${ngn(x.prev)}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2 text-right tabular-nums text-bad">−${ngn(-x.d)} (${pct(x.cur / x.prev - 1)})</td><td className="px-4 text-mute">${x.a.am}</td></tr>`)}</tbody></table></div>`}
+      <div className="px-4 py-3 text-xs border-t border-line">${churned.length ? 'Churned: ' + churned.map(a => a.name).join(', ') : 'No customers churned this month.'}</div><//>
+    <${Card}><${SecHead} q="Execution" title="By account manager" sub="Each AM’s portfolio, from the same data as their own dashboard" />
+      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Month on month</th><th className="px-2 font-medium text-right">At risk</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>
+    <${Card}><${SecHead} q="Service delivery" title="Are we delivering what customers expect?" sub="Escalation performance this month" />
+      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3"><${Tile} label="Open escalations" value=${open.length} /><${Tile} label="Breached" value=${st.escalations.filter(c => c.breached).length} tone=${st.escalations.some(c => c.breached) ? 'bad' : undefined} /><${Tile} label="Average first response" value=${fr == null ? 'n/a' : fmtDur(fr)} /><${Tile} label="Resolved within SLA" value=${res.length ? within + ' of ' + res.length : 'n/a'} /></div><//>
+  </div>`;
+}
 function ReportDraft({ r, st, dispatch, role, go }) {
   const now = useNow(); const me = ROLES[role]; const w = repW(st, r.id); const [txt, setTxt] = useState(w.comment || '');
   const secs = repSections(r, st, now, scopeAccounts(r.owner)); const s = repStatus(r, st, now); const can = role === r.owner; const ready = repDone(r, st);
@@ -1706,8 +1815,8 @@ function ReportDraft({ r, st, dispatch, role, go }) {
     <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">${r.name}</h1><${Pill} tone=${STATUS_TONE[s]}>${s}<//></div>
     <p className="text-sm text-mute">${r.cadence}, due ${fmtDay(repDue(r))}, goes to ${r.to}. ${r.autoPct}% of this report is filled automatically.</p>
     ${s === 'Overdue' && html`<${Card} className="p-3 text-sm text-bad flex items-center gap-2"><${Icon} n="alert" s=${14} />Not approved by the due date. The reminder went to the owner and the report is flagged to the Head of AM.<//>`}
-    ${secs.map(([t, lines]) => html`<${Card} key=${t}><${CardHead} title=${t} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} /><ul className="p-4 space-y-1.5 text-sm list-disc pl-8">${lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul><//>`)}
-    <${Card}><${CardHead} title="AM input needed" sub=${'Only what the system cannot know: ' + r.need} />
+    ${r.id === 'health' ? html`<${WeeklyReport} st=${st} accts=${scopeAccounts('AM')} />` : r.id === 'mgmt' ? html`<${MonthlyReport} st=${st} />` : secs.map(([t, lines]) => html`<${Card} key=${t}><${CardHead} title=${t} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} /><ul className="p-4 space-y-1.5 text-sm list-disc pl-8">${lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul><//>`)}
+    <${Card}><${CardHead} title=${r.id === 'health' ? 'General and strategic updates' : r.id === 'mgmt' ? 'Risks and decisions' : 'AM input needed'} sub=${'Only what the system cannot know: ' + r.need} />
       ${r.kind === 'log' ? html`<div className="p-4 text-sm text-mute">Add entries with Quick input below. They also appear on the account timeline.</div>` : r.opt ? html`<div className="p-4 text-sm text-mute">Nothing required. You can add an optional note.</div>` : null}
       ${r.kind !== 'log' && html`<div className="p-4 space-y-2"><textarea value=${txt} onChange=${e => setTxt(e.target.value)} rows="3" disabled=${!can} placeholder="Commentary for the reader" className=${INP} aria-label="Commentary"></textarea><${Btn} onClick=${() => dispatch({ type: 'REP_COMMENT', id: r.id, text: txt.trim() })} disabled=${!can || !txt.trim()}>Save commentary<//></div>`}<//>
     ${r.kind === 'log' && can && html`<${QuickInput} dispatch=${dispatch} now=${now} me=${me} accts=${scopeAccounts('AM')} />`}

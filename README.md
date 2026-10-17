@@ -15,7 +15,7 @@ A clickable concept prototype for an account management workspace built around i
 - **Invoices and logs:** requests checked against contract rules, auto-approval for standard cases and a Finance queue for exceptions
 - **Opportunities:** rule-based upsell and cross-sell suggestions with drafted emails, then Sales handoff
 - **Manager dashboard:** response and resolution times, escalation aging, signal-to-action rate and revenue at risk
-- **Reports:** weekly to quarterly reports compiled from workspace data, quick input for visits and referrals, AM commentary and approval, publish or share, overdue flags, and a submission tracker on the manager dashboard
+- **Reports:** a weekly operational report per AM (week-on-week transactions and revenue, customers to worry about, escalations and complaints, opportunities, general and strategic updates) and a monthly portfolio report (revenue against target, month-on-month and year-on-year growth, retention, revenue from newly assigned accounts, new business from upsells, lost business and churn, performance by AM), both organised around five questions: revenue, retention, growth, service delivery and execution. Plus quick input for visits and referrals, AM approval, overdue flags and a submission tracker
 - **Guided demo:** a 13-step walkthrough of one customer story from start to finish
 
 Switch between the four roles (Account Manager, Verification Services Agent, Finance, Head of Account Management) from the header.
