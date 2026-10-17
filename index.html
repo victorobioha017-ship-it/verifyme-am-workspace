@@ -73,6 +73,9 @@ const html = htm.bind(React.createElement);
 const H = 3600e3, D = 864e5;
 const DEMO_NOW = new Date(2026, 9, 15, 9, 0, 0).getTime();
 const LOADED_AT = Date.now();
+const p1 = v => Math.round(v * 10) / 10;
+// Change as plain words with an arrow: ↓ 26.4% down, ↑ 2.4% up, No change
+const chg = n => n == null || !isFinite(n) ? 'n/a' : p1(n * 100) === 0 ? 'No change' : n < 0 ? '↓ ' + p1(-n * 100) + '% down' : '↑ ' + p1(n * 100) + '% up'; // percentages: one decimal place only when needed (48.8%, 50%)
 const cx = (...a) => a.filter(Boolean).join(' ');
 const num = n => Math.round(n).toLocaleString('en-US');
 const ngn = n => 'NGN ' + num(n);
@@ -340,13 +343,13 @@ function computeSignals(list, incidents) {
     const th = ACTIVE.th[a.segment]; const s = a.stats; const pct = s.last30 / a.agreed * 100;
     let sig = null;
     if (s.daysSinceLast >= th.dropDays) sig = { kind: 'Dropped', detail: 'No requests for ' + s.daysSinceLast + ' days. Last 30 days: ' + num(s.last30) + ' against ' + num(a.agreed) + ' agreed per month.' };
-    else if (pct < th.lowPct) sig = { kind: 'Low volume', detail: num(s.last30) + ' requests in the last 30 days against ' + num(a.agreed) + ' agreed (' + Math.round(pct) + '%).' };
-    else if (s.mom * 100 <= -th.reducedPct) sig = { kind: 'Reduced volume', detail: 'Down ' + Math.round(-s.mom * 100) + '% on the previous 30 days (' + num(s.prior30) + ' to ' + num(s.last30) + ').' };
+    else if (pct < th.lowPct) sig = { kind: 'Low volume', detail: num(s.last30) + ' requests in the last 30 days against ' + num(a.agreed) + ' agreed (' + p1(pct) + '%).' };
+    else if (s.mom * 100 <= -th.reducedPct) sig = { kind: 'Reduced volume', detail: 'Down ' + p1(-s.mom * 100) + '% on the previous 30 days (' + num(s.prior30) + ' to ' + num(s.last30) + ').' };
     else {
       const sv = s.svcStats.filter(x => x.change7 * 100 <= -(ACTIVE.th.svcType[SVC[x.id].type] || th.reducedPct) && x.prior30 > 1000).sort((x, y) => x.change7 - y.change7)[0];
       if (sv) {
         const inc = ACTIVE.supp ? incidents.find(i => i.status === 'Open' && i.service === sv.id) : null;
-        sig = { kind: 'Reduced volume', service: sv.id, detail: SVC[sv.id].name + ' requests are down ' + Math.round(-sv.change7 * 100) + '% over the last 7 days.' };
+        sig = { kind: 'Reduced volume', service: sv.id, detail: SVC[sv.id].name + ' requests are down ' + p1(-sv.change7 * 100) + '% over the last 7 days.' };
         if (inc) { sig.suppressed = true; sig.incident = inc; }
       }
     }
@@ -721,7 +724,7 @@ function Home({ st, dispatch, go, role }) {
       <${Tile} label="Open signals" value=${signals.length} sub=${signals.filter(s => s.suppressed).length + ' suppressed · target: action within 1 working day'} />
       <${Tile} label="Open escalations" value=${cases.length} tone=${near ? 'warn' : ''} sub=${near + ' near breach'} />
       <${Tile} label="Tasks due today" value=${myTasks.length} sub=${myTasks.filter(t => t.auto).length + ' created automatically'} />
-      <${Tile} label="Volume, last 30 days" value=${Math.round(actualTot / agreedTot * 100) + '% of agreed'} sub=${num(actualTot) + ' of ' + num(agreedTot)}><${VolumeSpark} data=${portfolio30} w=${140} /><//>
+      <${Tile} label="Volume, last 30 days" value=${p1(actualTot / agreedTot * 100) + '% of agreed'} sub=${num(actualTot) + ' of ' + num(agreedTot)}><${VolumeSpark} data=${portfolio30} w=${140} /><//>
     </div>
 
     <div className="grid lg:grid-cols-3 gap-5">
@@ -794,7 +797,7 @@ function AccountsPage({ st, go, role }) {
       ${list.map(a => { const sg = signals.find(s => s.accountId === a.id); const h = healthOf(a, signals, st.escalations, now);
         return html`<tr key=${a.id} className="border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: a.id, tab: 'Timeline' })}>
           <td className="px-4 py-2.5 font-medium">${a.name}</td><td className="px-2"><${SegPill} segment=${a.segment} /></td><td className="px-2 text-mute">${a.am}</td><td className="px-2"><${HealthPill} h=${h} /></td>
-          <td className="px-2 text-right tabular-nums">${num(a.agreed)}</td><td className="px-2 text-right tabular-nums">${num(a.stats.last30)} <span className="text-xs text-mute">(${Math.round(a.stats.last30 / a.agreed * 100)}%)</span></td>
+          <td className="px-2 text-right tabular-nums">${num(a.agreed)}</td><td className="px-2 text-right tabular-nums">${num(a.stats.last30)} <span className="text-xs text-mute">(${p1(a.stats.last30 / a.agreed * 100)}%)</span></td>
           <td className="px-2"><${VolumeSpark} data=${a.total} w=${110} h=${26} /></td>
           <td className="px-2">${sg ? html`<${Pill} tone=${sg.suppressed ? 'mute' : sg.kind === 'Dropped' ? 'bad' : 'warn'}>${sg.suppressed ? 'Suppressed' : sg.kind}<//>` : html`<span className="text-xs text-mute">None</span>`}</td></tr>`; })}
     </tbody></table></div><//>
@@ -807,7 +810,7 @@ function Account360({ st, dispatch, go, role, route }) {
   const now = useNow(); const a = ACC[route.id]; const tab = route.tab || 'Timeline';
   const signals = computeSignals(ACCOUNTS, st.incidents); const sig = signals.find(s => s.accountId === a.id);
   const h = healthOf(a, signals, st.escalations, now); const cases = st.escalations.filter(c => c.accountId === a.id);
-  const pct = Math.round(a.stats.last30 / a.agreed * 100); const mom = Math.round(a.stats.mom * 100);
+  const pct = p1(a.stats.last30 / a.agreed * 100); const mom = p1(a.stats.mom * 100);
   const counts = { Timeline: st.timeline.filter(t => t.accountId === a.id).length, Escalations: cases.length };
   return html`<div className="space-y-4">
     <button className="text-xs text-mute inline-flex items-center gap-1 hover:text-ink" onClick=${() => go({ page: 'accounts' })}><${Icon} n="back" s=${13} />All accounts</button>
@@ -819,7 +822,7 @@ function Account360({ st, dispatch, go, role, route }) {
           <div className="flex flex-wrap gap-1.5 mt-2.5">${a.services.map(s => html`<${Pill} key=${s} tone=${SVC[s].type === 'lastmile' ? 'warn' : 'mute'} title=${SVC[s].type === 'lastmile' ? 'Last mile, SLA ' + SVC[s].slaLabel : 'Real-time'}>${SVC[s].name}<//>`)}</div>
         </div>
         <div className="min-w-[260px] w-full sm:w-80">
-          <div className="flex items-baseline justify-between text-sm"><span className="text-mute">Agreed vs actual, last 30 days</span><span className=${cx('text-xs font-medium', mom < -20 ? 'text-bad' : 'text-mute')}>${mom > 0 ? '+' : ''}${mom}% vs prior 30 days</span></div>
+          <div className="flex items-baseline justify-between text-sm"><span className="text-mute">Agreed vs actual, last 30 days</span><span className=${cx('text-xs font-medium', mom < -20 ? 'text-bad' : 'text-mute')}>${chg(a.stats.mom)} vs prior 30 days</span></div>
           <div className="mt-1 text-lg font-semibold tabular-nums">${num(a.stats.last30)} <span className="text-sm font-normal text-mute">of ${num(a.agreed)} agreed (${pct}%)</span></div>
           <div className="h-2 rounded-full bg-surface2 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: pct >= 85 ? 'var(--ok)' : pct >= 55 ? 'var(--warn)' : 'var(--bad)' }}></div></div>
         </div>
@@ -969,7 +972,7 @@ function UsageTab({ a, st }) {
         <text x=${pl} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--mute)' }}>90 days ago</text><text x=${pl + 60 * bw} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--brand)' }}>Last 30 days</text><text x=${W - 34} y=${Hh - 6} fontSize="10" style=${{ fill: 'var(--mute)' }}>Today</text>
       </svg></div><//>
     <${Card}><${CardHead} title="By service" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Service</th><th className="px-2 font-medium">Type</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium text-right">Prior 30 days</th><th className="px-2 font-medium text-right">Last 7 days vs usual</th></tr></thead><tbody>
-      ${a.stats.svcStats.map(s => html`<tr key=${s.id} className="border-b border-line last:border-0"><td className="px-4 py-2">${SVC[s.id].name}</td><td className="px-2 text-mute text-xs">${SVC[s.id].type === 'lastmile' ? 'Last mile · ' + SVC[s.id].slaLabel : 'Real-time'}</td><td className="px-2 text-right tabular-nums">${num(s.last30)}</td><td className="px-2 text-right tabular-nums">${num(s.prior30)}</td><td className=${cx('px-2 text-right tabular-nums', s.change7 < -.25 && 'text-bad font-medium')}>${s.change7 > 0 ? '+' : ''}${Math.round(s.change7 * 100)}%</td></tr>`)}
+      ${a.stats.svcStats.map(s => html`<tr key=${s.id} className="border-b border-line last:border-0"><td className="px-4 py-2">${SVC[s.id].name}</td><td className="px-2 text-mute text-xs">${SVC[s.id].type === 'lastmile' ? 'Last mile · ' + SVC[s.id].slaLabel : 'Real-time'}</td><td className="px-2 text-right tabular-nums">${num(s.last30)}</td><td className="px-2 text-right tabular-nums">${num(s.prior30)}</td><td className=${cx('px-2 text-right tabular-nums', s.change7 < -.25 && 'text-bad font-medium')}>${chg(s.change7)}</td></tr>`)}
     </tbody></table></div><//>
     <p className="text-xs text-mute">Catalogue services this account does not use: ${SERVICES.filter(s => !a.services.includes(s.id)).map(s => s.name).join(', ') || 'none'}.</p>
   </div>`;
@@ -1079,10 +1082,10 @@ const REPLIES = {
 function makeCheckin(acc, s) {
   const cc = CHECKIN_CTX[acc.id]; const to = (cc && cc.to) || acc.contacts[0].id; const c = acc.contacts.find(x => x.id === to); const first = c.name.split(' ')[0]; const st = acc.stats;
   let fact;
-  if (s.service) { const sv = st.svcStats.find(x => x.id === s.service); fact = 'your ' + SVC[s.service].name + ' requests are down ' + Math.round(-sv.change7 * 100) + '% over the last 7 days'; }
+  if (s.service) { const sv = st.svcStats.find(x => x.id === s.service); fact = 'your ' + SVC[s.service].name + ' requests are down ' + p1(-sv.change7 * 100) + '% over the last 7 days'; }
   else if (s.kind === 'Dropped') fact = 'we have not seen any requests from your integration for ' + st.daysSinceLast + ' days';
   else if (s.kind === 'Low volume') fact = 'your volume over the last 30 days is ' + num(st.last30) + ' requests against ' + num(acc.agreed) + ' agreed each month';
-  else fact = 'your request volume is down ' + Math.round(-st.mom * 100) + '% on the previous 30 days';
+  else fact = 'your request volume is down ' + p1(-st.mom * 100) + '% on the previous 30 days';
   if (acc.segment === 'Scale') return { to, subject: 'Checking in on your VerifyMe usage', body: 'Hi ' + first + ',\n\nOur usage report shows ' + fact + '. Is everything working as expected on your side, or is there anything we can help with, such as integration support or adjusting your plan?\n\nReply to this email and ' + acc.am + ' will follow up.\n\nRegards,\nVerifyMe Account Management' };
   return { to, subject: 'Checking in on ' + acc.name.split(' ')[0] + ' and VerifyMe', body: 'Hi ' + first + ',\n\nI wanted to check in personally because ' + fact + '. ' + (cc && cc.ctx ? cc.ctx + ' ' : '') + 'Could we find 20 minutes this week to see whether anything has changed on your side, or whether there is something we can fix?\n\nBest regards,\n' + acc.am + '\nAccount Manager, VerifyMe' };
 }
@@ -1405,7 +1408,7 @@ function InvoicesPage({ st, dispatch, role }) {
     <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p></div>
       ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New request<//>`}</div>
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} onDone=${() => setShow(false)} />`}
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? Math.round(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Standard: about 1 hr" /></div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? p1(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Standard: about 1 hr" /></div>
     <div className="flex gap-1 border-b border-line">${[['action', 'Needs action', mine.filter(needs).length], ['all', 'All requests', mine.length], ['done', 'Delivered or rejected', mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected').length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
     ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'action' ? 'Nothing needs your action.' : 'No requests here.'}<//><//>` : list.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${tab === 'action'} />`)}
     <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Open decisions:</span> approval rules, invoice source system, withholding-tax rule for international customers, and the customer-facing sharing method.<//>
@@ -1452,7 +1455,7 @@ function oppEvidence(a, rule, timeline) {
   const ev = items.find(t => t.dir !== 'out' && rule.evidence.test(t.subject + ' ' + t.body));
   const facts = [];
   if (rule.id === 'addr' || rule.id === 'live') facts.push('Uses only ' + a.services.map(s => SVC[s].name).join(' and ') + ' from the catalogue.');
-  if (rule.id === 'commit') facts.push('Running at ' + Math.round(a.stats.last30 / a.agreed * 100) + '% of agreed volume over the last 30 days.');
+  if (rule.id === 'commit') facts.push('Running at ' + p1(a.stats.last30 / a.agreed * 100) + '% of agreed volume over the last 30 days.');
   if (ev) facts.push('Timeline, ' + fmtDay(ev.ts) + ': "' + ev.subject + '" from ' + ev.author + '.');
   facts.push(a.segment + ' account, ' + num(a.agreed) + ' requests agreed per month.');
   return { ev, facts, items };
@@ -1468,7 +1471,7 @@ function computeOpps(accts, ctx) {
     if (sig && sig.suppressed) held = 'Open incident ' + sig.incident.id + ' on ' + SVC[sig.service].name + '. Signals are suppressed, so no upsell yet.';
     else if (sig && !(w && w.status === 'Replied')) held = 'Open ' + sig.kind + ' signal. Held until the customer has replied to the check-in.';
     const near = ctx.cases.find(c => c.accountId === a.id && isOpen(c) && slaPct(c, ctx.now) >= .8);
-    if (!held && near) held = 'Open escalation ' + near.id + ' is at ' + Math.round(slaPct(near, ctx.now) * 100) + '% of its SLA.';
+    if (!held && near) held = 'Open escalation ' + near.id + ' is at ' + p1(slaPct(near, ctx.now) * 100) + '% of its SLA.';
     out.push({ key: a.id + ':' + r.id, accountId: a.id, rule: r.id, score, held });
   }));
   return out;
@@ -1478,7 +1481,7 @@ function oppValue(a, ruleId) { return Math.round(a.agreed * (ruleId === 'commit'
 function makeOppDraft(a, ruleId) {
   const cc = OPP_CTX[a.id] || { to: a.contacts[0].id, ctx: '' }; const c = a.contacts.find(x => x.id === cc.to); const first = c.name.split(' ')[0];
   const sign = '\n\nBest regards,\n' + a.am + '\nAccount Manager, VerifyMe';
-  if (ruleId === 'commit') return { to: c.id, subject: 'Making your VerifyMe plan fit your growth', body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Your usage has been at ' + Math.round(a.stats.last30 / a.agreed * 100) + '% of the agreed monthly volume over the last 30 days. We can prepare an addendum with a higher monthly commitment and a better per-call rate for your review.\n\nWould it help if we sent a short option sheet this week?' + sign };
+  if (ruleId === 'commit') return { to: c.id, subject: 'Making your VerifyMe plan fit your growth', body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Your usage has been at ' + p1(a.stats.last30 / a.agreed * 100) + '% of the agreed monthly volume over the last 30 days. We can prepare an addendum with a higher monthly commitment and a better per-call rate for your review.\n\nWould it help if we sent a short option sheet this week?' + sign };
   if (ruleId === 'live') return { to: c.id, subject: 'Adding liveness checks to ' + a.name.split(' ')[0] + ' onboarding', body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Our liveness check confirms that a real person is present during onboarding and sits alongside the NIN and BVN checks you already use.\n\nWould a short pilot on your next batch be useful?' + sign };
   return { to: c.id, subject: 'Faster address checks for ' + a.name.split(' ')[0], body: 'Hi ' + first + ',\n\n' + cc.ctx + ' Two services fit: Digital address verification (Verifind), a real-time check of a submitted address, and Physical address verification, where a field agent confirms the address in person (24 to 72 hours). Many lenders run the digital check first and send an agent only where needed, which cuts field costs.\n\nWould a short pilot on your next batch of applications be useful?' + sign };
 }
@@ -1558,19 +1561,19 @@ function DashboardPage({ st }) {
   const buckets = [['Within standard', open.filter(c => slaPct(c, now) < .8).length, 'ok'], ['Near the standard (80%+)', open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, 'warn'], ['Up to 1 day over', open.filter(c => slaPct(c, now) >= 1 && el(c) - c.slaHours < 24).length, 'bad'], ['More than 1 day over', open.filter(c => el(c) - c.slaHours >= 24).length, 'bad']];
   const liveBreach = esc.filter(c => c.breached).length; const breachRate = (BASE.breaches + liveBreach) / (BASE.cases + esc.length) * 100;
   const live = sigs.filter(s => !s.suppressed); const works = live.map(s => st.sigWork[s.accountId]).filter(w => w && w.sentAt); const within = works.filter(w => w.sentAt - w.detectedAt <= 24 * H).length;
-  const sigRate = live.length ? Math.round(within / live.length * 100) : null; const sigAvg = avg(works.map(w => w.sentAt - w.detectedAt));
+  const sigRate = live.length ? p1(within / live.length * 100) : null; const sigAvg = avg(works.map(w => w.sentAt - w.detectedAt));
   const ow = Object.values(st.oppWork); const oppF = BASE.opp.flagged + Object.keys(st.oppSeen).length, oppA = BASE.opp.approved + ow.filter(w => w.approvedAt).length, oppC = BASE.opp.converted + ow.filter(w => w.status === 'Addendum filed').length;
   const health = ACCOUNTS.map(a => healthOf(a, sigs, esc, now)); const rev = ACCOUNTS.map(a => a.agreed * a.price); const atRisk = sum(ACCOUNTS.map((a, i) => health[i] !== 'green' ? rev[i] : 0));
-  const stdPct = reqs.length ? Math.round(reqs.filter(r => r.standard).length / reqs.length * 100) : null;
+  const stdPct = reqs.length ? p1(reqs.filter(r => r.standard).length / reqs.length * 100) : null;
   const rows = [['VS Team', 'AM to VS cases', BASE.vs.fr * H, BASE.vs.res * H, fr(vsC), rs(vsC), vsC.length], ['Account Management', 'VS to AM queries', BASE.am.fr * H, BASE.am.res * H, fr(amC), rs(amC), amC.length], ['Finance', 'Invoice exceptions, approval and delivery', BASE.fin.fr * H, BASE.fin.res * H, frFin, rsFin, reqs.length]];
   const maxB = Math.max(1, ...buckets.map(b => b[1]));
   return html`<div className="space-y-5">
     <div><h1 className="text-xl font-semibold">Manager dashboard</h1><p className="text-sm text-mute">One scorecard definition, read from the same case records. Live figures update as you act; the 30-day baseline is mock history.</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       <${Tile} label="Open escalations" value=${open.length} sub=${open.filter(c => slaPct(c, now) >= .8).length + ' at 80% or more'} />
-      <${Tile} label="Breaches, 30 days" value=${BASE.breaches + liveBreach} tone=${liveBreach ? 'bad' : ''} sub=${Math.round(breachRate) + '% breach rate · ' + liveBreach + ' live'} />
+      <${Tile} label="Breaches, 30 days" value=${BASE.breaches + liveBreach} tone=${liveBreach ? 'bad' : ''} sub=${p1(breachRate) + '% breach rate · ' + liveBreach + ' live'} />
       <${Tile} label="Signal-to-action rate" value=${sigRate == null ? 'n/a' : sigRate + '%'} sub=${'Within 1 working day · baseline ' + BASE.sigRate + '%'} />
-      <${Tile} label="Revenue at risk" value=${ngn(atRisk)} tone=${atRisk ? 'warn' : ''} sub=${'Per month · ' + Math.round(atRisk / sum(rev) * 100) + '% of portfolio'} />
+      <${Tile} label="Revenue at risk" value=${ngn(atRisk)} tone=${atRisk ? 'warn' : ''} sub=${'Per month · ' + p1(atRisk / sum(rev) * 100) + '% of portfolio'} />
       <${Tile} label="Logo retention, 12 months" value=${BASE.retention + '%'} sub=${BASE.churned + ' account churned this quarter (mock)'} />
     </div>
     <${Card}><${CardHead} title="First response and resolution time per unit" sub="Baseline is the mock 30-day average. Live is this session." />
@@ -1647,14 +1650,14 @@ function repStatus(r, st, now) {
 const seededStatus = (name, r) => { const h = (name.length * 7 + r.id.length * 3) % 5; return h === 0 ? 'Overdue' : h === 1 ? 'Awaiting approval' : 'Submitted'; };
 const repSaved = (list, st) => list.filter(r => repW(st, r.id).out).reduce((x, r) => x + r.manualMin * r.autoPct / 100, 0) / 60;
 function repSections(r, st, now, accts) {
-  const sigs = computeSignals(ACCOUNTS, st.incidents), cs = st.escalations.filter(c => accts.some(a => a.id === c.accountId)), pc = n => (n >= 0 ? '+' : '') + Math.round(n * 100) + '%';
+  const sigs = computeSignals(ACCOUNTS, st.incidents), cs = st.escalations.filter(c => accts.some(a => a.id === c.accountId)), pc = n => chg(n);
   switch (r.id) {
     case 'health': return [['Account health and signals', accts.map(a => { const h = healthOf(a, sigs, st.escalations, now), s = sigs.find(x => x.accountId === a.id); return a.name + ': ' + HEALTH[h].label + (s ? (s.suppressed ? '. Signal held back during a provider incident.' : '. ' + s.kind + ': ' + s.detail) : ''); })]];
     case 'golive': return [['Go-live status', accts.map(a => a.name + ': live since ' + a.since + ', ' + a.services.length + ' services active')]];
     case 'dormant': { const d = accts.filter(a => a.stats.daysSinceLast >= ACTIVE.th[a.segment].dropDays); return [['Dormant accounts', d.length ? d.map(a => a.name + ': no requests for ' + a.stats.daysSinceLast + ' days; ' + (st.sigWork[a.id] && st.sigWork[a.id].sentAt ? 'check-in sent ' + fmtDay(st.sigWork[a.id].sentAt) : 'no check-in sent yet')) : ['No dormant accounts in scope.']]]; }
     case 'issues': return [['Cases with logged and resolved times', cs.map(c => c.id + ' ' + ACC[c.accountId].name + ': ' + c.status + ', raised ' + fmtDay(c.openedAt) + ', first response ' + (c.ackAt ? hrsTxt(c.ackAt - c.openedAt) : 'awaited') + (c.resolvedAt ? ', resolved in ' + hrsTxt(c.resolvedAt - c.openedAt) : ''))]];
-    case 'mrv': { const ag = sum(accts.map(a => a.agreed)), ac = sum(accts.map(a => a.stats.last30)); return [['Monthly recurring volume', ['Portfolio: ' + num(ac) + ' requests in the last 30 days against ' + num(ag) + ' agreed (' + Math.round(ac / ag * 100) + '%)', ...accts.map(a => a.name + ': ' + num(a.stats.last30) + ' of ' + num(a.agreed) + ' (' + pc(a.stats.mom) + ' on the previous 30 days)')]]]; }
-    case 'qbr': return [['Usage, billing and cases by Key account', accts.filter(a => a.segment === 'Key').map(a => a.name + ': ' + num(a.stats.last30) + ' requests (' + Math.round(a.stats.last30 / a.agreed * 100) + '% of agreed), latest invoice ' + a.invoices[2].status.toLowerCase() + ', ' + cs.filter(c => c.accountId === a.id && isOpen(c)).length + ' open cases')]];
+    case 'mrv': { const ag = sum(accts.map(a => a.agreed)), ac = sum(accts.map(a => a.stats.last30)); return [['Monthly recurring volume', ['Portfolio: ' + num(ac) + ' requests in the last 30 days against ' + num(ag) + ' agreed (' + p1(ac / ag * 100) + '%)', ...accts.map(a => a.name + ': ' + num(a.stats.last30) + ' of ' + num(a.agreed) + ' (' + pc(a.stats.mom) + ' on the previous 30 days)')]]]; }
+    case 'qbr': return [['Usage, billing and cases by Key account', accts.filter(a => a.segment === 'Key').map(a => a.name + ': ' + num(a.stats.last30) + ' requests (' + p1(a.stats.last30 / a.agreed * 100) + '% of agreed), latest invoice ' + a.invoices[2].status.toLowerCase() + ', ' + cs.filter(c => c.accountId === a.id && isOpen(c)).length + ' open cases')]];
     case 'visits': return [['Visits logged this month', st.visits.length ? st.visits.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No visits logged yet. Use Quick input.']]];
     case 'referrals': return [['Referrals logged this quarter', st.referrals.length ? st.referrals.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No referrals logged yet. Use Quick input.']]];
     case 'mgmt': { const hs = ACCOUNTS.map(a => healthOf(a, sigs, st.escalations, now)); const op = st.escalations.filter(isOpen); return [['Portfolio summary', ['Health: ' + hs.filter(h => h === 'green').length + ' healthy, ' + hs.filter(h => h === 'amber').length + ' at risk, ' + hs.filter(h => h === 'red').length + ' critical', 'Open cases: ' + op.length + ', of which ' + op.filter(c => c.breached).length + ' breached', 'Live signals: ' + sigs.filter(s => !s.suppressed).length + ', held back: ' + sigs.filter(s => s.suppressed).length, 'Invoice requests handled: ' + st.invoiceRequests.length, 'Opportunities in progress: ' + Object.keys(st.oppWork).length]]]; }
@@ -1676,7 +1679,7 @@ function PortfolioExport({ st, dispatch, role }) {
   const sigs = computeSignals(ACCOUNTS, st.incidents); const ams = [...new Set(ACCOUNTS.map(a => a.am))];
   const list = (role === 'AM' ? scopeAccounts('AM') : ACCOUNTS).filter(a => (seg === 'All' || a.segment === seg) && (am === 'All' || a.am === am));
   const head = ['Customer', 'Segment', 'Account manager', 'Health', 'Agreed monthly volume', 'Last 30 days', 'Percent of agreed', 'Change on previous 30 days', 'Days since last request', 'Services used', 'Open cases', 'Latest invoice', 'Invoice status', 'Active signal'];
-  const rows = list.map(a => { const g = sigs.find(x => x.accountId === a.id); return [a.name, a.segment, a.am, HEALTH[healthOf(a, sigs, st.escalations, now)].label, a.agreed, a.stats.last30, Math.round(a.stats.last30 / a.agreed * 100) + '%', Math.round(a.stats.mom * 100) + '%', a.stats.daysSinceLast, a.services.map(x => SVC[x].name).join('; '), st.escalations.filter(c => c.accountId === a.id && isOpen(c)).length, a.invoices[2].no + ' (NGN ' + num(a.invoices[2].amount) + ')', a.invoices[2].status, g ? g.kind + (g.suppressed ? ' (held back)' : '') : 'None']; });
+  const rows = list.map(a => { const g = sigs.find(x => x.accountId === a.id); return [a.name, a.segment, a.am, HEALTH[healthOf(a, sigs, st.escalations, now)].label, a.agreed, a.stats.last30, p1(a.stats.last30 / a.agreed * 100) + '%', p1(a.stats.mom * 100) + '%', a.stats.daysSinceLast, a.services.map(x => SVC[x].name).join('; '), st.escalations.filter(c => c.accountId === a.id && isOpen(c)).length, a.invoices[2].no + ' (NGN ' + num(a.invoices[2].amount) + ')', a.invoices[2].status, g ? g.kind + (g.suppressed ? ' (held back)' : '') : 'None']; });
   const download = () => { const csv = [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'); const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })); const l = document.createElement('a'); l.href = url; l.download = 'verifyme-portfolio-' + isoDate(now) + '.csv'; document.body.appendChild(l); l.click(); l.remove(); URL.revokeObjectURL(url); dispatch({ type: 'TOAST', text: 'Portfolio spreadsheet downloaded: ' + rows.length + ' customers.' }); };
   return html`<${Card}><${CardHead} title="Portfolio spreadsheet" sub=${role === 'AM' ? 'One row per customer in your portfolio. Opens in Excel.' : 'One row per customer across the whole portfolio. Opens in Excel.'} right=${html`<${AutoBadge} label="Generated on request" />`} />
     <div className="p-4 space-y-3"><div className="flex flex-wrap gap-2"><select value=${seg} onChange=${e => setSeg(e.target.value)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm" aria-label="Segment"><option>All</option><option>Key</option><option>Scale</option></select>
@@ -1713,7 +1716,7 @@ function FiveQ({ show }) {
   return html`<div className="grid grid-cols-2 md:grid-cols-5 gap-2">${FIVE_Q.map(([k, q]) => html`<div key=${k} className=${cx('rounded-md border px-3 py-2', show.includes(k) ? 'border-brand bg-brandsoft' : 'border-line bg-surface')}><div className="text-xs font-semibold text-brand">${k}</div><div className="text-[11px] text-mute leading-snug">${q}</div></div>`)}</div>`;
 }
 const SecHead = ({ q, title, sub }) => html`<${CardHead} title=${html`<span><span className="text-brand">${q}:</span> ${title}</span>`} sub=${sub} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} />`;
-const pct = n => n == null || !isFinite(n) ? 'n/a' : (n >= 0 ? '+' : '') + Math.round(n * 100) + '%';
+const pct = n => n == null || !isFinite(n) ? 'n/a' : chg(n);
 const chTone = n => n == null || !isFinite(n) ? 'mute' : n <= -0.2 ? 'bad' : n < 0 ? 'warn' : 'ok';
 const wk = a => { const t7 = sum(a.total.slice(83, 90)), p7 = sum(a.total.slice(76, 83)); return { t7, p7, r7: t7 * a.price, rp7: p7 * a.price, ch: p7 ? t7 / p7 - 1 : null }; };
 function worryList(accts, st, now) {
@@ -1722,7 +1725,7 @@ function worryList(accts, st, now) {
     const w = wk(a), why = [], s = sigs.find(x => x.accountId === a.id);
     if (s && !s.suppressed) why.push(s.kind);
     if (s && s.suppressed) why.push('Volume down during a provider incident');
-    if (w.ch != null && w.ch <= -0.2) why.push('Revenue down ' + Math.round(-w.ch * 100) + '% on last week');
+    if (w.ch != null && w.ch <= -0.2) why.push('Revenue down ' + p1(-w.ch * 100) + '% on last week');
     const neg = st.timeline.filter(t => t.accountId === a.id && t.dir === 'in' && now - t.ts <= 30 * D && (t.tags.risk || t.tags.sentiment === 'Negative')).sort((x, y) => y.ts - x.ts);
     if (neg.some(t => t.tags.risk)) why.push('Risk language from the customer'); else if (neg.length) why.push('Dissatisfaction raised');
     const cs = st.escalations.filter(c => c.accountId === a.id && isOpen(c) && slaPct(c, now) >= .8);
@@ -1748,8 +1751,8 @@ function WeeklyReport({ st, accts }) {
     <p className="text-xs text-mute">Weekly focus: operational. Spot issues early so they are acted on before any customer is at risk of leaving. Week of ${fmtDay(now - 7 * D)} to ${fmtDay(now - D)}.</p>
     <${Card}><${SecHead} q="Revenue" title="Transactions and revenue, week on week" sub="Last 7 days against the 7 days before" />
       <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-        <${Tile} label="Transactions this week" value=${num(T)} sub=${pct(P ? T / P - 1 : null) + ' on last week'} />
-        <${Tile} label="Revenue this week" value=${ngn(R)} sub=${pct(RP ? R / RP - 1 : null) + ' on last week'} />
+        <${Tile} label="Transactions this week" value=${num(T)} sub=${pct(P ? T / P - 1 : null) + ' vs last week'} />
+        <${Tile} label="Revenue this week" value=${ngn(R)} sub=${pct(RP ? R / RP - 1 : null) + ' vs last week'} />
         <${Tile} label="Customers down 20% or more" value=${rows.filter(r => r.ch != null && r.ch <= -0.2).length + rows.filter(r => r.t7 === 0).length} tone=${rows.some(r => r.t7 === 0 || (r.ch != null && r.ch <= -0.2)) ? 'bad' : undefined} sub="Including customers with no transactions" />
       </div>
       <div className="scroll-x border-t border-line"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Transactions</th><th className="px-2 font-medium text-right">Last week</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Change</th></tr></thead><tbody>
@@ -1793,22 +1796,22 @@ function MonthlyReport({ st }) {
     <p className="text-xs text-mute">Monthly focus: the health, profitability, retention and growth of the whole team portfolio. Reporting month: ${REP_MONTH_LABEL}. Target and prior-year figures are mock placeholders.</p>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <${Tile} label="Total portfolio revenue" value=${ngn(total)} sub=${REP_MONTH_LABEL} />
-      <${Tile} label="Against monthly target" value=${Math.round(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target) + ' · gap ' + ngn(Math.max(0, target - total))} />
+      <${Tile} label="Against monthly target" value=${p1(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target) + ' · gap ' + ngn(Math.max(0, target - total))} />
       <${Tile} label="Month on month" value=${pct(total / book - 1)} sub="Against last month’s book" />
       <${Tile} label="Against same month last year" value=${pct(total / lastYear - 1)} sub=${ngn(lastYear) + ' (mock history)'} />
     </div>
     <${Card}><${SecHead} q="Revenue" title="Where this month’s revenue came from" sub="From last month’s book to this month’s total" />
-      <div className="p-4 space-y-2.5">${bridge.map(([l, v, t]) => html`<div key=${l} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-3 text-sm"><span className=${cx(t === 'brand' || t === 'mute' ? 'font-semibold' : '')}>${l}</span><${Bar} pct=${Math.abs(v) / maxB * 100} tone=${t === 'mute' ? 'mute' : t} /><span className=${cx('tabular-nums text-right w-36', v < 0 && 'text-bad')}>${(v < 0 ? '−' : t === 'ok' ? '+' : '') + ngn(Math.abs(v))}</span></div>`)}</div><//>
+      <div className="p-4 space-y-2.5">${bridge.map(([l, v, t]) => html`<div key=${l} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-3 text-sm"><span className=${cx(t === 'brand' || t === 'mute' ? 'font-semibold' : '')}>${l}</span><${Bar} pct=${Math.abs(v) / maxB * 100} tone=${t === 'mute' ? 'mute' : t} /><span className=${cx('tabular-nums text-right w-36', v < 0 && 'text-bad')}>${(v < 0 ? '↓ ' : t === 'ok' ? '↑ ' : '') + ngn(Math.abs(v))}</span></div>`)}</div><//>
     <div className="grid lg:grid-cols-2 gap-4">
       <${Card}><${SecHead} q="Retention" title="Existing accounts" sub="Revenue kept from customers we already had" />
-        <div className="p-4 grid grid-cols-2 gap-3"><${Tile} label="Net revenue retention" value=${Math.round(nrr * 100) + '%'} tone=${nrr < 1 ? 'warn' : undefined} sub="Includes growth from existing customers" /><${Tile} label="Gross revenue retention" value=${Math.round(grr * 100) + '%'} sub="Before growth" /></div>
+        <div className="p-4 grid grid-cols-2 gap-3"><${Tile} label="Net revenue retention" value=${p1(nrr * 100) + '%'} tone=${nrr < 1 ? 'warn' : undefined} sub="Includes growth from existing customers" /><${Tile} label="Gross revenue retention" value=${p1(grr * 100) + '%'} sub="Before growth" /></div>
         <div className="px-4 pb-4 text-xs text-mute">Newly assigned this month: ${newly.map(a => a.name + ' (' + NEWLY_ASSIGNED[a.id] + '), ' + ngn(monthRev(a, REP_MONTH, false))).join('; ') || 'none'}.</div><//>
       <${Card}><${SecHead} q="Growth" title="New business from upselling" sub="Revenue from services customers started using after an AM upsell" />
         <div className="scroll-x"><table className="w-full text-sm"><tbody>${upsell.map(u => html`<tr key=${u.a.id + u.svc} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${u.a.name}</td><td className="px-2 text-mute">${SVC[u.svc].name}</td><td className="px-4 text-right tabular-nums">${ngn(u.rev)}</td></tr>`)}</tbody></table></div>
         <div className="px-4 py-3 text-xs text-mute border-t border-line">Upsells converted this quarter: ${3 + Object.values(st.oppWork).filter(w => w.status === 'Addendum filed').length} (3 baseline, the rest live).</div><//>
     </div>
     <${Card}><${SecHead} q="Retention" title="Lost business, decline and churn" sub="The opposite of growth: where revenue went down" />
-      ${lost.length === 0 ? html`<${Empty}>No declining accounts this month.<//>` : html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Last month</th><th className="px-2 font-medium text-right">This month</th><th className="px-2 font-medium text-right">Change</th><th className="px-4 font-medium">AM</th></tr></thead><tbody>${lost.map(x => html`<tr key=${x.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.a.name}</td><td className="px-2 text-right tabular-nums text-mute">${ngn(x.prev)}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2 text-right tabular-nums text-bad">−${ngn(-x.d)} (${pct(x.cur / x.prev - 1)})</td><td className="px-4 text-mute">${x.a.am}</td></tr>`)}</tbody></table></div>`}
+      ${lost.length === 0 ? html`<${Empty}>No declining accounts this month.<//>` : html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Last month</th><th className="px-2 font-medium text-right">This month</th><th className="px-2 font-medium text-right">Change</th><th className="px-4 font-medium">AM</th></tr></thead><tbody>${lost.map(x => html`<tr key=${x.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.a.name}</td><td className="px-2 text-right tabular-nums text-mute">${ngn(x.prev)}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2 text-right tabular-nums text-bad">↓ ${ngn(-x.d)} (${p1((1 - x.cur / x.prev) * 100)}% down)</td><td className="px-4 text-mute">${x.a.am}</td></tr>`)}</tbody></table></div>`}
       <div className="px-4 py-3 text-xs border-t border-line">${churned.length ? 'Churned: ' + churned.map(a => a.name).join(', ') : 'No customers churned this month.'}</div><//>
     <${Card}><${SecHead} q="Execution" title="By account manager" sub="Each AM’s portfolio, from the same data as their own dashboard" />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Month on month</th><th className="px-2 font-medium text-right">At risk</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>
