@@ -900,7 +900,7 @@ function Home({ st, dispatch, go, role }) {
     <div className="grid lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-5 min-w-0">
         <${Card}>
-          <${CardHead} title="Signal inbox" sub="From the daily usage feed, compared with baseline and agreed volume" right=${html`<${AutoBadge} label="Auto-detected" />`} />
+          <${CardHead} title="Signal inbox" right=${html`<${AutoBadge} label="Auto-detected" />`} />
           ${signals.length === 0 ? html`<${Empty}>No open signals. Usage is in line with agreed volume.<//>` : signals.map(s => {
             const a = ACC[s.accountId]; const tone = s.suppressed ? 'mute' : s.kind === 'Dropped' ? 'bad' : 'warn';
             return html`<div key=${s.accountId} className="flex gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'signals' })}>
@@ -917,7 +917,7 @@ function Home({ st, dispatch, go, role }) {
           })}
         <//>
         <${Card}>
-          <${CardHead} title="Open escalations" sub="Address verification cases, both directions, with live SLA clocks" right=${html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Live<//>`} />
+          <${CardHead} title="Open escalations" right=${html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Live<//>`} />
           ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.sort((a, b) => slaPct(b, now) - slaPct(a, now)).map(c => html`<${CaseRow} key=${c.id} c=${c} now=${now} go=${go} />`)}
         <//>
         ${role === 'HEAD' && html`<${ByAmTable} accts=${accts} signals=${signals} st=${st} now=${now} />`}
@@ -988,7 +988,7 @@ function NoAccess({ role, go }) {
   return html`<${Card} className="p-6 max-w-2xl space-y-3"><div className="flex items-center gap-2 text-sm font-semibold"><${Icon} n="lock" s=${16} />Not part of the ${me.short} view</div>
     <p className="text-sm text-mute">Each role sees only the pages and customers it needs. As ${me.name} (${me.title}) you can open:</p>
     <div className="flex flex-wrap gap-1.5">${pages.map(n => html`<${Btn} key=${n.id} onClick=${() => go({ page: n.id })}><${Icon} n=${n.icon} s=${12} />${n.label}<//>`)}</div>
-    <p className="text-xs text-mute">In the live product this is enforced by user accounts and permissions, set up on whichever platform Product chooses.</p><//>`;
+    <//>`;
 }
 function Account360({ st, dispatch, go, role, route }) {
   const now = useNow(); const a = ACC[route.id]; const tabs = (a.obId ? ['Onboarding', ...TABS] : TABS).filter(t => ACCESS_TABS[role].includes(t)); const tab = tabs.includes(route.tab) ? route.tab : tabs[0]; const ob = st.onboarding.find(o => o.accountId === a.id);
@@ -1032,7 +1032,7 @@ function OnboardingTab({ a, ob, st, dispatch, role, go, route }) {
   const welcome = st.tasks.find(t => t.accountId === a.id && /Welcome call/.test(t.text));
   return html`<div className="grid lg:grid-cols-3 gap-5">
     <div className="lg:col-span-2 space-y-4 min-w-0">
-      <${Card}><${CardHead} title="Journey from Sales to you" sub="Every step TSI took before handover, with times against the standards" right=${html`<${AutoBadge} label="From the onboarding record" />`} />
+      <${Card}><${CardHead} title="Journey from Sales to you" right=${html`<${AutoBadge} label="From the onboarding record" />`} />
         <div className="p-4"><ol className="relative border-l-2 border-line ml-2 space-y-4">${(ob.hist || []).map(([stg, ts, by], i) => html`<li key=${i} className="ml-4"><span className="absolute -left-[7px] mt-1 w-3 h-3 rounded-full" style=${{ background: 'var(--fern)' }}></span>
           <div className="text-sm font-medium">${stg === 'Assigned' ? 'Assigned from Sales on the CRM' : stg}</div><div className="text-xs text-mute">${fmtFull(ts)} · ${by} · ${i === 0 ? 'start' : dur(ts - ob.assignedAt) + ' after assignment'}</div></li>`)}</ol></div><//>
       <${Card}><${CardHead} title="TSI notes and messages" sub="What the customer discussed with TSI before handover" />
@@ -1043,7 +1043,7 @@ function OnboardingTab({ a, ob, st, dispatch, role, go, route }) {
         <div className="p-4 space-y-2 text-sm">
           <div className="flex justify-between gap-2"><span>First contact</span><${Pill} tone=${resp != null && resp <= ONB_RESP_H * H ? 'ok' : 'warn'}>${resp == null ? 'n/a' : dur(resp)} (standard 30 mins)<//></div>
           <div className="flex justify-between gap-2"><span>Assignment to go-live</span><${Pill} tone=${live != null && live <= ONB_DAYS * D ? 'ok' : 'warn'}>${live == null ? 'Not live yet' : dur(live)} (standard 5 days)<//></div>
-          <div className="text-xs text-mute pt-1">Services: ${ob.services.map(x => SVC[x].name).join(', ')}. Usage signals start 30 days after go-live.</div>
+          <div className="text-xs text-mute pt-1">Services: ${ob.services.map(x => SVC[x].name).join(', ')}.</div>
         </div><//>
       <${Card}><${CardHead} title="Your next steps" sub=${ob.handedTo ? 'Handed to ' + ob.handedTo + ' ' + relAgo(ob.handedAt, now) : 'Not yet handed over'} />
         <div className="p-4 flex flex-col gap-2">
@@ -1160,19 +1160,19 @@ function NotesPanel({ a, role, dispatch, now }) {
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   return html`<${Card}><${CardHead} title="Add notes or a conversation" sub=${'For ' + a.name + ' · ' + a.orgId + '. Pick the channel it happened on.'} right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
     <div className="p-4 space-y-2.5">
-      ${!can && html`<p className="text-xs text-mute">Notes are logged by AMs, TSI and Admins. Switch role to try this.</p>`}
+      ${!can && html``}
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} disabled=${!can} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>
-      ${chan === 'whatsapp' && html`<p className="text-xs text-mute flex items-center gap-1.5"><${Icon} n="chat" s=${12} />WhatsApp is not connected. Type or paste a short summary of the chat; it is saved as a manual update.</p>`}
+      ${chan === 'whatsapp' && html``}
       <input className=${inp} placeholder=${'Title, for example ' + (chan === 'meeting' ? 'Q4 planning meeting' : chan === 'call' ? 'Call about the invoice' : chan === 'whatsapp' ? 'WhatsApp follow-up with Ops' : 'Volume update')} value=${title} onChange=${e => setTitle(e.target.value)} disabled=${!can} />
       <select className=${inp} value=${who} onChange=${e => setWho(e.target.value)} disabled=${!can} aria-label="Main contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}</select>
       <textarea className=${inp} rows="6" placeholder=${'Write notes in plain language. Lines starting with "Action:" and sentences such as "Ify to share the invoice tomorrow" become tasks.'} value=${text} onChange=${e => { setText(e.target.value); setItems(null); }} disabled=${!can}></textarea>
       <div className="flex gap-2"><${Btn} onClick=${extract} disabled=${!can || !text.trim()}><${Icon} n="bolt" s=${12} />Extract action items<//><${Btn} kind="primary" onClick=${save} disabled=${!can || !text.trim()}>Save to timeline<//></div>
-      ${items && (items.length === 0 ? html`<p className="text-xs text-mute">No action items found. Start a line with "Action:" or add a date such as "by Friday".</p>` : html`<div className="space-y-2 pt-1"><div className="flex items-center gap-2 text-xs font-medium">Extracted action items<${AutoBadge} label="Auto-extracted" /></div>
+      ${items && (items.length === 0 ? html`<p className="text-xs text-mute">No action items found.</p>` : html`<div className="space-y-2 pt-1"><div className="flex items-center gap-2 text-xs font-medium">Extracted action items<${AutoBadge} label="Auto-extracted" /></div>
         ${items.map(i => html`<div key=${i.key} className="rounded-md border border-line p-2 space-y-1.5">
           <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked=${i.on} onChange=${e => upd(i.key, { on: e.target.checked })} /><span>${i.text}</span></label>
           <div className="flex flex-wrap gap-2 pl-5"><select className="rounded border border-line bg-surface px-1.5 py-1 text-xs" value=${i.owner} onChange=${e => upd(i.key, { owner: e.target.value })} aria-label="Owner">${owners.map(o => html`<option key=${o}>${o}</option>`)}</select>
             <input type="date" className="rounded border border-line bg-surface px-1.5 py-1 text-xs" value=${isoDate(i.due)} onChange=${e => e.target.value && upd(i.key, { due: new Date(e.target.value + 'T00:00:00').getTime() })} aria-label="Due date" /></div></div>`)}
-        <p className="text-xs text-mute">Saving creates ${items.filter(i => i.on).length} task(s) with the owner and due date shown.</p></div>`)}
+        </div>`)}
     </div><//>`;
 }
 function AccountTasks({ a, st, dispatch }) {
@@ -1396,12 +1396,12 @@ function SignalCard({ s, st, dispatch, role }) {
         <input className=${inp} value=${w.draft.subject} onChange=${e => edit({ subject: e.target.value })} aria-label="Subject" />
         <textarea className=${inp} rows="9" value=${w.draft.body} onChange=${e => edit({ body: e.target.value })} aria-label="Email body"></textarea>
         <div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'SIG_APPROVE', accountId: a.id, ts: now, by: me.name })}><${Icon} n="check" s=${12} />Approve and send<//><${Btn} onClick=${() => edit(makeCheckin(a, s))}>Reset to generated draft<//></div>
-        <p className="text-xs text-mute">Key accounts: nothing customer-facing goes out until you approve. Sending is mocked.</p></div>`
-        : html`<div className="space-y-2"><${EmailBox} to=${c.name} subject=${w.draft.subject} body=${w.draft.body} /><p className="text-xs text-mute">Waiting for ${a.am} to edit and approve.${role !== 'AM' ? ' Switch to the AM role to approve.' : ''}</p></div>`}</div>`}
+        </div>`
+        : html`<div className="space-y-2"><${EmailBox} to=${c.name} subject=${w.draft.subject} body=${w.draft.body} /><p className="text-xs text-mute">Waiting for ${a.am} to edit and approve.</p></div>`}</div>`}
     ${w && w.status === 'Sent' && html`<div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2 text-sm font-medium">Check-in sent ${fmtTime(w.sentAt)}<${Pill} tone=${w.mode === 'auto' ? 'auto' : 'ok'}>${w.mode === 'auto' ? 'Templated, sent automatically' : 'Approved by ' + w.approvedBy}<//>${w.mode === 'auto' && html`<${AutoBadge} />`}<span className="text-xs text-mute font-normal">Mock: no real email sent</span></div>
       <${EmailBox} to=${c.name} subject=${w.draft.subject} body=${w.draft.body} />
-      <div className="flex flex-wrap items-center gap-2"><${Btn} onClick=${() => dispatch({ type: 'SIG_REPLY', accountId: a.id, ts: now })}><${Icon} n="mail" s=${12} />Simulate customer reply<//><span className="text-xs text-mute">The reply is logged to the timeline and a follow-up task is created.</span></div></div>`}
+      <div className="flex flex-wrap items-center gap-2"><${Btn} onClick=${() => dispatch({ type: 'SIG_REPLY', accountId: a.id, ts: now })}><${Icon} n="mail" s=${12} />Simulate customer reply<//></div></div>`}
     ${w && w.status === 'Replied' && html`<div className="space-y-2"><div className="flex flex-wrap items-center gap-2 text-sm font-medium">Customer replied ${fmtTime(w.repliedAt)}<${AutoBadge} label="Auto-logged" /><${Pill} tone="ok">Follow-up task created<//></div>
       <${EmailBox} to=${'VerifyMe, from ' + c.name} subject=${w.reply.subject} body=${w.reply.body} />
 </div>`}
@@ -1434,7 +1434,7 @@ function SignalsPage({ st, dispatch, role }) {
   const now = useNow(); const accts = scopeAccounts(role); const signals = computeSignals(accts, st.incidents); const can = role === 'AM' || role === 'HEAD';
   const n = k => signals.filter(s => !s.suppressed && s.kind === k).length;
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Usage signals</h1><p className="text-sm text-mute">Daily usage compared with baseline and agreed volume. Target: signal to AM action within one working day.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Usage signals</h1><p className="text-sm text-mute">Usage against baseline and agreed volume</p></div>
       <${Btn} kind="primary" onClick=${() => dispatch({ type: 'FEED', ts: now })}><${Icon} n="bolt" s=${12} />Run daily usage feed<//></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Dropped" value=${n('Dropped')} tone=${n('Dropped') ? 'bad' : ''} /><${Tile} label="Low volume" value=${n('Low volume')} /><${Tile} label="Reduced volume" value=${n('Reduced volume')} /><${Tile} label="Suppressed" value=${signals.filter(s => s.suppressed).length} sub="Open incident" /></div>
     <div className="grid lg:grid-cols-3 gap-5">
@@ -1463,7 +1463,7 @@ function NewCaseForm({ role, dispatch, now, onDone, fixedAccount }) {
     <div className="rounded-md bg-surface2 p-3 space-y-2"><div className="text-xs"><span className="font-medium">Task owner: </span>${toVS ? 'VS Team (resolves the case)' : acc.am + ' (replies to VS)'}</div>
       <div className="text-xs font-medium flex items-center gap-1.5"><${Icon} n="loop" s=${12} />Loop in (they follow the case and see every update)</div>
       <div className="flex flex-wrap gap-1.5">${choices.map(n => html`<label key=${n} className=${cx('px-2.5 py-1 rounded-full text-xs border cursor-pointer', loop.includes(n) ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><input type="checkbox" className="sr-only" checked=${loop.includes(n)} onChange=${() => togg(n)} />${n} · ${roleLabel(n)}</label>`)}</div></div>
-    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the clock starts: ${toVS ? 'VS resolves within 2 hrs' : 'AM replies within 15 mins'}. The verification itself runs ${sl.slaLabel}.</p>
+    
     <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now, looped: loop.filter(n => choices.includes(n)), vids, applicant: appl.trim() }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
   </div><//>`;
 }
@@ -1497,7 +1497,7 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
       </div>
       ${(c.vids || []).length > 0 && html`<div className="rounded-md border border-line"><div className="px-3 py-2 text-xs font-medium border-b border-line">Verification IDs on this case (${c.vids.length})${c.batch ? ' · batch ' + c.batch : ''} · ${a.name}, ${a.orgId}</div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 px-3 py-2 text-xs">${c.vids.map(v => html`<div key=${v.id} className="flex justify-between gap-2"><span className="tabular-nums font-medium">${v.id}</span><span className=${v.status === 'Completed' ? 'text-ok' : 'text-mute'}>${v.status}</span></div>`)}</div></div>`}
       <div className="space-y-2">${thread.map((t, i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', t.auto ? 'bg-autosoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${t.by}</span>${!t.auto && html`<span>${t.by === 'VS Team' ? 'VS' : roleLabel(t.by)}</span>`}<span>${fmtFull(t.ts)}</span>${t.auto && html`<${AutoBadge} />`}${t.via && html`<${Pill} tone="warn"><${Icon} n=${/WhatsApp/.test(t.via) ? 'chat' : /Call/.test(t.via) ? 'phone' : 'mail'} s=${10} />Off-portal · ${t.via}<//>`}</div><div className="mt-0.5">${t.text}</div></div>`)}</div>
-      ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//><span className="text-xs text-mute">Sends a mock update to the customer and logs it on the timeline.</span></div>` : role === 'ADMIN' ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('adminclose')}><${Icon} n="check" s=${12} />Confirm customer updated and close<//><span className="text-xs text-mute">Use when the AM or VS has told the customer off-portal. Type a note above first if useful.</span></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case. The Admin can also confirm closure.</p>`)}
+      ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//></div>` : role === 'ADMIN' ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('adminclose')}><${Icon} n="check" s=${12} />Confirm customer updated and close<//></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case.</p>`)}
       ${c.status === 'Resolved' && role === 'ADMIN' && html`<textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder="Closure note, for example: AM confirmed by WhatsApp that the customer has the results" aria-label="Closure note"></textarea>`}
       ${!done && (mine || canComment) && html`<div className="space-y-2">
         <textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder=${isVS && mine ? 'Update, or the question you need the AM to answer' : isAM && mine ? 'Information for VS, for example a landmark or phone number' : 'Add a comment to the thread'} aria-label="Message"></textarea>
@@ -1542,18 +1542,18 @@ function EscalationsPage({ st, dispatch, role, route }) {
   const resolved = scoped.filter(c => c.resolvedAt); const within = resolved.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length;
   const canRaise = role === 'AM' || role === 'VS';
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalations</h1><p className="text-sm text-mute">Address verification, both directions. One case, one clock, one thread.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalations</h1><p className="text-sm text-mute">Address verification, both directions</p></div>
       ${canRaise && html`<${Btn} kind="primary" onClick=${() => setShowNew(!showNew)}><${Icon} n="plus" s=${12} />${role === 'VS' ? 'Raise query to AM' : 'Raise escalation to VS'}<//>`}</div>
     ${showNew && html`<${NewCaseForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShowNew(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open cases" value=${open.length} /><${Tile} label="Near breach (80%+)" value=${near} tone=${near ? 'warn' : ''} /><${Tile} label="Breached" value=${breached} tone=${breached ? 'bad' : ''} sub=${breached ? 'Auto-escalated' : 'None'} /><${Tile} label="Avg first response" value=${avgFr == null ? 'n/a' : fmtDur(avgFr)} sub="AM 15 mins · VS acknowledge 30 mins (proposed)" /><${Tile} label="Handled within standard" value=${resolved.length ? within + ' of ' + resolved.length : 'n/a'} sub="VS 2 hrs · AM 15 mins" /></div>
     <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>
       ${[0.25, 1, 2, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}
       <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + fmtDur(st.simHours * H) : 'Real time'}<//>
-      <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
+      </div><//>
     <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['raised', 'Raised by me', scoped.filter(raisedF).length], ['looped', 'Looped in', scoped.filter(loopF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !((t[0] === 'mine' || t[0] === 'raised') && (role === 'HEAD' || role === 'ADMIN' || role === 'TSI'))).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
     <input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Filter by org ID, verification ID, case ID, batch or customer" className="w-full sm:w-[420px] rounded-md border border-line bg-surface px-3 py-1.5 text-sm" aria-label="Filter cases" />
     ${list.length === 0 ? html`<${Card}><${Empty}>${q ? 'No cases match "' + q + '".' : tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : tab === 'looped' ? 'You are not looped in on any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
-    <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Standards:</span> AMs reply to a VS query within 15 minutes. VS resolves an escalated address check in about 2 hours. Verification itself runs 24 to 72 hours (guarantor 5 days).</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and a VS acknowledgement target (30 minutes proposed).</div><//>
+    
   </div>`;
 }
 function FollowUpPage({ st, dispatch, role, go }) {
@@ -1567,13 +1567,13 @@ function FollowUpPage({ st, dispatch, role, go }) {
   const order = [...open.filter(c => c.status !== 'Resolved').sort((x, y) => slaPct(y, now) - slaPct(x, now)), ...resolved].filter(c => caseMatch(c, q));
   const tks = st.tickets.filter(k => k.accountId && ACC[k.accountId].segment === seg && k.status !== 'Resolved');
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalation follow-up</h1><p className="text-sm text-mute max-w-3xl">${role === 'ADMIN' ? 'You chase' : admin + ' (Admin) chases'} every escalation on ${seg} accounts until it is closed. Log off-portal conversations with field agents, state coordinators, VS and TSI so the AM, VS and anyone looped in see them on the case.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalation follow-up</h1><p className="text-sm text-mute">${seg} accounts · chase every case to closure</p></div>
       ${role === 'HEAD' && html`<div className="flex gap-1">${['Key', 'Scale'].map(x => html`<button key=${x} onClick=${() => setSeg(x)} className=${cx('px-3 py-1.5 rounded-md text-xs border', seg === x ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${x} accounts · ${ADMINS[x]}</button>`)}</div>`}</div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open escalations" value=${open.length - resolved.length} /><${Tile} label="Near or past the standard" value=${hot.length} tone=${hot.length ? 'warn' : undefined} sub="Chase these first" /><${Tile} label="Resolved, not yet closed" value=${resolved.length} tone=${resolved.length ? 'info' : undefined} sub="Check the customer was told" /><${Tile} label="Follow-ups logged today" value=${today} sub=${fups.length + ' in total'} /><${Tile} label="Closed in the last 7 days" value=${closed7} /></div>
-    <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>${[1, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}<span className="text-xs text-mute">Reminders and breach escalation fire automatically.</span></div><//>
+    <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>${[1, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}</div><//>
     <input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Filter by org ID, verification ID, case ID or customer" className="w-full sm:w-[420px] rounded-md border border-line bg-surface px-3 py-1.5 text-sm" aria-label="Filter cases" />
     ${order.length === 0 ? html`<${Card}><${Empty}>${q ? 'No cases match "' + q + '".' : 'No open escalations on ' + seg + ' accounts.'}<//><//>` : order.map((c, i) => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${i === 0} />`)}
-    <${Card}><${CardHead} title=${'Technical tickets on ' + seg + ' accounts'} sub="Sometimes TSI needs chasing too. Add what you hear so TSI and the AM see it." />${tks.length === 0 ? html`<${Empty}>No open technical tickets.<//>` : tks.map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} />`)}<//>
+    <${Card}><${CardHead} title=${'Technical tickets on ' + seg + ' accounts'} />${tks.length === 0 ? html`<${Empty}>No open technical tickets.<//>` : tks.map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} />`)}<//>
   </div>`;
 }
 function AccountCases({ a, cases, st, dispatch, role }) {
@@ -1695,7 +1695,7 @@ function UsageLogForm({ role, dispatch, now, onDone, fixedAccount }) {
   const pick = v => { setPreset(v); if (v === '1') { setFrom(LOG_MAX); setTo(LOG_MAX); } if (v === '7') { setFrom(LOG_MAX - 6 * D); setTo(LOG_MAX); } if (v === '30') { setFrom(LOG_MAX - 29 * D); setTo(LOG_MAX); } if (v === 'sep') { setFrom(new Date(2026, 8, 1).getTime()); setTo(new Date(2026, 8, 30).getTime()); } };
   const list = logScope(scope, role); const days = Math.round((to - from) / D) + 1; const ok = from <= to;
   const recs = ok ? logCount(list, from, to) : 0; const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
-  return html`<${Card}><${CardHead} title="Request usage logs" sub="Any customer or group of customers, any date range in the last 90 days. Generated straight from the usage data." /><div className="p-4 space-y-3">
+  return html`<${Card}><${CardHead} title="Request usage logs" /><div className="p-4 space-y-3">
     <div className="flex flex-wrap gap-2.5">
       <select className=${inp} value=${scope} disabled=${!!fixedAccount} onChange=${e => setScope(e.target.value)} aria-label="Customers">
         ${scopes.length > 0 && html`<optgroup label="Groups">${scopes.map(([v, l]) => html`<option key=${v} value=${v}>${l}</option>`)}</optgroup>`}
@@ -1724,10 +1724,10 @@ function UsageLogCard({ r, dispatch, role, defaultOpen }) {
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
       <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute border-b border-line"><th className="py-1.5 font-medium">Customer</th>${svcs.map(x => html`<th key=${x} className="font-medium text-right px-2">${SVC[x].name}</th>`)}<th className="font-medium text-right">Total</th></tr></thead><tbody>
         ${per.map(({ a, by }) => html`<tr key=${a.id} className="border-b border-line last:border-0"><td className="py-1.5">${a.name}<span className="text-mute"> · ${a.am}</span></td>${svcs.map(x => html`<td key=${x} className="text-right tabular-nums px-2">${a.services.includes(x) ? num(by[x]) : '-'}</td>`)}<td className="text-right tabular-nums font-medium">${num(sum(Object.values(by)))}</td></tr>`)}</tbody></table></div>
-      <div className="text-[11px] text-mute">The file has one line per day, customer and service (${num(rows.length)} lines). ${single && single.obId ? 'Early volumes are low while the customer ramps up.' : ''}</div>
+      
       <div className="flex flex-wrap items-center gap-2"><${Btn} onClick=${() => downloadCsv(fname, rows)}><${Icon} n="download" s=${12} />Download CSV<//>
         ${mayShare && html`<select className="rounded-md border border-line bg-bg px-2 py-1.5 text-sm" value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Send to">${single.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}</select><${Btn} kind="primary" onClick=${() => dispatch({ type: 'ULOG_SEND', id: r.id, contactId: cid, by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//>`}
-        ${r.status === 'Sent' && html`<span className="text-xs text-mute">${r.method} ${relAgo(r.sentAt, now)}. Mock: nothing was really sent.</span>`}</div>
+        ${r.status === 'Sent' && html`<span className="text-xs text-mute">${r.method} ${relAgo(r.sentAt, now)}.</span>`}</div>
     </div>`}
   <//>`;
 }
@@ -1750,7 +1750,7 @@ function ScheduleTable({ accts, st, dispatch, role, now, showAm }) {
 function AccountUsageLogs({ a, st, dispatch, role }) {
   const now = useNow(); const [show, setShow] = useState(false); const reqs = st.logRequests.filter(r => r.scope === 'acc:' + a.id).sort((x, y) => y.raisedAt - x.raisedAt);
   const can = (role === 'AM' && a.am === ROLES.AM.name) || role === 'TSI' || role === 'HEAD' || role === 'FIN';
-  return html`<${Card}><${CardHead} title="Usage logs" sub="Request logs for any dates, or set how often the customer receives them automatically" right=${can && html`<${Btn} onClick=${() => setShow(!show)}><${Icon} n="download" s=${12} />Request usage logs<//>`} />
+  return html`<${Card}><${CardHead} title="Usage logs" right=${can && html`<${Btn} onClick=${() => setShow(!show)}><${Icon} n="download" s=${12} />Request usage logs<//>`} />
     ${show && html`<div className="px-4 pb-3"><${UsageLogForm} role=${role} dispatch=${dispatch} now=${now} fixedAccount=${a.id} onDone=${() => setShow(false)} /></div>`}
     <${ScheduleTable} accts=${[a]} st=${st} dispatch=${dispatch} role=${role} now=${now} />
     ${reqs.length > 0 && html`<div className="px-4 py-3 space-y-2 border-t border-line">${reqs.map(r => html`<${UsageLogCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} />`)}</div>`}
@@ -1809,7 +1809,7 @@ function RequestForm({ role, dispatch, now, onDone, fixedAccount, cases }) {
   const [accId, setAcc] = useState(fixedAccount || accts[0].id); const a = ACC[accId];
   const [period, setPeriod] = useState('Sep 2026'); const [svcs, setSvcs] = useState(a.services); const [adjust, setAdjust] = useState(false);
   const checks = validateRequest(a, period, svcs, adjust, cases); const standard = checks.every(c => c.pass); const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
-  return html`<${Card}><${CardHead} title="Request invoice and usage logs" sub="Raise the request. Validation against contract rules runs automatically." /><div className="p-4 space-y-3">
+  return html`<${Card}><${CardHead} title="Request invoice and usage logs" /><div className="p-4 space-y-3">
     <div className="flex flex-wrap gap-2.5">
       <select className=${inp} value=${accId} disabled=${!!fixedAccount} onChange=${e => { setAcc(e.target.value); setSvcs(ACC[e.target.value].services); }} aria-label="Account">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name} · ${x.orgId}</option>`)}</select>
       <select className=${inp} value=${period} onChange=${e => setPeriod(e.target.value)} aria-label="Period">${Object.keys(PERIODS).map(p => html`<option key=${p}>${p}</option>`)}</select></div>
@@ -1840,9 +1840,9 @@ function RequestCard({ r, dispatch, role, defaultOpen }) {
       <div className="space-y-1.5 border-t border-line pt-2">${r.steps.map((s, i) => html`<div key=${i} className="flex items-center gap-2 text-xs"><span className="text-mute tabular-nums w-24 shrink-0">${fmtDay(s.ts)} ${fmtTime(s.ts)}</span><span>${s.label}</span>${s.auto && html`<${AutoBadge} />`}</div>`)}</div>
       ${r.status === 'Rejected' && html`<p className="text-sm text-bad">Rejected by ${r.rejectedBy}: ${r.note}</p>`}
       ${r.status === 'Awaiting Finance' && (role === 'FIN' ? html`<div className="space-y-2"><input className="w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm" placeholder="Note to the AM (optional for approval, required to reject)" value=${note} onChange=${e => setNote(e.target.value)} aria-label="Note" />
-        <div className="flex gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_APPROVE', id: r.id, by: me.name, ts: now, note: note.trim() })}><${Icon} n="check" s=${12} />Approve exception<//><${Btn} disabled=${!note.trim()} onClick=${() => dispatch({ type: 'INV_REJECT', id: r.id, by: me.name, ts: now, note: note.trim() })}>Reject<//></div></div>` : html`<p className="text-xs text-mute">Waiting for Finance (Ify Okon) to review the exception.${role === 'AM' ? ' Switch to the Finance role to approve it.' : ''}</p>`)}
+        <div className="flex gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_APPROVE', id: r.id, by: me.name, ts: now, note: note.trim() })}><${Icon} n="check" s=${12} />Approve exception<//><${Btn} disabled=${!note.trim()} onClick=${() => dispatch({ type: 'INV_REJECT', id: r.id, by: me.name, ts: now, note: note.trim() })}>Reject<//></div></div>` : html`<p className="text-xs text-mute">Waiting for Finance (Ify Okon) to review the exception.</p>`)}
       ${(r.status === 'Ready' || r.status === 'Delivered') && html`<div className="space-y-2"><${Btn} onClick=${() => setPrev(!prev)}><${Icon} n="file" s=${12} />${prev ? 'Hide pack preview' : 'Preview invoice and log pack'}<//>${r.status === 'Ready' && html`<span className="text-xs text-mute ml-2 inline-flex items-center gap-1">Archived to the account <${AutoBadge} /></span>`}${prev && html`<${PackPreview} r=${r} />`}</div>`}
-      ${r.status === 'Ready' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//><${Btn} onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'link', by: me.name, ts: now })}>Share link<//><span className="text-xs text-mute">Delivery stops the request clock. Sends from your Outlook mailbox (mocked here).</span></div>` : html`<p className="text-xs text-mute">Ready. Waiting for ${a.am} to share it with the customer.</p>`)}
+      ${r.status === 'Ready' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//><${Btn} onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'link', by: me.name, ts: now })}>Share link<//></div>` : html`<p className="text-xs text-mute">Ready. Waiting for ${a.am} to share it with the customer.</p>`)}
       ${r.status === 'Delivered' && html`<p className="text-xs text-mute">${r.method}${r.link ? ': ' + r.link : ''}. Delivered in ${fmtDur(r.deliveredAt - r.raisedAt)}.</p>`}
       ${(r.status === 'Ready' || r.status === 'Delivered') && myAcct && html`<${InvoiceDownload} a=${a} inv=${{ no: 'INV-' + a.id.slice(0, 3).toUpperCase() + '-' + PERIODS[r.period].code + '-' + r.id.slice(4), period: r.period, services: r.services, reqId: r.id }} role=${role} dispatch=${dispatch} reqId=${r.status === 'Ready' ? r.id : undefined} />`}
     </div>`}
@@ -1853,7 +1853,7 @@ function InvoicesPage({ st, dispatch, role }) {
   const [sec, setSec] = useState(role === 'TSI' ? 'logs' : 'inv');
   const secs = [['inv', 'Invoice requests'], ['logs', 'Usage logs'], ['sched', 'Automatic log delivery']].filter(x => !(x[0] === 'inv' && role === 'TSI'));
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Invoices with contract checks, usage logs on request, and automatic log delivery at the frequency each customer prefers.</p></div>
+    <div><h1 className="text-xl font-semibold">Invoices and usage logs</h1><p className="text-sm text-mute">Invoices, usage logs and automatic log delivery</p></div>
     <div className="flex flex-wrap gap-1 border-b border-line">${secs.map(([k, l]) => html`<button key=${k} onClick=${() => setSec(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', sec === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}</button>`)}</div>
     ${sec === 'inv' && html`<${InvoiceRequests} st=${st} dispatch=${dispatch} role=${role} />`}
     ${sec === 'logs' && html`<${UsageLogsSection} st=${st} dispatch=${dispatch} role=${role} />`}
@@ -1866,7 +1866,7 @@ function UsageLogsSection({ st, dispatch, role }) {
   const vis = st.logRequests.filter(r => role !== 'AM' || (r.scope.startsWith('acc:') ? ids.has(r.scope.slice(4)) : r.scope === 'am:' + me.name)).filter(r => !mineOnly || r.raisedBy === me.name).sort((x, y) => y.raisedAt - x.raisedAt);
   const sent = st.logRequests.filter(r => r.sentAt); const schedN = Object.values(st.schedules).filter(x => x.freq !== 'Off').length;
   return html`<div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-mute max-w-2xl">Pick one customer, a whole AM portfolio, or the customers TSI is onboarding, then any dates in the last 90 days. The file is ready straight away to download or send.</p>
+    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-mute max-w-2xl">Any customer, portfolio or date range in the last 90 days</p>
       <${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request usage logs<//></div>
     ${show && html`<${UsageLogForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShow(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Log requests" value=${st.logRequests.length} /><${Tile} label="Sent to customers" value=${sent.length} /><${Tile} label="Avg request to sent" value=${sent.length ? fmtDur(avg(sent.map(r => r.sentAt - r.raisedAt))) : 'n/a'} sub="Generated instantly; sending is the AM or TSI" /><${Tile} label="Customers on automatic delivery" value=${schedN} sub="Daily, weekly or monthly" /></div>
@@ -1878,7 +1878,7 @@ function ScheduleSection({ st, dispatch, role }) {
   const now = useNow(); const accts = role === 'AM' ? scopeAccounts('AM') : role === 'TSI' ? ACCOUNTS.filter(a => a.obId) : ACCOUNTS.filter(a => !a.obId || ACTIVE.handed.has(a.id) || role === 'HEAD');
   const on = accts.filter(a => st.schedules[a.id] && st.schedules[a.id].freq !== 'Off');
   return html`<div className="space-y-4">
-    <p className="text-sm text-mute max-w-3xl">Set how often each customer receives their usage log, and who receives it. Sending is automatic and every send is logged on the account. ${role === 'TSI' ? 'TSI captures the preference during onboarding; the AM owns it after handover.' : role === 'AM' ? 'For customers still in onboarding, TSI sets this until handover.' : ''}</p>
+    
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">${['Daily', 'Weekly', 'Monthly', 'Off'].map(f => html`<${Tile} key=${f} label=${f === 'Off' ? 'Not set' : f} value=${accts.filter(a => ((st.schedules[a.id] || {}).freq || 'Off') === f).length} />`)}</div>
     <${Card}><${CardHead} title="Automatic log delivery" sub=${on.length + ' of ' + accts.length + ' customers receive logs automatically. Every send is logged on the account timeline.'} right=${html`<${Btn} onClick=${() => dispatch({ type: 'SIM', hours: 24 })}><${Icon} n="clock" s=${12} />Simulate +1 day<//>`} />
       <${ScheduleTable} accts=${accts} st=${st} dispatch=${dispatch} role=${role} now=${now} showAm=${role !== 'AM'} /><//>
@@ -1891,13 +1891,13 @@ function InvoiceRequests({ st, dispatch, role }) {
   const list = (tab === 'action' ? mine.filter(needs) : tab === 'done' ? mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected') : mine).sort((x, y) => y.raisedAt - x.raisedAt);
   const delivered = mine.filter(r => r.deliveredAt); const stdN = mine.filter(r => r.standard).length;
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-mute">Request, validate, approve, share. One clock from request to delivery.</p>
+    <div className="flex flex-wrap items-center justify-between gap-3">
       ${role === 'AM' && html`<${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />New invoice request<//>`}</div>
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} onDone=${() => setShow(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Requests" value=${mine.length} /><${Tile} label="Handled without Finance" value=${mine.length ? p1(stdN / mine.length * 100) + '%' : 'n/a'} sub="Standard requests auto-approved" /><${Tile} label="Awaiting Finance" value=${mine.filter(r => r.status === 'Awaiting Finance').length} /><${Tile} label="Avg request to delivery" value=${delivered.length ? fmtDur(avg(delivered.map(r => r.deliveredAt - r.raisedAt))) : 'n/a'} sub="Standard: about 1 hr" /></div>
     <div className="flex gap-1 border-b border-line">${[['action', 'Needs action', mine.filter(needs).length], ['all', 'All requests', mine.length], ['done', 'Delivered or rejected', mine.filter(r => r.status === 'Delivered' || r.status === 'Rejected').length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
     ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'action' ? 'Nothing needs your action.' : 'No requests here.'}<//><//>` : list.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${tab === 'action'} />`)}
-    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Open decisions:</span> approval rules, invoice source system, withholding-tax rule for international customers, and the customer-facing sharing method.<//>
+    
   </div>`;
 }
 function AccountInvoices({ a, st, dispatch, role }) {
@@ -1992,8 +1992,8 @@ function OppCard({ okey, st, dispatch, role }) {
     ${status === 'Dismissed' && html`<p className="text-sm">Dismissed: <span className="font-medium">${w.reason}</span>${w.note ? '. ' + w.note : ''} <span className="text-xs text-mute">Feeds rule tuning.</span></p>`}
     ${status === 'Flagged' && html`<div className="space-y-2"><div className="flex items-center gap-2 text-sm font-medium">Drafted email<${AutoBadge} label="Auto-drafted" /></div>
       ${editing ? html`<div className="space-y-2"><select className=${inp} value=${draft.to} onChange=${e => edit({ to: e.target.value })} aria-label="Recipient">${a.contacts.map(x => html`<option key=${x.id} value=${x.id}>To: ${x.name}, ${x.role}</option>`)}</select><input className=${inp} value=${draft.subject} onChange=${e => edit({ subject: e.target.value })} aria-label="Subject" /><textarea className=${inp} rows="10" value=${draft.body} onChange=${e => edit({ body: e.target.value })} aria-label="Email body"></textarea></div>` : html`<${EmailBox} to=${c.name} subject=${draft.subject} body=${draft.body} />`}
-      ${mine ? html`<div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'OPP_APPROVE', okey, by: me.name, ts: now })}><${Icon} n="check" s=${12} />Approve and send<//><${Btn} onClick=${() => setEditing(!editing)}>${editing ? 'Done editing' : 'Edit'}<//><${Btn} onClick=${() => setDismissing(!dismissing)}>Dismiss<//></div>` : html`<p className="text-xs text-mute">Waiting for ${a.am} to review.${role !== 'AM' ? ' Switch to the AM role to approve.' : ''}</p>`}
-      <p className="text-xs text-mute">Nothing is sent until the AM approves. After approval it sends automatically and is logged to the timeline.</p>
+      ${mine ? html`<div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'OPP_APPROVE', okey, by: me.name, ts: now })}><${Icon} n="check" s=${12} />Approve and send<//><${Btn} onClick=${() => setEditing(!editing)}>${editing ? 'Done editing' : 'Edit'}<//><${Btn} onClick=${() => setDismissing(!dismissing)}>Dismiss<//></div>` : html`<p className="text-xs text-mute">Waiting for ${a.am} to review.</p>`}
+      
       ${dismissing && mine && html`<div className="rounded-md bg-surface2 p-3 space-y-2"><select className=${inp} value=${reason} onChange=${e => setReason(e.target.value)} aria-label="Dismiss reason">${DISMISS_REASONS.map(x => html`<option key=${x}>${x}</option>`)}</select><input className=${inp} placeholder="Optional note for rule tuning" value=${dnote} onChange=${e => setDnote(e.target.value)} aria-label="Note" /><${Btn} onClick=${() => { dispatch({ type: 'OPP_DISMISS', okey, by: me.name, ts: now, reason, note: dnote.trim() }); setDismissing(false); }}>Dismiss with reason<//></div>`}</div>`}
     ${status === 'Sales handoff' && html`<div className="space-y-2"><div className="rounded-md bg-surface2 p-3 text-sm"><div className="font-medium">Sent ${fmtFull(w.sentAt)} <${AutoBadge} label="Auto-sent after approval" /></div><div className="text-xs text-mute mt-1">Sales tag-teams the pitch and commercials with ${a.am}. Next: the addendum (SOP 4.3).${w.interestAt ? ' Customer replied with interest on ' + fmtFull(w.interestAt) + '.' : ' No reply yet.'}</div></div>
       ${canClose && html`<div className="flex flex-wrap gap-2">${!w.interestAt && html`<${Btn} onClick=${() => dispatch({ type: 'OPP_INTEREST', okey, ts: now })}><${Icon} n="mail" s=${12} />Simulate customer interest<//>`}<${Btn} kind="primary" onClick=${() => dispatch({ type: 'OPP_ADDENDUM', okey, by: me.name, ts: now })}>Mark addendum filed<//></div>`}</div>`}
@@ -2008,7 +2008,7 @@ function OppsPage({ st, dispatch, role }) {
   const prog = work.filter(([, w]) => w.status === 'Sales handoff').map(([k]) => k), closed = work.filter(([, w]) => w.status === 'Addendum filed' || w.status === 'Dismissed').map(([k]) => k);
   const list = tab === 'flagged' ? flagged : tab === 'progress' ? prog : closed; const allW = Object.values(st.oppWork);
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Opportunities</h1><p className="text-sm text-mute">Rules scan usage against the product catalogue. The AM approves before anything is sent.</p></div>
+    <div><h1 className="text-xl font-semibold">Opportunities</h1><p className="text-sm text-mute">Upsell and cross-sell matches for AM approval</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="To review" value=${flagged.length} /><${Tile} label="In Sales handoff" value=${prog.length} /><${Tile} label="Addendum filed" value=${work.filter(([, w]) => w.status === 'Addendum filed').length} /><${Tile} label="Held by rules" value=${held.length} sub="Open signal, incident or near-breach case" /></div>
     <div className="grid lg:grid-cols-3 gap-5"><div className="lg:col-span-2 space-y-4 min-w-0">
       <div className="flex gap-1 border-b border-line">${[['flagged', 'To review', flagged.length], ['progress', 'In progress', prog.length], ['closed', 'Closed', closed.length]].map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
@@ -2058,7 +2058,7 @@ function DashboardPage({ st }) {
   const ob = st.onboarding, obResp = ob.filter(o => o.respondedAt), obLive = ob.filter(o => o.liveAt);
   const maxB = Math.max(1, ...buckets.map(b => b[1]));
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Manager dashboard</h1><p className="text-sm text-mute">One scorecard definition, read from the same case records. Live figures update as you act; the 30-day baseline is mock history.</p></div>
+    <div><h1 className="text-xl font-semibold">Manager dashboard</h1><p className="text-sm text-mute">Team performance against the standards</p></div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       <${Tile} label="Open escalations" value=${open.length} sub=${open.filter(c => slaPct(c, now) >= .8).length + ' at 80% or more'} />
       <${Tile} label="Breaches, 30 days" value=${BASE.breaches + liveBreach} tone=${liveBreach ? 'bad' : ''} sub=${p1(breachRate) + '% breach rate · ' + liveBreach + ' live'} />
@@ -2066,10 +2066,10 @@ function DashboardPage({ st }) {
       <${Tile} label="Revenue at risk" value=${ngn(atRisk)} tone=${atRisk ? 'warn' : ''} sub=${'Per month · ' + p1(atRisk / sum(rev) * 100) + '% of portfolio'} />
       <${Tile} label="Logo retention, 12 months" value=${BASE.retention + '%'} sub=${BASE.churned + ' account churned this quarter (mock)'} />
     </div>
-    <${Card}><${CardHead} title="First response and resolution time per unit" sub="Baseline is the mock 30-day average. Live is this session." />
+    <${Card}><${CardHead} title="First response and resolution time per unit" />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Unit</th><th className="px-2 font-medium text-right">Baseline first response</th><th className="px-2 font-medium text-right">Baseline resolution</th><th className="px-2 font-medium text-right">Live first response</th><th className="px-2 font-medium text-right">Live resolution</th><th className="px-2 font-medium text-right">Live cases</th></tr></thead><tbody>
         ${rows.map(r => html`<tr key=${r[0]} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r[0]}</div><div className="text-xs text-mute">${r[1]}</div></td><td className="px-2 text-right tabular-nums">${hrsTxt(r[2])}</td><td className="px-2 text-right tabular-nums">${hrsTxt(r[3])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[4])}</td><td className="px-2 text-right tabular-nums font-medium">${hrsTxt(r[5])}</td><td className="px-2 text-right tabular-nums">${r[6]}</td></tr>`)}</tbody></table></div><//>
-    <${Card}><${CardHead} title="Onboarding (TSI)" sub="New customers from Sales to AM handover. Standards: contact within 30 mins, live within 5 days" />
+    <${Card}><${CardHead} title="Onboarding (TSI)" sub="Contact within 30 mins · live within 5 days" />
       <div className="p-4 grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Contacted within 30 mins" value=${obResp.length ? obResp.filter(o => o.respondedAt - o.assignedAt <= ONB_RESP_H * H).length + ' of ' + obResp.length : 'n/a'} sub=${'Baseline ' + BASE.onb.resp + '% (mock)'} /><${Tile} label="Live within 5 days" value=${obLive.length ? obLive.filter(o => o.liveAt - o.assignedAt <= ONB_DAYS * D).length + ' of ' + obLive.length : 'n/a'} sub=${'Baseline ' + BASE.onb.live5 + '% (mock)'} /><${Tile} label="In onboarding now" value=${ob.filter(o => !['Live', 'Handed to AM'].includes(o.stage)).length} /><${Tile} label="Tickets pushed to QA" value=${st.tickets.filter(k => k.status === 'Pushed to QA').length} /></div><//>
     <div className="grid lg:grid-cols-3 gap-5">
       <${Card}><${CardHead} title="Escalation aging" sub="Open cases against their standard (VS 2 hrs, AM 15 mins)" /><div className="p-4 space-y-3">${buckets.map(b => html`<div key=${b[0]}><div className="flex justify-between text-xs mb-1"><span>${b[0]}</span><span className="tabular-nums font-medium">${b[1]}</span></div><${Bar} pct=${b[1] / maxB * 100} tone=${b[2]} /></div>`)}
@@ -2181,27 +2181,27 @@ function AddUpdateForm({ role, dispatch, now, onDone, fixedAccount, kinds, compa
       <select className=${inp} value=${aid} disabled=${!!fixedAccount} onChange=${e => { setAid(e.target.value); setCid(ACC[e.target.value].contacts[0].id); }} aria-label="Customer">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name} · ${x.orgId}</option>`)}</select>
       <select className=${inp} value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}<option value="internal">Internal, no customer contact</option></select></div>
     ${kind !== 'visit' && html`<div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>`}
-    ${chan === 'whatsapp' && html`<p className="text-xs text-mute flex items-center gap-1.5"><${Icon} n="chat" s=${12} />WhatsApp is not connected. Type or paste a short summary of the chat; it is saved as a manual update.</p>`}
+    ${chan === 'whatsapp' && html``}
     <div className="flex flex-wrap items-center gap-2"><label className="text-xs text-mute flex items-center gap-1.5">Date<input type="date" className="rounded-md border border-line bg-bg px-2 py-1 text-sm" max=${isoDate(now)} value=${day} onChange=${e => e.target.value && setDay(e.target.value)} /></label></div>
     <textarea className=${inp} rows="3" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder=${kind === 'visit' ? 'What happened and what was agreed' : kind === 'referral' ? 'Who was referred and from which company' : 'What was said, what was agreed, any next step'} aria-label="Update"></textarea>
-    <div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${save} disabled=${!txt.trim()}>Save to ${a.name}<//>${onDone && html`<${Btn} onClick=${onDone}>Cancel<//>`}<span className="text-xs text-mute">Goes on the customer timeline${kind !== 'update' ? ' and the ' + (kind === 'visit' ? 'visits' : 'referral') + ' log' : ''}.</span></div>
+    <div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${save} disabled=${!txt.trim()}>Save to ${a.name}<//>${onDone && html`<${Btn} onClick=${onDone}>Cancel<//>`}</div>
   </div>`;
 }
 function AddUpdateCard({ role, dispatch }) {
   const now = useNow();
-  return html`<${Card}><${CardHead} title="Add an update or conversation" sub="Any channel. Saved to the customer timeline and the reports." /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} compact=${true} /></div><//>`;
+  return html`<${Card}><${CardHead} title="Add an update or conversation" /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} compact=${true} /></div><//>`;
 }
 function AddUpdateModal({ role, dispatch, onClose }) {
   const now = useNow();
   return html`<div className="fixed inset-0 z-[80] flex items-start justify-center p-4 pt-20" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${onClose}>
     <div className="w-full max-w-xl rounded-lg border border-line bg-surface shadow-xl" onClick=${e => e.stopPropagation()} role="dialog" aria-label="Add update">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-line"><div><div className="text-sm font-semibold">Add an update or conversation</div><div className="text-xs text-mute">Pick the customer and channel, then type what happened</div></div><button className="text-xs text-mute hover:text-ink" onClick=${onClose}>Close</button></div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line"><div><div className="text-sm font-semibold">Add an update or conversation</div></div><button className="text-xs text-mute hover:text-ink" onClick=${onClose}>Close</button></div>
       <div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} onDone=${onClose} /></div></div></div>`;
 }
 function QuickInput({ dispatch, now, me, accts }) {
   const [kind, setKind] = useState('visit'); const [aid, setAid] = useState(accts[0].id); const [txt, setTxt] = useState('');
   const save = () => { if (!txt.trim()) return; dispatch({ type: 'REP_LOG', kind, accountId: aid, text: txt.trim(), by: me.name, ts: now }); setTxt(''); };
-  return html`<${Card}><${CardHead} title="Quick input" sub="Under 30 seconds. Entries feed the reports and the account timeline, so nothing is typed twice." />
+  return html`<${Card}><${CardHead} title="Quick input" />
     <div className="p-4 space-y-3"><div className="flex gap-2">${['visit', 'referral'].map(k => html`<button key=${k} onClick=${() => setKind(k)} className=${cx('px-3 py-1.5 rounded-md text-xs border', kind === k ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${k === 'visit' ? 'Customer visit' : 'Referral'}</button>`)}</div>
       <select value=${aid} onChange=${e => setAid(e.target.value)} className=${INP} aria-label="Account">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name} · ${a.orgId}</option>`)}</select>
       <input value=${txt} onChange=${e => setTxt(e.target.value)} placeholder=${kind === 'visit' ? 'What happened and what was agreed' : 'Who was referred and from which company'} className=${INP} aria-label="Entry" />
@@ -2220,28 +2220,28 @@ function PortfolioExport({ st, dispatch, role }) {
       ${role === 'HEAD' && html`<select value=${am} onChange=${e => setAm(e.target.value)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm" aria-label="Account manager"><option value="All">All AMs</option>${ams.map(n => html`<option key=${n}>${n}</option>`)}</select>`}
       <${Btn} kind="primary" onClick=${download} disabled=${!rows.length}>Download spreadsheet (${rows.length} customers)<//></div>
       <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute border-b border-line">${[0, 1, 2, 5, 6, 7, 11].map(i => html`<th key=${i} className="px-2 py-1.5 whitespace-nowrap">${head[i]}</th>`)}</tr></thead><tbody>${rows.slice(0, 5).map((r, k) => html`<tr key=${k} className="border-b border-line last:border-0">${[0, 1, 2, 5, 6, 7, 11].map(i => html`<td key=${i} className="px-2 py-1.5 whitespace-nowrap">${typeof r[i] === 'number' && i > 4 ? num(r[i]) : r[i]}</td>`)}</tr>`)}</tbody></table></div>
-      <div className="text-xs text-mute">Preview of the first 5 rows and 7 of ${head.length} columns. The file has every column, including services, invoice and signal.</div></div><//>`;
+      </div><//>`;
 }
 function MetabaseCard({ dispatch }) {
   const tiles = [['Usage by service and customer', 'Trends, seasonality and service mix beyond the 90-day view'], ['Retention and churn cohorts', 'Cohorts by onboarding month and segment'], ['Revenue and collections', 'Billed against collected, by customer and by AM']];
-  return html`<${Card}><${CardHead} title="Advanced analytics (Metabase)" sub="Routine reports stay here. Deeper, exploratory analysis opens in Metabase, already filtered to the account or AM you are looking at." right=${html`<${Pill} tone="mute">Placeholder<//>`} />
+  return html`<${Card}><${CardHead} title="Advanced analytics (Metabase)" right=${html`<${Pill} tone="mute">Placeholder<//>`} />
     <div className="p-4 grid md:grid-cols-3 gap-3">${tiles.map(([t, d]) => html`<div key=${t} className="rounded-md border border-line p-3 space-y-2"><div className="h-14 rounded bg-surface2 flex items-end gap-1 p-1.5" aria-hidden="true">${[40, 65, 50, 80, 60, 90, 75].map((h, i) => html`<span key=${i} className="flex-1 rounded-sm bg-brand opacity-60" style=${{ height: h + '%' }}></span>`)}</div><div className="text-sm font-medium">${t}</div><div className="text-xs text-mute">${d}</div><${Btn} onClick=${() => dispatch({ type: 'TOAST', text: 'Prototype: this would open the Metabase dashboard with your portfolio filter applied.' })}>Open in Metabase<//></div>`)}</div>
-    <div className="px-4 pb-4 text-xs text-mute">Production design: signed Metabase embeds inside the workspace, with the customer or AM filter passed in. Metabase reads the same data the signals and reports use, so the numbers agree.</div><//>`;
+    <//>`;
 }
 function ReportsHub({ st, dispatch, role, go }) {
   const now = useNow(); const me = ROLES[role]; const list = REPORTS.filter(r => role === 'HEAD' || r.owner === role); const stt = r => repStatus(r, st, now);
   const [tab, setTab] = useState('views');
   const due = list.filter(r => stt(r) !== 'Submitted' && repDue(r) - now < 7 * D).length, wait = list.filter(r => stt(r) === 'Awaiting approval').length, late = list.filter(r => stt(r) === 'Overdue').length;
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Reports</h1><p className="text-sm text-mute max-w-3xl">${role === 'HEAD' ? 'Weekly, monthly and quarterly views for the whole team and for each person, plus every report your team submits.' : 'Your weekly, monthly and quarterly views, plus the reports you submit. Activity from every other screen feeds them.'}</p></div>
+    <div><h1 className="text-xl font-semibold">Reports</h1><p className="text-sm text-mute max-w-3xl">Weekly, monthly and quarterly views</p></div>
     <div className="flex flex-wrap gap-1 border-b border-line">${[['views', role === 'HEAD' ? 'Team and individual views' : 'My performance views'], ...(list.length ? [['submit', role === 'HEAD' ? 'All reports' : 'Reports I submit']] : []), ['tools', 'Spreadsheet and analytics']].map(([k, l]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}</button>`)}</div>
     ${tab === 'views' && html`<${PerfViews} st=${st} role=${role} />`}
-    ${tab === 'submit' && html`<div className="space-y-5"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Due in 7 days" value=${due} /><${Tile} label="Awaiting approval" value=${wait} /><${Tile} label="Overdue" value=${late} tone=${late ? 'bad' : undefined} /><${Tile} label="Time saved so far" value=${dur(repSaved(list, st) * H)} sub="Estimate: manual minutes per report x share auto-filled" /></div>
-    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Every report, by owner' : 'Your reports'} sub="Reminders go to the owner 12 hours before the due date; overdue reports are flagged to the Head of AM. Use +1 day on Escalations to see it." />
+    ${tab === 'submit' && html`<div className="space-y-5"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Due in 7 days" value=${due} /><${Tile} label="Awaiting approval" value=${wait} /><${Tile} label="Overdue" value=${late} tone=${late ? 'bad' : undefined} /><${Tile} label="Time saved so far" value=${dur(repSaved(list, st) * H)} /></div>
+    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Every report, by owner' : 'Your reports'} />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2">Report</th><th className="px-4 py-2">Due</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Auto-filled</th><th className="px-4 py-2"></th></tr></thead><tbody>
       ${list.map(r => { const s = stt(r); const rem = s !== 'Submitted' && now > repDue(r) - 12 * H && s !== 'Overdue'; return html`<tr key=${r.id} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r.name}</div><div className="text-xs text-mute">${r.cadence} · ${r.owner === 'HEAD' ? 'yours' : 'owned by ' + FN_SHORT[r.owner]} · to ${r.to}</div></td><td className="px-4 py-2 text-xs whitespace-nowrap">${fmtDay(repDue(r))}</td><td className="px-4 py-2"><div className="flex flex-wrap gap-1"><${Pill} tone=${STATUS_TONE[s]}>${s}<//>${rem && html`<${AutoBadge} label="Reminder sent" />`}${s === 'Overdue' && html`<${Pill} tone="bad">Flagged to Head of AM<//>`}</div></td><td className="px-4 py-2 w-32"><${Bar} pct=${r.autoPct} /><div className="text-[11px] text-mute">${r.autoPct}% auto</div></td><td className="px-4 py-2"><${Btn} onClick=${() => go({ page: 'reports', id: r.id })}>Open<//></td></tr>`; })}
       </tbody></table></div><//>
-    ${role === 'AM' && html`<${Card}><${CardHead} title="Add update, visit or referral" sub="Same as Add update in the header. Visits and referrals feed their logs." /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} /></div><//>`}
+    ${role === 'AM' && html`<${Card}><${CardHead} title="Add update, visit or referral" /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} /></div><//>`}
     ${role === 'HEAD' && html`<${ReportTracker} st=${st} />`}</div>`}
     ${tab === 'tools' && html`<div className="space-y-5"><${PortfolioExport} st=${st} dispatch=${dispatch} role=${role === 'AM' ? 'AM' : 'HEAD'} /><${MetabaseCard} dispatch=${dispatch} /></div>`}
   </div>`;
@@ -2284,7 +2284,7 @@ function WeeklyReport({ st, accts }) {
   const tasksDone = st.tasks.filter(t => ids.has(t.accountId) && t.done).length;
   return html`<div className="space-y-4">
     <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
-    <p className="text-xs text-mute">Weekly focus: operational. Spot issues early so they are acted on before any customer is at risk of leaving. Week of ${fmtDay(now - 7 * D)} to ${fmtDay(now - D)}.</p>
+    <p className="text-xs text-mute">Week of ${fmtDay(now - 7 * D)} to ${fmtDay(now - D)}</p>
     <${Card}><${SecHead} q="Revenue" title="Transactions and revenue, week on week" sub="Last 7 days against the 7 days before" />
       <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
         <${Tile} label="Transactions this week" value=${num(T)} sub=${pct(P ? T / P - 1 : null) + ' vs last week'} />
@@ -2294,13 +2294,13 @@ function WeeklyReport({ st, accts }) {
       <div className="scroll-x border-t border-line"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Transactions</th><th className="px-2 font-medium text-right">Last week</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Change</th></tr></thead><tbody>
         ${rows.map(r => html`<tr key=${r.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${r.a.name}</td><td className="px-2 text-right tabular-nums">${num(r.t7)}</td><td className="px-2 text-right tabular-nums text-mute">${num(r.p7)}</td><td className="px-2 text-right tabular-nums">${ngn(r.r7)}</td><td className="px-2">${isNewAcct(r.a) ? html`<${Pill} tone="info">New from TSI<//>` : html`<${Pill} tone=${r.t7 === 0 ? 'bad' : chTone(r.ch)}>${r.t7 === 0 ? 'No transactions' : pct(r.ch)}<//>`}</td></tr>`)}
       </tbody></table></div><//>
-    <${Card}><${SecHead} q="Retention" title="Customers to worry about" sub="Declining performance, dissatisfaction or business intelligence from the timeline" />
+    <${Card}><${SecHead} q="Retention" title="Customers to worry about" />
       ${worry.length === 0 ? html`<${Empty}>No customers flagged this week.<//>` : worry.map(x => html`<div key=${x.a.id} className="px-4 py-3 border-b border-line last:border-0"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${x.a.name}</span><${SegPill} segment=${x.a.segment} />${x.why.map(w => html`<${Pill} key=${w} tone="warn">${w}<//>`)}</div>
         ${x.intel && html`<p className="text-xs text-mute mt-1.5">Latest from ${x.intel.author}, ${fmtDay(x.intel.ts)}: “${x.intel.body.length > 150 ? x.intel.body.slice(0, 147) + '...' : x.intel.body}”</p>`}</div>`)}<//>
-    <${Card}><${SecHead} q="Service delivery" title="Escalations, technical tickets and complaints" sub="VS escalations with their clock, TSI tickets, and customer complaints from the last 14 days" />
+    <${Card}><${SecHead} q="Service delivery" title="Escalations, technical tickets and complaints" />
       ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.map(c => html`<div key=${c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 border-b border-line"><div className="text-sm"><span className="font-semibold">${c.id}</span> <span className="text-mute">${ACC[c.accountId].name} · ${c.issue}</span></div><${SlaClock} c=${c} now=${now} compact=${true} /></div>`)}
       <div className="px-4 py-3 space-y-1.5 border-b border-line"><div className="text-xs font-medium">Technical tickets with TSI (${st.tickets.filter(k => ids.has(k.accountId) && k.status !== 'Resolved').length} open)</div>${st.tickets.filter(k => ids.has(k.accountId) && k.status !== 'Resolved').map(k => html`<div key=${k.id} className="text-xs"><span className="font-medium">${k.id} ${ACC[k.accountId].name}</span> <span className="text-mute">${k.level} · ${k.status} · ${k.issue}</span></div>`)}</div><div className="px-4 py-3 space-y-1.5"><div className="text-xs font-medium">Complaints (${complaints.length})</div>${complaints.length === 0 ? html`<div className="text-xs text-mute">None logged.</div>` : complaints.map(t => html`<div key=${t.id} className="text-xs"><span className="font-medium">${ACC[t.accountId].name}</span> <span className="text-mute">${fmtDay(t.ts)}: ${t.channel === 'slack' ? (t.body.length > 90 ? t.body.slice(0, 87) + '...' : t.body) : t.subject}</span></div>`)}</div><//>
-    <${Card}><${SecHead} q="Growth" title="New business opportunities" sub="Flagged by the rules, plus opportunities already with Sales" />
+    <${Card}><${SecHead} q="Growth" title="New business opportunities" />
       ${opps.length + prog.length === 0 ? html`<${Empty}>No open opportunities this week.<//>` : html`<div>${opps.map(o => html`<div key=${o.key} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[o.accountId].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === o.rule).name}</span><${Pill} tone="info">To review<//><span className="text-xs text-mute">est. ${ngn(oppValue(ACC[o.accountId], o.rule))} a month</span></div>`)}${prog.map(([k, w]) => html`<div key=${k} className="px-4 py-2.5 border-b border-line text-sm flex flex-wrap items-center gap-2"><span className="font-medium">${ACC[k.split(':')[0]].name}</span><span className="text-mute">${OPP_RULES.find(r => r.id === k.split(':')[1]).name}</span><${Pill} tone=${w.status === 'Addendum filed' ? 'ok' : 'info'}>${w.status}<//></div>`)}</div>`}<//>
     <${Card}><${SecHead} q="Execution" title="Is the portfolio being actively managed?" sub="Contact, follow-through and overdue actions" />
       <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-3"><${Tile} label="Customers not contacted in 14+ days" value=${quiet.length} tone=${quiet.length ? 'warn' : undefined} sub=${quiet.map(x => x.a.name).join(', ') || 'All customers contacted'} /><${Tile} label="Overdue tasks" value=${tasksOver.length} tone=${tasksOver.length ? 'bad' : undefined} /><${Tile} label="Tasks completed" value=${tasksDone} /></div><//>
@@ -2330,7 +2330,7 @@ function MonthlyReport({ st, accts }) {
   const acked = ESC.filter(c => c.ackAt), fr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
   return html`<div className="space-y-4">
     <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
-    <p className="text-xs text-mute">Monthly focus: the health, profitability, retention and growth of ${L.length === ACCOUNTS.length ? 'the whole team portfolio' : 'this portfolio (' + L.length + ' accounts)'}. Reporting month: ${REP_MONTH_LABEL}. Target and prior-year figures are mock placeholders.</p>
+    <p className="text-xs text-mute">${REP_MONTH_LABEL} · mock targets</p>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <${Tile} label="Total portfolio revenue" value=${ngn(total)} sub=${REP_MONTH_LABEL} />
       <${Tile} label="Against monthly target" value=${p1(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target) + ' · gap ' + ngn(Math.max(0, target - total))} />
@@ -2343,14 +2343,14 @@ function MonthlyReport({ st, accts }) {
       <${Card}><${SecHead} q="Retention" title="Existing accounts" sub="Revenue kept from customers we already had" />
         <div className="p-4 grid grid-cols-2 gap-3"><${Tile} label="Net revenue retention" value=${p1(nrr * 100) + '%'} tone=${nrr < 1 ? 'warn' : undefined} sub="Includes growth from existing customers" /><${Tile} label="Gross revenue retention" value=${p1(grr * 100) + '%'} sub="Before growth" /></div>
         <div className="px-4 pb-4 text-xs text-mute">Newly assigned this month: ${newly.map(a => a.name + ' (' + NEWLY_ASSIGNED[a.id] + '), ' + ngn(monthRev(a, REP_MONTH, false))).join('; ') || 'none'}.</div><//>
-      <${Card}><${SecHead} q="Growth" title="New business from upselling" sub="Revenue from services customers started using after an AM upsell" />
+      <${Card}><${SecHead} q="Growth" title="New business from upselling" />
         <div className="scroll-x"><table className="w-full text-sm"><tbody>${upsell.map(u => html`<tr key=${u.a.id + u.svc} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${u.a.name}</td><td className="px-2 text-mute">${SVC[u.svc].name}</td><td className="px-4 text-right tabular-nums">${ngn(u.rev)}</td></tr>`)}</tbody></table></div>
-        <div className="px-4 py-3 text-xs text-mute border-t border-line">Upsells converted this quarter: ${3 + Object.values(st.oppWork).filter(w => w.status === 'Addendum filed').length} (3 baseline, the rest live).</div><//>
+        <div className="px-4 py-3 text-xs text-mute border-t border-line">Upsells converted this quarter: ${3 + Object.values(st.oppWork).filter(w => w.status === 'Addendum filed').length}.</div><//>
     </div>
     <${Card}><${SecHead} q="Retention" title="Lost business, decline and churn" sub="The opposite of growth: where revenue went down" />
       ${lost.length === 0 ? html`<${Empty}>No declining accounts this month.<//>` : html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Last month</th><th className="px-2 font-medium text-right">This month</th><th className="px-2 font-medium text-right">Change</th><th className="px-4 font-medium">AM</th></tr></thead><tbody>${lost.map(x => html`<tr key=${x.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.a.name}</td><td className="px-2 text-right tabular-nums text-mute">${ngn(x.prev)}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2 text-right tabular-nums text-bad">↓ ${ngn(-x.d)} (${p1((1 - x.cur / x.prev) * 100)}% down)</td><td className="px-4 text-mute">${x.a.am}</td></tr>`)}</tbody></table></div>`}
       <div className="px-4 py-3 text-xs border-t border-line">${churned.length ? 'Churned: ' + churned.map(a => a.name).join(', ') : 'No customers churned this month.'}</div><//>
-    ${ams.length > 1 && html`<${Card}><${SecHead} q="Execution" title="By account manager" sub="Each AM’s portfolio, from the same data as their own dashboard" />
+    ${ams.length > 1 && html`<${Card}><${SecHead} q="Execution" title="By account manager" />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Month on month</th><th className="px-2 font-medium text-right">At risk</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>`}
     <${Card}><${SecHead} q="Service delivery" title="Are we delivering what customers expect?" sub="Escalation performance this month" />
       <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3"><${Tile} label="Open escalations" value=${open.length} /><${Tile} label="Breached" value=${ESC.filter(c => c.breached).length} tone=${ESC.some(c => c.breached) ? 'bad' : undefined} /><${Tile} label="Average first response" value=${fr == null ? 'n/a' : fmtDur(fr)} /><${Tile} label="Resolved within SLA" value=${res.length ? within + ' of ' + res.length : 'n/a'} /></div><//>
@@ -2372,13 +2372,13 @@ function QuarterlyReport({ st, accts }) {
   const qbr = repStatus(REPORTS.find(r => r.id === 'qbr'), st, now);
   return html`<div className="space-y-4">
     <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
-    <p className="text-xs text-mute">Quarterly focus: direction of the portfolio over three months, for planning and the QBR conversations. Quarter: ${Q_LABEL}. Previous-quarter and target figures are mock placeholders.</p>
+    <p className="text-xs text-mute">${Q_LABEL} · mock targets</p>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Quarter revenue" value=${ngn(total)} sub=${L.length + ' accounts'} /><${Tile} label="Against quarterly target" value=${p1(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target)} /><${Tile} label="Against Q2" value=${pct(prev ? total / prev - 1 : null)} sub=${ngn(prev) + ' (mock)'} /><${Tile} label="Customers retained" value=${(existing.length - churned.length) + ' of ' + existing.length} sub=${churned.length ? 'Lost: ' + churned.map(a => a.name).join(', ') : 'None lost this quarter'} /></div>
-    <${Card}><${SecHead} q="Revenue" title="Revenue by month" sub="July comes from the issued invoice; August and September from usage" />
+    <${Card}><${SecHead} q="Revenue" title="Revenue by month" />
       <div className="p-4 space-y-2.5">${months.map(([m, v]) => html`<div key=${m} className="grid grid-cols-[110px_minmax(0,1fr)_150px] items-center gap-3 text-sm"><span>${m}</span><${Bar} pct=${v / maxM * 100} /><span className="tabular-nums text-right">${ngn(v)}</span></div>`)}</div><//>
     <div className="grid lg:grid-cols-2 gap-4">
       <${Card}><${SecHead} q="Retention" title="Declining over the quarter" sub="September revenue more than 10% below July" />${decl.length === 0 ? html`<${Empty}>No account declined over the quarter.<//>` : decl.map(x => html`<div key=${x.a.id} className="px-4 py-2.5 border-b border-line last:border-0 text-sm flex flex-wrap items-center justify-between gap-2"><span className="font-medium">${x.a.name}<span className="text-mute font-normal"> · ${x.a.am}</span></span><${Pill} tone=${x.sep === 0 ? 'bad' : 'warn'}>${x.sep === 0 ? 'No usage in September' : p1((1 - x.sep / x.jul) * 100) + '% down since July'}<//></div>`)}<//>
-      <${Card}><${SecHead} q="Growth" title="Upsells and new customers" sub="Converted upsells and customers handed over by TSI this quarter" />
+      <${Card}><${SecHead} q="Growth" title="Upsells and new customers" />
         <div className="p-4 space-y-1.5 text-sm">${ups.map(u => html`<div key=${u.accountId + u.svc}><span className="font-medium">${ACC[u.accountId].name}</span> <span className="text-mute">started ${SVC[u.svc].name}</span></div>`)}${L.filter(a => NEWLY_ASSIGNED[a.id]).map(a => html`<div key=${a.id}><span className="font-medium">${a.name}</span> <span className="text-mute">${NEWLY_ASSIGNED[a.id]}</span></div>`)}${ups.length + L.filter(a => NEWLY_ASSIGNED[a.id]).length === 0 && html`<div className="text-mute">None this quarter.</div>`}</div><//>
     </div>
     <${Card}><${SecHead} q="Service delivery" title="Escalations and support across the quarter" sub="From the team performance data" />
@@ -2452,7 +2452,7 @@ function PerfViews({ st, role }) {
       : html`${head && html`<button className="text-xs text-brand" onClick=${() => setWho('team')}>← Whole team</button>`}<div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold">${p.name}</h2><${Pill} tone="info">${FN_LABEL[p.fn]}<//>${p.note && html`<${Pill} tone="mute">${p.note}<//>`}</div>
         <${Scorecard} p=${p} per=${per} now=${now} />
         ${p.fn === 'AM' && html`<div className="pt-2"><h2 className="text-base font-semibold mb-2">${per === 'week' ? 'Weekly operational report' : per === 'month' ? 'Monthly portfolio report' : 'Quarterly portfolio report'}, ${p.name.split(' ')[0]}'s customers</h2>${portfolio(p.name === ROLES.AM.name && role === 'AM' ? scopeAccounts('AM') : amAccts(p.name))}</div>`}`}
-    <p className="text-xs text-mute">Revenue and account counts come from usage data. Activity counts and response times for other periods are demo baseline data; in production they come from the escalation, ticket and notes records.</p>
+    
   </div>`;
 }
 function ReportDraft({ r, st, dispatch, role, go }) {
@@ -2462,11 +2462,11 @@ function ReportDraft({ r, st, dispatch, role, go }) {
   return html`<div className="space-y-4 max-w-4xl">
     <${Btn} onClick=${() => go({ page: 'reports' })}><${Icon} n="back" s=${12} />All reports<//>
     <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">${r.name}</h1><${Pill} tone=${STATUS_TONE[s]}>${s}<//></div>
-    <p className="text-sm text-mute">${r.cadence}, due ${fmtDay(repDue(r))}, goes to ${r.to}. ${r.autoPct}% of this report is filled automatically.</p>
+    <p className="text-sm text-mute">${r.cadence} · due ${fmtDay(repDue(r))} · to ${r.to}</p>
     ${s === 'Overdue' && html`<${Card} className="p-3 text-sm text-bad flex items-center gap-2"><${Icon} n="alert" s=${14} />Not approved by the due date. The reminder went to the owner and the report is flagged to the Head of AM.<//>`}
     ${r.id === 'health' ? html`<${WeeklyReport} st=${st} accts=${scopeAccounts('AM')} />` : r.id === 'mgmt' ? html`<${MonthlyReport} st=${st} accts=${role === 'HEAD' ? ACCOUNTS : undefined} />` : secs.map(([t, lines]) => html`<${Card} key=${t}><${CardHead} title=${t} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} /><ul className="p-4 space-y-1.5 text-sm list-disc pl-8">${lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul><//>`)}
     <${Card}><${CardHead} title=${r.id === 'health' ? 'General and strategic updates' : r.id === 'mgmt' ? 'Risks and decisions' : 'AM input needed'} sub=${'Only what the system cannot know: ' + r.need} />
-      ${r.kind === 'log' ? html`<div className="p-4 text-sm text-mute">Add entries below or with Add update in the header. They also appear on the account timeline.</div>` : r.opt ? html`<div className="p-4 text-sm text-mute">Nothing required. You can add an optional note.</div>` : null}
+      ${r.kind === 'log' ? html`` : r.opt ? html`<div className="p-4 text-sm text-mute">Nothing required. You can add an optional note.</div>` : null}
       ${r.kind !== 'log' && html`<div className="p-4 space-y-2"><textarea value=${txt} onChange=${e => setTxt(e.target.value)} rows="3" disabled=${!can} placeholder="Commentary for the reader" className=${INP} aria-label="Commentary"></textarea><${Btn} onClick=${() => dispatch({ type: 'REP_COMMENT', id: r.id, text: txt.trim() })} disabled=${!can || !txt.trim()}>Save commentary<//></div>`}<//>
     ${r.kind === 'log' && can && html`<${Card}><${CardHead} title=${r.id === 'visits' ? 'Log a visit' : 'Log a referral'} /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} kinds=${[r.id === 'visits' ? 'visit' : 'referral']} /></div><//>`}
     <${Card}><${CardHead} title="Approve and output" sub=${r.aud === 'customer' ? 'Customer packs always need AM approval before they can be shared.' : 'Internal reports publish on approval.'} />
@@ -2482,12 +2482,12 @@ function ReportTracker({ st }) {
   const cells = ams.map(n => [n, am.map(r => n === ROLES.AM.name ? repStatus(r, st, now) : seededStatus(n, r))]);
   const late = sum(cells.map(([, c]) => c.filter(x => x === 'Overdue').length)), wait = sum(cells.map(([, c]) => c.filter(x => x === 'Awaiting approval').length));
   const saved = (sum(cells.map(([, c]) => sum(c.map((x, i) => x === 'Submitted' ? am[i].manualMin * am[i].autoPct / 100 : 0)))) / 60) + repSaved(hd, st);
-  return html`<${Card}><${CardHead} title="Report submission tracker" sub="Your own AM rows are live; the other AMs show baseline demo data" right=${html`<div className="flex gap-1.5"><${Pill} tone=${late ? 'bad' : 'ok'}>${late} overdue<//><${Pill} tone="info">${wait} awaiting approval<//></div>`} />
+  return html`<${Card}><${CardHead} title="Report submission tracker" right=${html`<div className="flex gap-1.5"><${Pill} tone=${late ? 'bad' : 'ok'}>${late} overdue<//><${Pill} tone="info">${wait} awaiting approval<//></div>`} />
     <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2">AM</th>${am.map(r => html`<th key=${r.id} className="px-2 py-2">${r.short}</th>`)}</tr></thead><tbody>
       ${cells.map(([n, c]) => html`<tr key=${n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium whitespace-nowrap">${n}</td>${c.map((x, i) => html`<td key=${i} className="px-2 py-2"><${Pill} tone=${STATUS_TONE[x]}>${x === 'Awaiting approval' ? 'Awaiting' : x}<//></td>`)}</tr>`)}
     </tbody></table></div>
     <div className="p-4 grid md:grid-cols-2 gap-4 border-t border-line"><div className="space-y-2"><div className="text-xs font-medium">Auto-filled share by report type</div>${REPORTS.map(r => html`<div key=${r.id} className="flex items-center gap-2 text-xs"><span className="w-28 truncate">${r.short}</span><div className="flex-1"><${Bar} pct=${r.autoPct} /></div><span className="w-8 tabular-nums text-right">${r.autoPct}%</span></div>`)}</div>
-      <div className="space-y-1"><div className="text-xs font-medium">Hours saved this month</div><div className="text-2xl font-semibold tabular-nums">${dur(saved * H)}</div><div className="text-xs text-mute">Estimate only: manual minutes per report x share auto-filled, for reports submitted so far. Replace with the AM time-study baseline.</div></div></div><//>`;
+      <div className="space-y-1"><div className="text-xs font-medium">Hours saved this month</div><div className="text-2xl font-semibold tabular-nums">${dur(saved * H)}</div></div></div><//>`;
 }
 function ReportsPage({ st, dispatch, role, route, go }) {
   const r = REPORTS.find(x => x.id === route.id);
@@ -2505,7 +2505,7 @@ function NewTicketForm({ role, dispatch, now, onDone, fixedAccount }) {
       <select className=${inp} value=${aid} onChange=${e => setAid(e.target.value)} aria-label="Customer">${vs && html`<option value="">Internal (VS tools, no customer)</option>`}${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name} · ${a.orgId}</option>`)}</select>
       <select className=${inp} value=${lvl} onChange=${e => setLvl(e.target.value)} aria-label="Level">${TKT_LEVELS.map(([l, d]) => html`<option key=${l} value=${l}>${l}: ${d}</option>`)}</select></div>
     <textarea className=${inp} rows="3" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder="What is happening, since when, and any error message or reference" aria-label="Issue"></textarea>
-    <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />TSI must respond within 20 mins and resolve within ${hLabel(TSI_RES_H[lvl])} (${lvl}). You see every update here.</p>
+    
     <div className="flex gap-2"><${Btn} kind="primary" disabled=${!txt.trim()} onClick=${() => { dispatch({ type: 'TKT_NEW', accountId: aid, level: lvl, issue: txt.trim(), by: me.name, source: role, ts: now }); onDone(); }}>Raise ticket<//><${Btn} onClick=${onDone}>Cancel<//></div>
   </div><//>`;
 }
@@ -2544,7 +2544,7 @@ function TsiPage({ st, dispatch, role, route, go }) {
   const openT = tickets.filter(k => k.status !== 'Resolved'), qa = tickets.filter(k => k.status === 'Pushed to QA');
   const stTone = { Open: 'warn', 'In progress': 'info', 'Pushed to QA': 'auto', Resolved: 'ok' };
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Onboarding and technical support</h1><p className="text-sm text-mute max-w-3xl">TSI receives new customers from Sales on the CRM, demos and onboards them, then hands them to the Key or Scale AM. TSI is also the first point for technical issues and pushes what it cannot settle to QA.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Onboarding and technical support</h1><p className="text-sm text-mute max-w-3xl">From Sales assignment to AM handover, plus technical tickets</p></div>
       ${(role === 'AM' || role === 'VS' || role === 'TSI') && html`<${Btn} kind="primary" onClick=${() => setShowNew(!showNew)}><${Icon} n="plus" s=${12} />Raise technical ticket<//>`}</div>
     ${showNew && html`<${NewTicketForm} role=${role} dispatch=${dispatch} now=${now} onDone=${() => setShowNew(false)} />`}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="New from Sales, not yet contacted" value=${fresh} tone=${fresh ? 'warn' : undefined} sub="Standard: contact within 30 mins" /><${Tile} label="In onboarding" value=${inOnb} sub="Standard: live within 5 days" /><${Tile} label="Open technical tickets" value=${openT.length} sub="First response within 20 mins" /><${Tile} label="Pushed to QA" value=${qa.length} sub="TSI keeps customer and AM updated" /></div>
@@ -2558,9 +2558,9 @@ function TsiPage({ st, dispatch, role, route, go }) {
           <div className="text-[11px] text-mute w-full sm:w-auto">${o.stage === 'Assigned' ? 'First contact' : 'Assignment to go-live'}<${SlaClock} c=${clk} now=${now} /></div>
           ${can && !done && html`<${Btn} kind=${o.stage === 'Live' ? 'primary' : 'default'} onClick=${() => dispatch({ type: 'ONB_NEXT', id: o.id, by: me.name, ts: now })}>${o.stage === 'Live' ? 'Hand over to ' + am : ONB_NEXT_LABEL[o.stage]}<//>`}
         </div>`; })}<//>
-    <${Card}><${CardHead} title="Technical tickets" sub="First response within 20 mins. Resolution: L1 2 hrs, L2 3 hrs, L3 48 hrs with updates" right=${role !== 'TSI' && role !== 'HEAD' && html`<div className="flex gap-1">${[['all', 'All'], ['mine', 'Raised by me']].map(([v, l]) => html`<button key=${v} onClick=${() => setTf(v)} className=${cx('px-2.5 py-1 rounded-full text-xs border', tf === v ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${l}</button>`)}</div>`} />
+    <${Card}><${CardHead} title="Technical tickets" sub="First response 20 mins · L1 2 hrs · L2 3 hrs · L3 48 hrs" right=${role !== 'TSI' && role !== 'HEAD' && html`<div className="flex gap-1">${[['all', 'All'], ['mine', 'Raised by me']].map(([v, l]) => html`<button key=${v} onClick=${() => setTf(v)} className=${cx('px-2.5 py-1 rounded-full text-xs border', tf === v ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${l}</button>`)}</div>`} />
       ${tickets.length === 0 ? html`<${Empty}>No technical tickets.<//>` : tickets.filter(k => tf === 'all' || k.raisedBy === me.name).map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} defaultOpen=${focus === k.id} />`)}<//>
-    <${Card} className="p-3.5 text-xs text-mute"><span className="font-medium text-ink">Who raises what: </span>AMs raise technical problems customers report. VS raises system problems (field agent app, portal, API). Customer issues such as an unreachable address stay as VS to AM escalations. <span className="font-medium text-ink">Path: </span>AM or VS, then TSI (first line), then QA, then Product. QA and Product work outside this workspace; TSI owns the update to the customer and the AM.<//>
+    
   </div>`;
 }
 
@@ -2623,7 +2623,7 @@ function NotificationsPage({ st, dispatch, role, go }) {
   const list = all.filter(n => (type === 'All' || n.type === type) && (showDone || !st.read[n.id]));
   const by = l => open.filter(n => n.level === l).length;
   return html`<div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Notifications</h1><p className="text-sm text-mute">Everything waiting on you, from customers, other teams and the system, in one place. Each one opens the screen where you act on it.</p></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Notifications</h1><p className="text-sm text-mute">Everything waiting on you, in one place</p></div>
       <${Btn} disabled=${!open.length} onClick=${() => dispatch({ type: 'NOTIF_READ', ids: open.map(n => n.id) })}><${Icon} n="check" s=${12} />Mark all done<//></div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Critical" value=${by('Critical')} tone=${by('Critical') ? 'bad' : undefined} sub="Missed standards, dropped customers" /><${Tile} label="High" value=${by('High')} tone=${by('High') ? 'warn' : undefined} sub="Near a standard or needs you today" /><${Tile} label="Normal" value=${by('Normal')} sub="Messages, drafts, packs to share" /><${Tile} label="Info" value=${by('Info')} sub="Updates, no action needed" /></div>
     <div className="flex flex-wrap items-center gap-2">${['All', ...types].map(t => { const c = t === 'All' ? open.length : open.filter(n => n.type === t).length; return html`<button key=${t} onClick=${() => setType(t)} className=${cx('px-3 py-1.5 rounded-full text-xs border', type === t ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${t} ${c}</button>`; })}
