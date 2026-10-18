@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phase 1 · Operational visibility</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tiber: #0A243B; --fern: #6BC177; --fern-ink: #2E7D3E; --porsche: #E9AF5F;
+    --bg: #F4F6F5; --surface: #FFFFFF; --surface2: #EEF1EF; --line: #DDE2DD;
+    --ink: #0A243B; --ink2: #3D4B57; --mute: #66737E;
+    --ok: #2E7D3E; --oksoft: #E4F3E6; --warn: #9A5B00; --warnsoft: #FBF0DD; --bad: #B42318; --badsoft: #FDE8E6;
+    --mark: #0A243B; --grid: #E6EAE7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #08141F; --surface: #0E1E2D; --surface2: #15293B; --line: #22384B;
+      --ink: #EEF2F4; --ink2: #C3CCD3; --mute: #8D9AA5;
+      --ok: #7FD08A; --oksoft: #15301F; --warn: #F0BE72; --warnsoft: #33260F; --bad: #F2867B; --badsoft: #3A1714;
+      --mark: #8FD39A; --grid: #1E3345; --fern-ink: #7FD08A;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Arial, sans-serif; font-size: 14px; }
+  body { overflow-x: hidden; }
+  button, select { font: inherit; color: inherit; }
+  .top { background: #0A243B; color: #F6F6F2; border-top: 3px solid var(--fern); }
+  .top-in { max-width: 1240px; margin: 0 auto; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .brand i { width: 12px; height: 12px; border-radius: 3px; background: var(--fern); display: inline-block; }
+  .brand small { display: block; font-weight: 400; color: #AFC0CC; font-size: 12px; }
+  .tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .tab { background: transparent; border: 1px solid #2A4560; color: #D7E0E6; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--fern); border-color: var(--fern); color: #0A243B; font-weight: 600; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 22px; margin: 0; }
+  .sub { color: var(--mute); margin: 4px 0 0; }
+  .bar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filters label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--mute); }
+  select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 150px; }
+  .grid { display: grid; gap: 12px; }
+  .kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .two { grid-template-columns: 3fr 2fr; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .card h2 { font-size: 15px; margin: 0; }
+  .card .hd { padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+  .card .hd p { margin: 2px 0 0; color: var(--mute); font-size: 12px; }
+  .tile { padding: 14px 16px; }
+  .tile .l { font-size: 12px; color: var(--mute); }
+  .tile .v { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile .s { font-size: 12px; color: var(--ink2); margin-top: 4px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .p-ok { background: var(--oksoft); color: var(--ok); } .p-warn { background: var(--warnsoft); color: var(--warn); } .p-bad { background: var(--badsoft); color: var(--bad); } .p-mute { background: var(--surface2); color: var(--mute); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--mute); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  td.r, th.r { text-align: right; }
+  .muted { color: var(--mute); }
+  .chart { position: relative; padding: 4px 12px 12px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s; }
+  .meter { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .meter b { display: block; height: 100%; border-radius: 3px; }
+  .steps { list-style: none; margin: 0; padding: 4px 16px 14px; display: grid; gap: 10px; }
+  .steps li { display: flex; gap: 10px; align-items: start; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .worry { padding: 4px 16px 14px; display: grid; gap: 10px; }
+  .worry div { border-left: 3px solid var(--porsche); padding: 2px 0 2px 10px; }
+  .foot { color: var(--mute); font-size: 12px; margin-top: 18px; }
+  .hide { display: none; }
+  .kpis.k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cards-m { display: none; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two { grid-template-columns: 1fr; } .tabs { margin-left: 0; } }
+  @media (max-width: 600px) {
+    .kpis.k3 { grid-template-columns: 1fr; } .seg-col { display: none; }
+    main { padding: 14px; } .top-in { padding: 12px 14px; }
+    .tbl-d { display: none; } .cards-m { display: block; }
+    .mc { padding: 12px 16px; border-bottom: 1px solid var(--line); } .mc:last-child { border-bottom: 0; }
+    .mc .a { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; } .mc .b { font-size: 12px; color: var(--mute); margin-top: 2px; } .mc .c { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; font-size: 12px; }
+    select { min-width: 0; width: 100%; } .filters { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><i></i><div>VerifyMe dashboards<small>Phase 1 · Operational visibility</small></div></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-v="am" aria-selected="true">AM dashboard</button>
+    <button class="tab" role="tab" data-v="group" aria-selected="false">Group dashboard</button>
+    <button class="tab" role="tab" data-v="setup" aria-selected="false">Data setup</button>
+  </nav>
+</div></header>
+<main id="app"></main>
+<script>
+/* ---------- mock data: fictional customers, 90 days of daily requests ---------- */
+const DAY = 864e5, TODAY = new Date(2026, 9, 15);
+const AMS = ['Amaka Eze', 'Kemi Adeyemi', 'Segun Bakare', 'Tolu Bamidele'];
+const SEED = [
+  ['Brightpay Microfinance', 'ORG-10482', 'Key', 'Amaka Eze', 12000, 38, 'drop21'],
+  ['Lumen Insurance', 'ORG-10377', 'Key', 'Amaka Eze', 15000, 41, 'fall'],
+  ['Orchid Health HMO', 'ORG-10519', 'Key', 'Amaka Eze', 18000, 36, ''],
+  ['Savannah Agri Credit', 'ORG-10603', 'Key', 'Amaka Eze', 9000, 40, ''],
+  ['Northgate Logistics', 'ORG-10688', 'Scale', 'Amaka Eze', 20000, 45, 'low'],
+  ['QuickLoan Hub', 'ORG-10741', 'Scale', 'Amaka Eze', 25000, 44, 'grow'],
+  ['Meridian Bank', 'ORG-10214', 'Key', 'Kemi Adeyemi', 40000, 32, ''],
+  ['Harbour Capital', 'ORG-10233', 'Key', 'Kemi Adeyemi', 22000, 34, 'fall'],
+  ['Cobalt Pensions', 'ORG-10291', 'Key', 'Kemi Adeyemi', 14000, 37, ''],
+  ['Granite Leasing', 'ORG-10305', 'Key', 'Kemi Adeyemi', 8000, 42, 'grow'],
+  ['PayNest', 'ORG-10765', 'Scale', 'Segun Bakare', 10000, 46, ''],
+  ['Swiftcab Rides', 'ORG-10772', 'Scale', 'Segun Bakare', 16000, 43, 'low'],
+  ['Ridgeway Estates', 'ORG-10780', 'Scale', 'Segun Bakare', 5000, 48, ''],
+  ['Kudi Wallet', 'ORG-10788', 'Scale', 'Segun Bakare', 30000, 39, 'grow'],
+  ['Atlas Microcredit', 'ORG-10826', 'Key', 'Tolu Bamidele', 9000, 40, ''],
+  ['Beacon Insure', 'ORG-10840', 'Key', 'Tolu Bamidele', 11000, 41, 'fall'],
+  ['Sunrise Cooperative', 'ORG-10851', 'Scale', 'Tolu Bamidele', 6000, 47, 'drop9'],
+  ['Crest Savings', 'ORG-10812', 'Key', '', 8000, 39, 'new'],
+  ['Zenith Fleet', 'ORG-10809', 'Key', '', 10000, 42, 'new'],
+  ['Kora Pay', 'ORG-10831', 'Scale', '', 7000, 45, 'new'],
+  ['Palm Credit Union', 'ORG-10866', 'Scale', '', 12000, 44, ''],
+];
+function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const CUST = SEED.map(([name, org, seg, am, agreed, price, pat], k) => {
+  const r = rng(k * 97 + 11), base = agreed / 22;
+  const days = Array.from({ length: 90 }, (_, i) => {
+    const ago = 89 - i, d = new Date(TODAY - ago * DAY), wk = (d.getDay() === 0 || d.getDay() === 6) ? .35 : 1;
+    let m = .92 + r() * .16;
+    if (pat === 'drop21' && ago < 21) m = 0;
+    if (pat === 'drop9' && ago < 9) m = 0;
+    if (pat === 'fall' && ago < 30) m *= .62;
+    if (pat === 'low') m *= .42;
+    if (pat === 'grow') m *= 1 + (90 - ago) / 400;
+    if (pat === 'new') m = ago < 12 ? m * .35 : 0;
+    return Math.round(base * wk * m);
+  });
+  return { name, org, seg, am, agreed, price, pat, days };
+});
+const SMALL = () => window.innerWidth < 600;
+const S = { view: 'am', am: 'Amaka Eze', per: 7, seg: 'All', amG: 'All' };
+
+/* ---------- helpers ---------- */
+const sum = a => a.reduce((x, y) => x + y, 0);
+const num = n => Math.round(n).toLocaleString('en-US');
+const ngn = n => { const a = Math.abs(n); return 'NGN ' + (a >= 1e9 ? (n / 1e9).toFixed(2) + 'bn' : a >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : a >= 1e3 ? Math.round(n / 1e3) + 'k' : Math.round(n)); };
+const p1 = n => { const r = Math.round(n * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
+const chg = (c, zero) => zero ? '<span class="pill p-bad">No requests</span>' : c == null ? '<span class="pill p-mute">New</span>' : Math.abs(c) < .005 ? '<span class="pill p-mute">No change</span>' : `<span class="pill ${c > 0 ? 'p-ok' : c <= -.2 ? 'p-bad' : 'p-warn'}">${c > 0 ? '↑' : '↓'} ${p1(Math.abs(c) * 100)}% ${c > 0 ? 'up' : 'down'}</span>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtD = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+function stats(c, per) {
+  const cur = sum(c.days.slice(90 - per)), prev = sum(c.days.slice(90 - 2 * per, 90 - per)), l30 = sum(c.days.slice(60));
+  const lastIdx = c.days.map((v, i) => v > 0 ? i : -1).reduce((a, b) => Math.max(a, b), -1);
+  return { cur, prev, ch: prev ? cur / prev - 1 : null, rev: cur * c.price, prevRev: prev * c.price, pctAgreed: l30 / c.agreed, idle: lastIdx < 0 ? 90 : 89 - lastIdx };
+}
+function flag(c, s) {
+  if (c.pat === 'new' && s.prev === 0) return ['New customer', 'p-mute', 0];
+  if (s.idle >= 7) return ['No requests for ' + s.idle + ' days', 'p-bad', 3];
+  if (s.ch != null && s.ch <= -.2) return ['Down ' + p1(-s.ch * 100) + '%', 'p-bad', 2];
+  if (s.pctAgreed < .55) return ['Below agreed volume', 'p-warn', 1];
+  return ['On track', 'p-ok', 0];
+}
+const owned = () => CUST.filter(c => c.am);
+const perLabel = p => p === 7 ? 'last 7 days vs the 7 before' : 'last 30 days vs the 30 before';
+
+/* ---------- charts (hand-rolled SVG, single series, hover tooltips) ---------- */
+function lineChart(id, values, labels, W = 640) {
+  if (SMALL()) W = 360;
+  const Hh = 200, pl = 44, pr = 8, pt = 12, pb = 26, max = Math.max(...values, 1) * 1.1;
+  const x = i => pl + i * (W - pl - pr) / (values.length - 1), y = v => pt + (Hh - pt - pb) * (1 - v / max);
+  const ticks = [0, .5, 1].map(f => max / 1.1 * f);
+  const path = values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  const area = path + ` L${x(values.length - 1)} ${y(0)} L${x(0)} ${y(0)} Z`;
+  return `<div class="chart" id="${id}"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Daily requests">
+    ${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)" /><text x="${pl - 6}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="var(--mute)">${t >= 1000 ? p1(t / 1000) + 'k' : Math.round(t)}</text>`).join('')}
+    <path d="${area}" fill="var(--mark)" opacity=".07" /><path d="${path}" fill="none" stroke="var(--mark)" stroke-width="2" stroke-linejoin="round" />
+    ${[0, Math.floor(values.length / 2), values.length - 1].map(i => `<text x="${x(i)}" y="${Hh - 6}" text-anchor="${i === 0 ? 'start' : i === values.length - 1 ? 'end' : 'middle'}" font-size="11" fill="var(--mute)">${labels[i]}</text>`).join('')}
+    <line class="xh" y1="${pt}" y2="${Hh - pb}" stroke="var(--mute)" stroke-dasharray="3 3" opacity="0" /><circle class="pt" r="5" fill="var(--mark)" stroke="var(--surface)" stroke-width="2" opacity="0" />
+    <rect x="${pl}" y="0" width="${W - pl - pr}" height="${Hh}" fill="transparent" class="hit" />
+  </svg><div class="tip"></div></div>`;
+}
+function wireLine(id, values, labels, fmt) {
+  const el = document.getElementById(id); if (!el) return; const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), xh = svg.querySelector('.xh'), pt = svg.querySelector('.pt');
+  const W = +svg.viewBox.baseVal.width, Hh = 200, pl = 44, pr = 8, ptop = 12, pb = 26, max = Math.max(...values, 1) * 1.1;
+  const move = e => { const r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) * W / r.width; const i = Math.max(0, Math.min(values.length - 1, Math.round((sx - pl) / ((W - pl - pr) / (values.length - 1)))));
+    const cx = pl + i * (W - pl - pr) / (values.length - 1), cy = ptop + (Hh - ptop - pb) * (1 - values[i] / max);
+    xh.setAttribute('x1', cx); xh.setAttribute('x2', cx); xh.setAttribute('opacity', 1); pt.setAttribute('cx', cx); pt.setAttribute('cy', cy); pt.setAttribute('opacity', 1);
+    tip.innerHTML = `<b>${labels[i]}</b> · ${fmt(values[i])}`; tip.style.left = (cx * r.width / W + 12) + 'px'; tip.style.top = (cy * r.height / Hh + 4) + 'px'; tip.style.opacity = 1; };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerleave', () => { tip.style.opacity = 0; xh.setAttribute('opacity', 0); pt.setAttribute('opacity', 0); });
+}
+function barChart(id, rows) { // rows: [label, value, sub]
+  const W = SMALL() ? 360 : 640, rowH = 44, pl = SMALL() ? 100 : 120, pr = SMALL() ? 76 : 120, Hh = rows.length * rowH + 8, max = Math.max(...rows.map(r => r[1]), 1);
+  return `<div class="chart" id="${id}"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Revenue by account manager">
+    ${rows.map((r, i) => { const w = (W - pl - pr) * r[1] / max, y0 = 8 + i * rowH;
+      return `<g class="b" data-i="${i}"><text x="${pl - 10}" y="${y0 + 20}" text-anchor="end" font-size="12" fill="var(--ink)">${esc(r[0])}</text>
+        <path d="M${pl} ${y0 + 6} h${Math.max(0, w - 4)} a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 h${-Math.max(0, w - 4)} z" fill="var(--mark)" />
+        <text x="${pl + w + 8}" y="${y0 + 20}" font-size="12" fill="var(--ink2)">${ngn(r[1])}</text>
+        <rect x="0" y="${y0}" width="${W}" height="${rowH}" fill="transparent" /></g>`; }).join('')}
+  </svg><div class="tip"></div></div>`;
+}
+function wireBars(id, rows) {
+  const el = document.getElementById(id); if (!el) return; const svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  svg.querySelectorAll('.b').forEach(g => { g.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(), row = rows[+g.dataset.i];
+    tip.innerHTML = `<b>${esc(row[0])}</b> · ${ngn(row[1])} · ${row[2]}`; tip.style.left = (e.clientX - r.left) + 'px'; tip.style.top = (e.clientY - r.top) + 'px'; tip.style.opacity = 1; });
+    g.addEventListener('pointerleave', () => { tip.style.opacity = 0; }); });
+}
+
+/* ---------- views ---------- */
+const meter = p => `<span class="meter"><b style="width:${Math.min(100, p * 100)}%;background:${p >= .85 ? 'var(--ok)' : p >= .55 ? 'var(--porsche)' : 'var(--bad)'}"></b></span>${p1(p * 100)}%`;
+function custTable(list) {
+  const rows = list.map(c => ({ c, s: stats(c, S.per) })).map(o => ({ ...o, f: flag(o.c, o.s) })).sort((a, b) => b.f[2] - a.f[2] || b.s.rev - a.s.rev);
+  return `<div class="scroll tbl-d"><table><thead><tr><th>Customer</th><th>Org ID</th><th>Segment</th>${S.view === 'group' ? '<th>AM</th>' : ''}<th class="r">Requests</th><th>Change</th><th class="r">Revenue</th><th>Of agreed (30 days)</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(({ c, s, f }) => `<tr><td><b>${esc(c.name)}</b></td><td class="muted">${c.org}</td><td>${c.seg}</td>${S.view === 'group' ? `<td>${esc(c.am)}</td>` : ''}<td class="r">${num(s.cur)}</td><td>${chg(s.ch, s.cur === 0 && s.prev === 0)}</td><td class="r">${ngn(s.rev)}</td><td>${meter(s.pctAgreed)}</td><td><span class="pill ${f[1]}">${f[0]}</span></td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="cards-m">${rows.map(({ c, s, f }) => `<div class="mc"><div class="a"><span>${esc(c.name)}</span><span class="pill ${f[1]}">${f[0]}</span></div><div class="b">${c.org} · ${c.seg}${S.view === 'group' ? ' · ' + esc(c.am) : ''}</div><div class="c"><span>${num(s.cur)} requests</span>${chg(s.ch, s.cur === 0 && s.prev === 0)}<span>${ngn(s.rev)}</span><span>${meter(s.pctAgreed)}</span></div></div>`).join('')}</div>`;
+}
+function kpis(list) {
+  const st = list.map(c => stats(c, S.per)); const cur = sum(st.map(s => s.cur)), prev = sum(st.map(s => s.prev)), rev = sum(st.map(s => s.rev)), prevRev = sum(st.map(s => s.prevRev));
+  const ag = sum(list.map(c => c.agreed)), l30 = sum(list.map(c => sum(c.days.slice(60)))), risk = list.filter(c => flag(c, stats(c, S.per))[2] >= 1).length;
+  const t = (l, v, s) => `<div class="card tile"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  return `<div class="grid kpis">${t('Requests', num(cur), chg(prev ? cur / prev - 1 : null) + ' on the previous period')}${t('Revenue', ngn(rev), chg(prevRev ? rev / prevRev - 1 : null) + ' on the previous period')}${t('Customers', list.length, list.filter(c => c.seg === 'Key').length + ' Key · ' + list.filter(c => c.seg === 'Scale').length + ' Scale')}${t('Of agreed volume', p1(l30 / ag * 100) + '%', num(l30) + ' of ' + num(ag) + ', last 30 days')}${t('Needing attention', risk, risk ? '<span class="pill p-warn">Check the list</span>' : '<span class="pill p-ok">All on track</span>')}</div>`;
+}
+function daily(list) { const n = S.per === 7 ? 30 : 60; const vals = Array.from({ length: n }, (_, i) => sum(list.map(c => c.days[90 - n + i]))); const labels = Array.from({ length: n }, (_, i) => fmtD(new Date(TODAY - (n - i) * DAY))); return { vals, labels }; }
+function worryList(list) {
+  const w = list.map(c => ({ c, s: stats(c, S.per) })).map(o => ({ ...o, f: flag(o.c, o.s) })).filter(o => o.f[2] >= 1).sort((a, b) => b.f[2] - a.f[2]);
+  return w.length ? `<div class="worry">${w.map(o => `<div><b>${esc(o.c.name)}</b> <span class="muted">${o.c.org}</span><br><span class="pill ${o.f[1]}">${o.f[0]}</span> <span class="muted">${p1(o.s.pctAgreed * 100)}% of agreed volume</span></div>`).join('')}</div>` : '<p class="muted" style="padding:0 16px 14px">No customers flagged.</p>';
+}
+function filters(withAm) {
+  return `<div class="filters">${withAm ? `<label>Account manager<select id="fAm">${AMS.map(a => `<option ${a === S.am ? 'selected' : ''}>${a}</option>`).join('')}</select></label>` : `<label>Account manager<select id="fAmG"><option>All</option>${AMS.map(a => `<option ${a === S.amG ? 'selected' : ''}>${a}</option>`).join('')}</select></label>`}
+    <label>Period<select id="fPer"><option value="7" ${S.per === 7 ? 'selected' : ''}>Last 7 days</option><option value="30" ${S.per === 30 ? 'selected' : ''}>Last 30 days</option></select></label>
+    <label>Segment<select id="fSeg">${['All', 'Key', 'Scale'].map(x => `<option ${x === S.seg ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>`;
+}
+function viewAM() {
+  const list = owned().filter(c => c.am === S.am && (S.seg === 'All' || c.seg === S.seg)); const d = daily(list);
+  return { html: `<div class="bar"><div><h1>${esc(S.am)}'s customers</h1><p class="sub">Filtered by account owner from Zoho CRM · ${perLabel(S.per)}</p></div>${filters(true)}</div>
+    ${kpis(list)}
+    <div class="grid two" style="margin-top:12px"><div class="card"><div class="hd"><div><h2>Daily requests</h2><p>All ${list.length} customers, last ${d.vals.length} days</p></div></div>${lineChart('ln', d.vals, d.labels)}</div>
+      <div class="card"><div class="hd"><div><h2>Customers to worry about</h2><p>No requests, falling volume or below agreed</p></div></div>${worryList(list)}</div></div>
+    <div class="card" style="margin-top:12px"><div class="hd"><div><h2>Customers</h2><p>Sorted by who needs attention first</p></div></div>${custTable(list)}</div>`,
+    after: () => wireLine('ln', d.vals, d.labels, v => num(v) + ' requests') };
+}
+function viewGroup() {
+  const list = owned().filter(c => (S.amG === 'All' || c.am === S.amG) && (S.seg === 'All' || c.seg === S.seg)); const d = daily(list);
+  const byAm = AMS.map(a => { const l = list.filter(c => c.am === a), st = l.map(c => stats(c, S.per)), rev = sum(st.map(s => s.rev)), pr = sum(st.map(s => s.prevRev)); return { a, l, rev, ch: pr ? rev / pr - 1 : null, risk: l.filter(c => flag(c, stats(c, S.per))[2] >= 1).length }; }).filter(x => x.l.length);
+  const rows = byAm.map(x => [x.a, x.rev, x.l.length + ' customers']);
+  const at = list.filter(c => flag(c, stats(c, S.per))[2] >= 1);
+  return { html: `<div class="bar"><div><h1>Whole team</h1><p class="sub">Every customer with an owner recorded · ${perLabel(S.per)}</p></div>${filters(false)}</div>
+    ${kpis(list)}
+    <div class="grid two" style="margin-top:12px"><div class="card"><div class="hd"><div><h2>Revenue by account manager</h2><p>${S.per === 7 ? 'Last 7 days' : 'Last 30 days'}</p></div></div>${barChart('br', rows)}</div>
+      <div class="card"><div class="hd"><div><h2>Performance by AM</h2><p>Revenue change and customers needing attention</p></div></div><div class="scroll"><table><thead><tr><th>AM</th><th class="r">Customers</th><th>Change</th><th class="r">Attention</th></tr></thead><tbody>${byAm.map(x => `<tr><td><b>${esc(x.a)}</b></td><td class="r">${x.l.length}</td><td>${chg(x.ch)}</td><td class="r">${x.risk}</td></tr>`).join('')}</tbody></table></div></div></div>
+    <div class="card" style="margin-top:12px"><div class="hd"><div><h2>Daily requests, whole team</h2><p>Last ${d.vals.length} days</p></div></div>${lineChart('ln2', d.vals, d.labels, 1160)}</div>
+    <div class="card" style="margin-top:12px"><div class="hd"><div><h2>Accounts needing attention across the portfolio</h2><p>${at.length} of ${list.length} customers</p></div></div>${custTable(at)}</div>`,
+    after: () => { wireBars('br', rows); wireLine('ln2', d.vals, d.labels, v => num(v) + ' requests'); } };
+}
+function viewSetup() {
+  const total = CUST.length, withOwner = CUST.filter(c => c.am).length, missing = CUST.filter(c => !c.am);
+  const pct = withOwner / total;
+  const step = (n, done, t, s) => `<li><span class="dot" style="background:${done ? 'var(--oksoft)' : 'var(--surface2)'};color:${done ? 'var(--ok)' : 'var(--mute)'}">${done ? '✓' : n}</span><div><b>${t}</b><div class="muted">${s}</div></div></li>`;
+  return { html: `<div class="bar"><div><h1>Data setup</h1><p class="sub">What the Data team does in Phase 1, using Zoho CRM, the database and Metabase</p></div></div>
+    <div class="grid kpis k3">
+      <div class="card tile"><div class="l">Customers with an account owner</div><div class="v">${withOwner} of ${total}</div><div class="s">${meter(pct)}</div></div>
+      <div class="card tile"><div class="l">Customers with an org ID</div><div class="v">${total} of ${total}</div><div class="s">${meter(1)}</div></div>
+      <div class="card tile"><div class="l">Dashboards ready</div><div class="v">${missing.length ? 'Almost' : 'Yes'}</div><div class="s">${missing.length ? missing.length + ' customers not on any AM dashboard yet' : '<span class="pill p-ok">Every customer is on a dashboard</span>'}</div></div></div>
+    <div class="grid two" style="margin-top:12px">
+      <div class="card"><div class="hd"><div><h2>Customers without an owner</h2><p>Assign one here; it shows on that AM's dashboard straight away</p></div></div>
+        ${missing.length ? `<div class="scroll"><table><thead><tr><th>Customer</th><th>Org ID</th><th class="seg-col">Segment</th><th>Assign to</th></tr></thead><tbody>${missing.map(c => `<tr><td><b>${esc(c.name)}</b></td><td class="muted">${c.org}</td><td class="seg-col">${c.seg}</td><td><select data-org="${c.org}" class="assign"><option value="">Choose AM</option>${AMS.map(a => `<option>${a}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted" style="padding:0 16px 14px">Every customer has an owner.</p>'}</div>
+      <div class="card"><div class="hd"><div><h2>Phase 1 steps</h2><p>About 1 month</p></div></div><ol class="steps">
+        ${step(1, pct === 1, 'Account owner and org ID in Zoho CRM', 'A required field on every customer record')}
+        ${step(2, true, 'Daily sync from Zoho CRM to the database', 'Owner and org ID joined to usage and revenue')}
+        ${step(3, true, 'Metabase model with the owner', 'One model, filtered per AM')}
+        ${step(4, pct === 1, 'AM and group dashboards', 'Each AM sees their own; the Manager sees everyone')}
+      </ol></div></div>`,
+    after: () => document.querySelectorAll('.assign').forEach(s => s.addEventListener('change', e => { const c = CUST.find(x => x.org === e.target.dataset.org); if (c && e.target.value) { c.am = e.target.value; render(); } })) };
+}
+function render() {
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.v === S.view));
+  const v = S.view === 'am' ? viewAM() : S.view === 'group' ? viewGroup() : viewSetup();
+  document.getElementById('app').innerHTML = v.html + '<p class="foot">Concept prototype for Phase 1. Customers, figures and people are mock data.</p>';
+  const on = (id, f) => { const el = document.getElementById(id); if (el) el.addEventListener('change', e => { f(e.target.value); render(); }); };
+  on('fAm', x => S.am = x); on('fAmG', x => S.amG = x); on('fPer', x => S.per = +x); on('fSeg', x => S.seg = x);
+  v.after && v.after();
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { S.view = t.dataset.v; render(); window.scrollTo(0, 0); }));
+render();
+let rsz; window.addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(render, 200); });
+</script>
+</body>
+</html>
