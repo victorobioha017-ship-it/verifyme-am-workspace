@@ -65,6 +65,8 @@ tailwind.config = {
   .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
   .scroll-x { overflow-x: auto; }
+  @media (max-width: 767px) { html, body { overflow-x: hidden; } .mob-pad { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); } }
+  .tabbar { padding-bottom: env(safe-area-inset-bottom, 0px); }
 </style>
 </head>
 <body>
@@ -805,6 +807,7 @@ const ICONS = {
   users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
   phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z',
   loop: 'M17 2l4 4-4 4 M3 11V9a4 4 0 0 1 4-4h14 M7 22l-4-4 4-4 M21 13v2a4 4 0 0 1-4 4H3',
+  menu: 'M3 6h18 M3 12h18 M3 18h18',
   chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
@@ -883,7 +886,7 @@ function Home({ st, dispatch, go, role }) {
     <div className="flex flex-wrap items-end justify-between gap-2">
       <div><h1 className="text-xl font-semibold">${role === 'HEAD' ? 'Portfolio overview' : 'Good morning, ' + me.name.split(' ')[0]}</h1>
         <p className="text-sm text-mute">${fmtDay(now)} · ${accts.length} accounts ${role === 'HEAD' ? 'across 3 account managers' : 'assigned to you'}</p></div>
-      <div className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} /> marks anything the system does without a person</div>
+      <div className="text-xs text-mute hidden md:flex items-center gap-1.5"><${AutoBadge} /> marks anything the system does without a person</div>
     </div>
 
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -966,7 +969,12 @@ function AccountsPage({ st, go, role }) {
   return html`<div className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-2"><div><h1 className="text-xl font-semibold">${mine ? 'My accounts' : 'All accounts'}</h1><p className="text-sm text-mute">Agreed against actual volume over the last 30 days</p></div>
       <div className="flex flex-wrap gap-2 items-center">${role === 'AM' && html`<div className="flex gap-1">${[[true, 'Mine'], [false, 'All customers']].map(([v, l]) => html`<button key=${l} onClick=${() => setMine(v)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', mine === v ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${l}</button>`)}</div>`}<input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Search name or org ID" className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm w-56" aria-label="Search accounts" /><div className="flex gap-1">${['All', 'Key', 'Scale'].map(s => html`<button key=${s} onClick=${() => setSeg(s)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', seg === s ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${s}</button>`)}</div></div></div>
-    <${Card}><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2.5 font-medium">Account</th><th className="px-2 font-medium">Org ID</th><th className="px-2 font-medium">Segment</th><th className="px-2 font-medium">AM</th><th className="px-2 font-medium">Health</th><th className="px-2 font-medium text-right">Agreed / mo</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium">Trend (90 days)</th><th className="px-2 font-medium">Signal</th></tr></thead><tbody>
+    <${Card} className="md:hidden">${list.map(a => { const h = healthOf(a, signals, st.escalations, now); const sg = signals.find(s => s.accountId === a.id);
+      return html`<button key=${a.id} onClick=${() => go({ page: 'account', id: a.id, tab: a.obId ? 'Onboarding' : 'Timeline' })} className="w-full text-left px-4 py-3 border-b border-line last:border-0 active:bg-surface2">
+        <div className="flex items-center justify-between gap-2"><span className="font-medium">${a.name}</span><${HealthPill} h=${h} /></div>
+        <div className="text-xs text-mute mt-0.5">${a.orgId} · ${a.segment} · ${a.am}</div>
+        <div className="flex items-center gap-2 mt-2"><div className="flex-1"><${Bar} pct=${a.stats.last30 / a.agreed * 100} tone=${a.stats.last30 / a.agreed >= .85 ? 'ok' : a.stats.last30 / a.agreed >= .55 ? 'warn' : 'bad'} /></div><span className="text-xs tabular-nums">${p1(a.stats.last30 / a.agreed * 100)}% of agreed</span>${sg && !sg.suppressed && html`<${Pill} tone=${sg.kind === 'Dropped' ? 'bad' : 'warn'}>${sg.kind}<//>`}</div></button>`; })}${list.length === 0 && html`<${Empty}>No account matches "${q}".<//>`}<//>
+    <${Card} className="hidden md:block"><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2.5 font-medium">Account</th><th className="px-2 font-medium">Org ID</th><th className="px-2 font-medium">Segment</th><th className="px-2 font-medium">AM</th><th className="px-2 font-medium">Health</th><th className="px-2 font-medium text-right">Agreed / mo</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium">Trend (90 days)</th><th className="px-2 font-medium">Signal</th></tr></thead><tbody>
       ${list.map(a => { const sg = signals.find(s => s.accountId === a.id); const h = healthOf(a, signals, st.escalations, now);
         return html`<tr key=${a.id} className="border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: a.id, tab: a.obId ? 'Onboarding' : 'Timeline' })}>
           <td className="px-4 py-2.5 font-medium">${a.name}</td><td className="px-2 text-xs tabular-nums text-mute">${a.orgId}</td><td className="px-2"><${SegPill} segment=${a.segment} /></td><td className="px-2 text-mute">${a.am}</td><td className="px-2"><${HealthPill} h=${h} /></td>
@@ -2115,7 +2123,7 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
   ];
   const s = STEPS[i]; const tone = { Auto: 'auto', Human: 'info', Reset: 'mute', 'Head of AM': 'ok' }[s.who];
   const run = () => { s.run(); setDone({ ...done, [i]: true }); };
-  return html`<div className="fixed z-[65] bottom-4 right-4 w-[min(92vw,380px)] rounded-lg border border-line bg-surface shadow-xl" style=${{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+  return html`<div className="fixed z-[65] bottom-[84px] md:bottom-4 right-3 md:right-4 w-[min(94vw,380px)] rounded-lg border border-line bg-surface shadow-xl" style=${{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-line"><div className="text-sm font-semibold">Guided demo: the Brightpay story</div><button onClick=${onClose} className="text-xs text-mute hover:text-ink" aria-label="Close guided demo">Close</button></div>
     <div className="p-4 space-y-3"><div className="flex items-center gap-2 text-xs text-mute">Step ${i + 1} of ${STEPS.length}<${Pill} tone=${tone}>${s.who === 'Auto' ? 'System does this' : s.who === 'Human' ? 'A person does this' : s.who}<//>${done[i] && html`<${Pill} tone="ok">Done<//>`}</div>
       <div><div className="font-semibold text-sm">${s.title}</div><p className="text-sm text-mute mt-1">${s.text}</p></div>
@@ -2193,8 +2201,8 @@ function AddUpdateCard({ role, dispatch }) {
 }
 function AddUpdateModal({ role, dispatch, onClose }) {
   const now = useNow();
-  return html`<div className="fixed inset-0 z-[80] flex items-start justify-center p-4 pt-20" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${onClose}>
-    <div className="w-full max-w-xl rounded-lg border border-line bg-surface shadow-xl" onClick=${e => e.stopPropagation()} role="dialog" aria-label="Add update">
+  return html`<div className="fixed inset-0 z-[80] flex items-end md:items-start justify-center md:p-4 md:pt-20" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${onClose}>
+    <div className="w-full max-w-xl rounded-t-2xl md:rounded-lg border border-line bg-surface shadow-xl max-h-[90vh] overflow-y-auto tabbar" onClick=${e => e.stopPropagation()} role="dialog" aria-label="Add update">
       <div className="flex items-center justify-between px-4 py-3 border-b border-line"><div><div className="text-sm font-semibold">Add an update or conversation</div></div><button className="text-xs text-mute hover:text-ink" onClick=${onClose}>Close</button></div>
       <div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} onDone=${onClose} /></div></div></div>`;
 }
@@ -2610,11 +2618,11 @@ function buildNotifs(st, role, now) {
 }
 function NotifRow({ n, st, dispatch, go, compact }) {
   const now = useNow(); const done = !!st.read[n.id];
-  return html`<div className=${cx('flex items-start gap-3 px-4 py-3 border-b border-line last:border-0', done && 'opacity-60')}>
+  return html`<div className=${cx('flex flex-wrap sm:flex-nowrap items-start gap-3 px-4 py-3 border-b border-line last:border-0', done && 'opacity-60')}>
     <div className=${cx('mt-0.5 w-8 h-8 rounded-md flex items-center justify-center shrink-0', TONES[N_LEVELS[n.level]])}><${Icon} n=${N_TYPES[n.type] || 'bell'} s=${15} /></div>
     <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">${n.title}</span><${Pill} tone=${N_LEVELS[n.level]}>${n.level}<//>${!compact && html`<span className="text-xs text-mute">${n.type}</span>`}</div>
       <div className="text-xs text-mute mt-0.5">${n.detail}</div><div className="text-[11px] text-mute mt-0.5">${relAgo(n.ts, now)}</div></div>
-    <div className="flex flex-wrap gap-1.5 shrink-0"><${Btn} kind=${done ? 'default' : 'primary'} onClick=${() => { dispatch({ type: 'NOTIF_READ', ids: [n.id] }); go(n.go); }}>${n.action}<//>${!compact && (done ? html`<${Btn} onClick=${() => dispatch({ type: 'NOTIF_UNREAD', id: n.id })}>Undo<//>` : html`<${Btn} onClick=${() => dispatch({ type: 'NOTIF_READ', ids: [n.id] })}>Mark done<//>`)}</div>
+    <div className="flex flex-wrap gap-1.5 shrink-0 basis-full sm:basis-auto pl-11 sm:pl-0"><${Btn} kind=${done ? 'default' : 'primary'} onClick=${() => { dispatch({ type: 'NOTIF_READ', ids: [n.id] }); go(n.go); }}>${n.action}<//>${!compact && (done ? html`<${Btn} onClick=${() => dispatch({ type: 'NOTIF_UNREAD', id: n.id })}>Undo<//>` : html`<${Btn} onClick=${() => dispatch({ type: 'NOTIF_READ', ids: [n.id] })}>Mark done<//>`)}</div>
   </div>`;
 }
 function NotificationsPage({ st, dispatch, role, go }) {
@@ -2636,11 +2644,13 @@ function NotificationsPage({ st, dispatch, role, go }) {
 const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage, notifications: NotificationsPage, followup: FollowUpPage };
 
 /* ============================ 8 APP SHELL ============================ */
+const MOB_TABS = { AM: ['home', 'notifications', 'escalations', 'accounts'], TSI: ['home', 'notifications', 'escalations', 'accounts'], VS: ['home', 'notifications', 'escalations', 'tsi'], ADMIN: ['home', 'notifications', 'escalations', 'accounts'], FIN: ['home', 'notifications', 'invoices', 'accounts'], HEAD: ['home', 'notifications', 'dashboard', 'reports'] };
+const MOB_LABEL = { home: 'Home', notifications: 'Alerts', escalations: 'Cases', accounts: 'Customers', invoices: 'Invoices', dashboard: 'Dashboard', reports: 'Reports', tsi: 'Support' };
 function App() {
   const [st, dispatch] = useReducer(reducer, null, initState);
   ACTIVE.th = st.thresholds; ACTIVE.supp = st.suppOn; ACTIVE.handed = new Set(st.onboarding.filter(o => o.stage === 'Handed to AM' && o.accountId).map(o => o.accountId));
   const [route, setRoute] = useState({ page: 'home' });
-  const [guide, setGuide] = useState(false); const [addUpd, setAddUpd] = useState(false);
+  const [guide, setGuide] = useState(false); const [addUpd, setAddUpd] = useState(false); const [sheet, setSheet] = useState(null);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 10000); return () => clearInterval(t); }, []);
   useEffect(() => { if (!st.toast) return; const t = setTimeout(() => dispatch({ type: 'TOAST', text: null }), 4500); return () => clearTimeout(t); }, [st.toast && st.toast.id]);
@@ -2672,19 +2682,38 @@ function App() {
       </aside>
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky z-50 bg-surface border-b border-line" style=${{ top: 'env(safe-area-inset-top, 0px)' }}>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
-            <div className="md:hidden font-semibold text-sm">VerifyMe AM</div>
+          <div className="md:hidden flex items-center gap-2 px-3 py-2">
+            <span className="inline-block w-3 h-3 rounded-sm shrink-0" style=${{ background: 'var(--fern)' }}></span>
+            <button onClick=${() => setSheet('role')} className="flex items-center gap-2 min-w-0 flex-1 text-left" aria-label="Switch role"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold shrink-0">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight min-w-0"><div className="text-sm font-medium truncate">${me.name}</div><div className="text-[11px] text-mute truncate">${ROLES[role].short} · tap to switch</div></div></button>
+            ${st.simHours > 0 && html`<${Pill} tone="auto">+${fmtDur(st.simHours * H)}<//>`}
+            <button onClick=${() => setAddUpd(true)} aria-label="Add update" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface"><${Icon} n="plus" s=${16} /></button>
+            <button onClick=${() => setSheet('more')} aria-label="Menu" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface"><${Icon} n="menu" s=${16} /></button>
+          </div>
+          <div className="hidden md:flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
             <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${me.name}</div><div className="text-xs text-mute">${me.title}</div></div></div>
             <div className="flex items-center gap-1.5 md:ml-auto" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
             <button onClick=${() => go({ page: 'notifications' })} title="Notifications" aria-label=${unread.length + ' notifications waiting'} className="relative inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface hover:bg-surface2"><${Icon} n="bell" s=${16} />${unread.length > 0 && html`<span className=${cx('absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}</button><${Btn} onClick=${() => setAddUpd(true)} title="Log a call, WhatsApp, email, Slack message or meeting against a customer"><${Icon} n="plus" s=${12} />Add update<//><${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
           </div>
-          <div className="md:hidden flex gap-1 px-3 pb-2 scroll-x">${nav.filter(n => n.stage <= STAGE_DONE).map(n => html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('px-3 py-1 rounded-md text-xs border whitespace-nowrap', active === n.id ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${n.label}</button>`)}</div>
         </header>
-        <main className="p-4 md:p-6 max-w-[1280px] w-full mx-auto">${screen}</main>
+        <main className="p-4 md:p-6 max-w-[1280px] w-full mx-auto mob-pad">${screen}</main>
       </div>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-surface border-t border-line tabbar" aria-label="Main">
+        <div className="grid grid-cols-5">${[...(MOB_TABS[role] || MOB_TABS.AM), 'more'].map(id => { const n = NAV.find(x => x.id === id); const on = id === 'more' ? sheet === 'more' : active === id;
+          return html`<button key=${id} onClick=${() => id === 'more' ? setSheet(sheet === 'more' ? null : 'more') : (setSheet(null), go({ page: id }))} className=${cx('relative flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px]', on ? 'text-brand font-semibold' : 'text-mute')}>
+            <${Icon} n=${id === 'more' ? 'menu' : n.icon} s=${20} /><span>${id === 'more' ? 'More' : MOB_LABEL[id] || n.label}</span>
+            ${id === 'notifications' && unread.length > 0 && html`<span className=${cx('absolute top-1 left-1/2 ml-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}
+            ${on && html`<span className="absolute top-0 inset-x-4 h-0.5 rounded-full" style=${{ background: 'var(--fern)' }}></span>`}</button>`; })}</div></nav>
+      ${sheet && html`<div className="md:hidden fixed inset-0 z-[75] flex items-end" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${() => setSheet(null)}>
+        <div className="w-full rounded-t-2xl bg-surface border-t border-line max-h-[80vh] overflow-y-auto tabbar" onClick=${e => e.stopPropagation()} role="dialog" aria-label=${sheet === 'role' ? 'Switch role' : 'Menu'}>
+          <div className="flex justify-center pt-2"><span className="w-10 h-1 rounded-full bg-surface2"></span></div>
+          ${sheet === 'role' ? html`<div className="p-4 space-y-2"><div className="text-sm font-semibold">View the workspace as</div>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => { setRole(r); setSheet(null); }} className=${cx('w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left', role === r ? 'border-brand bg-brandsoft' : 'border-line')}><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${ROLES[r].name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${ROLES[r].name}</div><div className="text-xs text-mute">${ROLES[r].title}</div></div></button>`)}</div>`
+            : html`<div className="p-4 space-y-4"><div className="grid grid-cols-3 gap-2">${nav.map(n => html`<button key=${n.id} onClick=${() => { setSheet(null); go({ page: n.id }); }} className=${cx('flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-xs text-center', active === n.id ? 'border-brand bg-brandsoft text-brand' : 'border-line')}><${Icon} n=${n.icon} s=${20} /><span className="leading-tight">${n.label}</span></button>`)}</div>
+              <div className="grid grid-cols-2 gap-2"><${Btn} kind="primary" onClick=${() => { setSheet(null); setGuide(true); }}><${Icon} n="spark" s=${12} />Guided demo<//><${Btn} onClick=${() => { setSheet(null); setSheet('role'); }}><${Icon} n="users" s=${12} />Switch role<//><${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); setSheet(null); }}><${Icon} n="reset" s=${12} />Reset demo<//><${Btn} onClick=${() => setSheet(null)}>Close<//></div>
+              <div className="text-[11px] text-mute">Concept prototype. All data and actions are mock. Currency in NGN.</div></div>`}
+        </div></div>`}
       ${addUpd && html`<${AddUpdateModal} role=${role} dispatch=${dispatch} onClose=${() => setAddUpd(false)} />`}
       ${guide && html`<${GuidedDemo} st=${st} dispatch=${dispatch} go=${go} setRole=${setRole} now=${now} onClose=${() => setGuide(false)} />`}
-      ${st.toast && html`<div key=${st.toast.id} className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] max-w-[90vw] rounded-lg bg-ink text-bg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2" role="status"><${Icon} n="check" s=${15} />${st.toast.text}</div>`}
+      ${st.toast && html`<div key=${st.toast.id} className="fixed bottom-24 md:bottom-5 left-1/2 -translate-x-1/2 z-[70] max-w-[90vw] rounded-lg bg-ink text-bg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2" role="status"><${Icon} n="check" s=${15} />${st.toast.text}</div>`}
     </div>
   <//><//>`;
 }

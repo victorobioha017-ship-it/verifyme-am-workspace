@@ -23,6 +23,7 @@ A clickable concept prototype for an account management workspace built around i
 - **Opportunities:** rule-based upsell and cross-sell suggestions with drafted emails, then Sales handoff
 - **Manager dashboard:** response and resolution times, escalation aging, signal-to-action rate and revenue at risk
 - **Reports:** a weekly operational report per AM (week-on-week transactions and revenue, customers to worry about, escalations and complaints, opportunities, general and strategic updates) and a monthly portfolio report (revenue against target, month-on-month and year-on-year growth, retention, revenue from newly assigned accounts, new business from upsells, lost business and churn, performance by AM), both organised around five questions: revenue, retention, growth, service delivery and execution. Weekly, monthly and quarterly views for every user, and for the Head of AM a team view with each AM, TSI, Admin, VS and Finance person's scorecard against the standards. Plus AM approval, overdue flags and a submission tracker
+- **Mobile:** on a phone the workspace switches to a mobile layout: a compact header (tap your name to switch role), a bottom tab bar (Home, Alerts, Cases or the role's main page, Customers, More), customer cards instead of tables, and bottom sheets for Add update and the menu
 - **Guided demo:** a 21-step walkthrough of one customer story from start to finish
 
 Switch between the six roles (Account Manager, TSI, Verification Services Agent, Admin, Finance, Head of Account Management) from the header.
