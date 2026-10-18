@@ -8,6 +8,9 @@ A clickable concept prototype for an account management workspace built around i
 
 - **Home:** portfolio health, open signals, escalations with live SLA clocks, and tasks due today
 - **Notifications:** one inbox for everything waiting on you (customer messages, escalations from other teams, technical tickets, updates on what you raised, handovers, onboarding, customer health, automatic log sends, upsell, invoices and reports), sorted by level (Critical, High, Normal, Info), each with a button to take the next action
+- **Organisation IDs:** every customer has an org ID, shown on the account, in pickers, exports and invoices, and searchable in Accounts and Escalations. Add update takes an org ID to find the customer
+- **Verification IDs:** escalations carry the verification ID of each applicant or address involved (a batch shows every ID with its status), and cases can be filtered by org ID, verification ID, case ID or batch
+- **Role-based access:** everyone can see the full customer list. TSI and Admins see everything an AM sees (including Signals and Opportunities); VS and Finance see the pages and account tabs their work needs. Anything outside a role shows a "not part of this view" screen
 - **Accounts:** agreed vs actual volume, a 360 view with timeline, usage, invoices, escalations and opportunities. Accounts handed over from TSI show the full onboarding journey from the day Sales assigned them, plus next steps for the AM
 - **Add update:** a button in the header (and a card on Home) to log a call, WhatsApp, email, Slack message or meeting against any customer in seconds. Visits and referrals feed their report logs
 - **Timeline:** emails, Slack messages, WhatsApp, calls and meeting notes, auto-tagged by topic, sentiment, commitments and risk language

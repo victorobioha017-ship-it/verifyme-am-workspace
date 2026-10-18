@@ -150,12 +150,12 @@ const NAV = [
   { id: 'home',          label: 'Home',              icon: 'home',     stage: 1 },
   { id: 'notifications', label: 'Notifications',     icon: 'bell',     stage: 1 },
   { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
-  { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
+  { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'ADMIN', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
   { id: 'followup',      label: 'Escalation follow-up', icon: 'phone', stage: 2, roles: ['ADMIN', 'HEAD'], blurb: 'Admins chase every escalation on their Key or Scale accounts until it is closed, and log off-portal conversations with agents, state coordinators, VS and TSI.' },
   { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'ADMIN', 'TSI', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
-  { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
-  { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'TSI', 'FIN', 'HEAD'], blurb: 'Invoice requests validated against contract rules, usage logs on request for any customer, AM portfolio or TSI onboarding list over any date range, and automatic daily, weekly or monthly log delivery to customers.' },
-  { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
+  { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'TSI', 'ADMIN', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
+  { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'TSI', 'ADMIN', 'FIN', 'HEAD'], blurb: 'Invoice requests validated against contract rules, usage logs on request for any customer, AM portfolio or TSI onboarding list over any date range, and automatic daily, weekly or monthly log delivery to customers.' },
+  { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'TSI', 'ADMIN', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
   { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'TSI', 'VS', 'ADMIN', 'FIN', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
   { id: 'dashboard',     label: 'Manager dashboard', icon: 'chart',    stage: 3, roles: ['HEAD'], blurb: 'First-response and resolution time per unit, escalation aging, breaches, signal-to-action rate, opportunities and retention tiles. Includes the guided demo.' },
 ];
@@ -233,7 +233,12 @@ const ACCOUNTS = ACCT_DEFS.map(def => {
   ];
   return { ...def, series, total, stats: { last30, prior30, daysSinceLast: 89 - lastIdx, svcStats, mom: prior30 > 0 ? last30 / prior30 - 1 : 0 }, invoices: def.obId ? [] : invoices, services: Object.keys(def.mix) };
 });
+const ORG_IDS = { brightpay: 'ORG-10482', lumen: 'ORG-10377', orchid: 'ORG-10519', savannah: 'ORG-10603', meridian: 'ORG-10214', northgate: 'ORG-10688', quickloan: 'ORG-10741', paynest: 'ORG-10765', crest: 'ORG-10812', zenith: 'ORG-10809' };
+ACCOUNTS.forEach(a => { a.orgId = ORG_IDS[a.id]; });
 const ACC = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
+const orgMatch = (a, q) => !q || (a.name + ' ' + a.orgId).toLowerCase().includes(q.trim().toLowerCase());
+const findOrg = (q, list) => { const t = (q || '').trim().toUpperCase(); if (!t) return null; return (list || ACCOUNTS).find(a => a.orgId === t || a.orgId === 'ORG-' + t.replace(/^ORG-?/, '')) || null; };
+const caseMatch = (c, q) => { if (!q || !q.trim()) return true; const t = q.trim().toLowerCase(); const a = ACC[c.accountId]; return (c.id + ' ' + a.name + ' ' + a.orgId + ' ' + (c.batch || '') + ' ' + (c.applicant || '') + ' ' + (c.vids || []).map(v => v.id).join(' ')).toLowerCase().includes(t); };
 
 // Timeline seed: [daysAgo, channel, direction, contactId, subject, body]. Tags are generated by autoTag().
 const TL_RAW = {
@@ -337,12 +342,12 @@ const INCIDENTS_SEED = [{ id: 'INC-2291', service: 'NIN', title: 'NIN provider g
 // TSI: new customers from Sales (assigned on the CRM) and first-line technical tickets
 const ONB_STAGES = ['Assigned', 'Contacted', 'Demo done', 'Integration and testing', 'Live', 'Handed to AM'];
 const ONB_SEED = [
-  { id: 'ob1', name: 'Kora Pay', segment: 'Scale', industry: 'Payments', services: ['NIN', 'BVN'], assignedAt: DEMO_NOW - 6 * 60e3, stage: 'Assigned', hist: [['Assigned', DEMO_NOW - 6 * 60e3, 'Sales (CRM)']] },
-  { id: 'ob2', name: 'Atlas Microcredit', segment: 'Key', industry: 'Microfinance bank', services: ['NIN', 'BVN', 'LIVE'], assignedAt: DEMO_NOW - 2 * D, respondedAt: DEMO_NOW - 2 * D + 14 * 60e3, stage: 'Demo done',
+  { id: 'ob1', orgId: 'ORG-10831', name: 'Kora Pay', segment: 'Scale', industry: 'Payments', services: ['NIN', 'BVN'], assignedAt: DEMO_NOW - 6 * 60e3, stage: 'Assigned', hist: [['Assigned', DEMO_NOW - 6 * 60e3, 'Sales (CRM)']] },
+  { id: 'ob2', orgId: 'ORG-10826', name: 'Atlas Microcredit', segment: 'Key', industry: 'Microfinance bank', services: ['NIN', 'BVN', 'LIVE'], assignedAt: DEMO_NOW - 2 * D, respondedAt: DEMO_NOW - 2 * D + 14 * 60e3, stage: 'Demo done',
     hist: [['Assigned', DEMO_NOW - 2 * D, 'Sales (CRM)'], ['Contacted', DEMO_NOW - 2 * D + 14 * 60e3, 'Ada Okafor'], ['Demo done', DEMO_NOW - 1.5 * D, 'Ada Okafor']] },
-  { id: 'ob3', accountId: 'zenith', name: 'Zenith Fleet', segment: 'Key', industry: 'Logistics', services: ['NIN', 'DIGADDR'], assignedAt: DEMO_NOW - 4.2 * D, respondedAt: DEMO_NOW - 4.2 * D + 22 * 60e3, stage: 'Integration and testing',
+  { id: 'ob3', orgId: 'ORG-10809', accountId: 'zenith', name: 'Zenith Fleet', segment: 'Key', industry: 'Logistics', services: ['NIN', 'DIGADDR'], assignedAt: DEMO_NOW - 4.2 * D, respondedAt: DEMO_NOW - 4.2 * D + 22 * 60e3, stage: 'Integration and testing',
     hist: [['Assigned', DEMO_NOW - 4.2 * D, 'Sales (CRM)'], ['Contacted', DEMO_NOW - 4.2 * D + 22 * 60e3, 'Ada Okafor'], ['Demo done', DEMO_NOW - 4.1 * D, 'Ada Okafor'], ['Integration and testing', DEMO_NOW - 3.2 * D, 'Ada Okafor']] },
-  { id: 'ob4', accountId: 'crest', name: 'Crest Savings', segment: 'Key', industry: 'Savings and loans', services: ['NIN', 'BVN', 'CAC'], assignedAt: DEMO_NOW - 12 * D, respondedAt: DEMO_NOW - 12 * D + 18 * 60e3, liveAt: DEMO_NOW - 8 * D, handedAt: DEMO_NOW - 8 * D + 3 * H, handedTo: 'Amaka Eze', stage: 'Handed to AM',
+  { id: 'ob4', orgId: 'ORG-10812', accountId: 'crest', name: 'Crest Savings', segment: 'Key', industry: 'Savings and loans', services: ['NIN', 'BVN', 'CAC'], assignedAt: DEMO_NOW - 12 * D, respondedAt: DEMO_NOW - 12 * D + 18 * 60e3, liveAt: DEMO_NOW - 8 * D, handedAt: DEMO_NOW - 8 * D + 3 * H, handedTo: 'Amaka Eze', stage: 'Handed to AM',
     hist: [['Assigned', DEMO_NOW - 12 * D, 'Sales (CRM)'], ['Contacted', DEMO_NOW - 12 * D + 18 * 60e3, 'Ada Okafor'], ['Demo done', DEMO_NOW - 11.9 * D, 'Ada Okafor'], ['Integration and testing', DEMO_NOW - 11 * D, 'Ada Okafor'], ['Live', DEMO_NOW - 8 * D, 'Ada Okafor'], ['Handed to AM', DEMO_NOW - 8 * D + 3 * H, 'Ada Okafor']] },
 ];
 const TSI_FR_H = 20 / 60, TSI_RES_H = { L1: 2, L2: 3, L3: 48 }, ONB_RESP_H = 0.5, ONB_DAYS = 5; // TSI standards: first response 15 to 20 mins; resolution L1 1 to 2 hrs, L2 2 to 3 hrs, L3 24 to 48 hrs; new assignment response 30 mins, onboard in 2 to 5 days
@@ -657,7 +662,7 @@ function reducer(s, a) {
     }
     case 'ESC_NEW': {
       const seq = s.seq + 1; const n = Math.max(...s.escalations.map(c => +c.id.slice(4))) + 1; const acc = ACC[a.accountId]; const vs = a.direction === 'AM_TO_VS';
-      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: caseSla(a.direction), status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, looped: a.looped || [], thread: [{ by: a.by, ts: a.ts, text: a.issue }, ...((a.looped || []).length ? [{ by: 'System', auto: true, ts: a.ts, text: 'Looped in: ' + a.looped.map(n => n + ' (' + roleLabel(n) + ')').join(', ') + '.' }] : [])] };
+      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: caseSla(a.direction), status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, looped: a.looped || [], vids: (a.vids || []).map(id => ({ id, status: 'Escalated' })), applicant: a.applicant || '', thread: [{ by: a.by, ts: a.ts, text: a.issue }, ...((a.looped || []).length ? [{ by: 'System', auto: true, ts: a.ts, text: 'Looped in: ' + a.looped.map(n => n + ' (' + roleLabel(n) + ')').join(', ') + '.' }] : [])] };
       return { ...s, seq, escalations: [c, ...s.escalations], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + c.id + ' to ' + c.owner + ' (' + acc.name + ', ' + a.category + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: c.id + ' created, routed to ' + c.owner + ' and clock started (' + stdLabel(c) + ').' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.id + ' raised to ' + c.owner + '. Clock started: ' + stdLabel(c) + '.' } };
     }
     case 'ESC_ACT': {
@@ -955,27 +960,38 @@ function TaskRow({ t, dispatch, go, showOwner }) {
 
 /* ---------- Accounts list ---------- */
 function AccountsPage({ st, go, role }) {
-  const now = useNow(); const [seg, setSeg] = useState('All');
-  const list = scopeAccounts(role).filter(a => seg === 'All' || a.segment === seg);
+  const now = useNow(); const [seg, setSeg] = useState('All'); const [q, setQ] = useState(''); const [mine, setMine] = useState(role === 'AM');
+  const list = accessAccounts(role).filter(a => (!mine || a.am === ROLES.AM.name) && (seg === 'All' || a.segment === seg) && orgMatch(a, q));
   const signals = computeSignals(ACCOUNTS, st.incidents);
   return html`<div className="space-y-4">
-    <div className="flex flex-wrap items-end justify-between gap-2"><div><h1 className="text-xl font-semibold">${role === 'AM' ? 'My accounts' : 'All accounts'}</h1><p className="text-sm text-mute">Agreed against actual volume over the last 30 days</p></div>
-      <div className="flex gap-1">${['All', 'Key', 'Scale'].map(s => html`<button key=${s} onClick=${() => setSeg(s)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', seg === s ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${s}</button>`)}</div></div>
-    <${Card}><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2.5 font-medium">Account</th><th className="px-2 font-medium">Segment</th><th className="px-2 font-medium">AM</th><th className="px-2 font-medium">Health</th><th className="px-2 font-medium text-right">Agreed / mo</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium">Trend (90 days)</th><th className="px-2 font-medium">Signal</th></tr></thead><tbody>
+    <div className="flex flex-wrap items-end justify-between gap-2"><div><h1 className="text-xl font-semibold">${mine ? 'My accounts' : 'All accounts'}</h1><p className="text-sm text-mute">Agreed against actual volume over the last 30 days</p></div>
+      <div className="flex flex-wrap gap-2 items-center">${role === 'AM' && html`<div className="flex gap-1">${[[true, 'Mine'], [false, 'All customers']].map(([v, l]) => html`<button key=${l} onClick=${() => setMine(v)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', mine === v ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${l}</button>`)}</div>`}<input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Search name or org ID" className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm w-56" aria-label="Search accounts" /><div className="flex gap-1">${['All', 'Key', 'Scale'].map(s => html`<button key=${s} onClick=${() => setSeg(s)} className=${cx('px-3 py-1.5 rounded-md text-xs font-medium border', seg === s ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line text-ink')}>${s}</button>`)}</div></div></div>
+    <${Card}><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2.5 font-medium">Account</th><th className="px-2 font-medium">Org ID</th><th className="px-2 font-medium">Segment</th><th className="px-2 font-medium">AM</th><th className="px-2 font-medium">Health</th><th className="px-2 font-medium text-right">Agreed / mo</th><th className="px-2 font-medium text-right">Last 30 days</th><th className="px-2 font-medium">Trend (90 days)</th><th className="px-2 font-medium">Signal</th></tr></thead><tbody>
       ${list.map(a => { const sg = signals.find(s => s.accountId === a.id); const h = healthOf(a, signals, st.escalations, now);
         return html`<tr key=${a.id} className="border-b border-line last:border-0 hover:bg-surface2 cursor-pointer" onClick=${() => go({ page: 'account', id: a.id, tab: a.obId ? 'Onboarding' : 'Timeline' })}>
-          <td className="px-4 py-2.5 font-medium">${a.name}</td><td className="px-2"><${SegPill} segment=${a.segment} /></td><td className="px-2 text-mute">${a.am}</td><td className="px-2"><${HealthPill} h=${h} /></td>
+          <td className="px-4 py-2.5 font-medium">${a.name}</td><td className="px-2 text-xs tabular-nums text-mute">${a.orgId}</td><td className="px-2"><${SegPill} segment=${a.segment} /></td><td className="px-2 text-mute">${a.am}</td><td className="px-2"><${HealthPill} h=${h} /></td>
           <td className="px-2 text-right tabular-nums">${num(a.agreed)}</td><td className="px-2 text-right tabular-nums">${num(a.stats.last30)} <span className="text-xs text-mute">(${p1(a.stats.last30 / a.agreed * 100)}%)</span></td>
           <td className="px-2"><${VolumeSpark} data=${a.total} w=${110} h=${26} /></td>
           <td className="px-2">${sg ? html`<${Pill} tone=${sg.suppressed ? 'mute' : sg.kind === 'Dropped' ? 'bad' : 'warn'}>${sg.suppressed ? 'Suppressed' : sg.kind}<//>` : html`<span className="text-xs text-mute">None</span>`}</td></tr>`; })}
-    </tbody></table></div><//>
+    </tbody></table></div>${list.length === 0 && html`<${Empty}>No account matches "${q}".<//>`}<//>
   </div>`;
 }
 
 /* ---------- Account 360 ---------- */
 const TABS = ['Timeline', 'Usage', 'Invoices', 'Escalations', 'Opportunities'];
+const ALL_TABS = ['Onboarding', ...TABS];
+const ACCESS_TABS = { AM: ALL_TABS, HEAD: ALL_TABS, TSI: ALL_TABS, ADMIN: ALL_TABS, FIN: ['Timeline', 'Usage', 'Invoices'], VS: ['Timeline', 'Usage', 'Escalations'] };
+const accessAccounts = role => role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD');
+const canPage = (role, route) => { const id = route.page === 'account' ? 'accounts' : route.page; if (id === 'home') return true; const n = NAV.find(x => x.id === id); if (!n) return true; if (n.roles && !n.roles.includes(role)) return false; if (route.page === 'account') return accessAccounts(role).some(a => a.id === route.id); return true; };
+function NoAccess({ role, go }) {
+  const me = ROLES[role]; const pages = NAV.filter(n => !n.roles || n.roles.includes(role));
+  return html`<${Card} className="p-6 max-w-2xl space-y-3"><div className="flex items-center gap-2 text-sm font-semibold"><${Icon} n="lock" s=${16} />Not part of the ${me.short} view</div>
+    <p className="text-sm text-mute">Each role sees only the pages and customers it needs. As ${me.name} (${me.title}) you can open:</p>
+    <div className="flex flex-wrap gap-1.5">${pages.map(n => html`<${Btn} key=${n.id} onClick=${() => go({ page: n.id })}><${Icon} n=${n.icon} s=${12} />${n.label}<//>`)}</div>
+    <p className="text-xs text-mute">In the live product this is enforced by user accounts and permissions, set up on whichever platform Product chooses.</p><//>`;
+}
 function Account360({ st, dispatch, go, role, route }) {
-  const now = useNow(); const a = ACC[route.id]; const tab = route.tab || (a.obId ? 'Onboarding' : 'Timeline'); const tabs = a.obId ? ['Onboarding', ...TABS] : TABS; const ob = st.onboarding.find(o => o.accountId === a.id);
+  const now = useNow(); const a = ACC[route.id]; const tabs = (a.obId ? ['Onboarding', ...TABS] : TABS).filter(t => ACCESS_TABS[role].includes(t)); const tab = tabs.includes(route.tab) ? route.tab : tabs[0]; const ob = st.onboarding.find(o => o.accountId === a.id);
   const signals = computeSignals(ACCOUNTS, st.incidents); const sig = signals.find(s => s.accountId === a.id);
   const h = healthOf(a, signals, st.escalations, now); const cases = st.escalations.filter(c => c.accountId === a.id);
   const pct = p1(a.stats.last30 / a.agreed * 100); const mom = p1(a.stats.mom * 100);
@@ -986,7 +1002,7 @@ function Account360({ st, dispatch, go, role, route }) {
       <div className="flex flex-wrap gap-x-8 gap-y-4 justify-between">
         <div className="min-w-[260px]">
           <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">${a.name}</h1><${SegPill} segment=${a.segment} /><${HealthPill} h=${h} /></div>
-          <p className="text-sm text-mute mt-1">${a.industry} · customer since ${a.since} · AM: <span className="text-ink font-medium">${a.am}</span></p>${ob && ob.handedAt && html`<div className="mt-2"><${Pill} tone="info"><${Icon} n="users" s=${11} />Onboarded by TSI · live ${relAgo(ob.liveAt, now)} · handed to you ${relAgo(ob.handedAt, now)}<//></div>`}
+          <p className="text-sm text-mute mt-1">Org ID <span className="text-ink font-medium tabular-nums">${a.orgId}</span> · ${a.industry} · customer since ${a.since} · AM: <span className="text-ink font-medium">${a.am}</span></p>${ob && ob.handedAt && html`<div className="mt-2"><${Pill} tone="info"><${Icon} n="users" s=${11} />Onboarded by TSI · live ${relAgo(ob.liveAt, now)} · handed to you ${relAgo(ob.handedAt, now)}<//></div>`}
           <div className="flex flex-wrap gap-1.5 mt-2.5">${a.services.map(s => html`<${Pill} key=${s} tone=${SVC[s].type === 'lastmile' ? 'warn' : 'mute'} title=${SVC[s].type === 'lastmile' ? 'Last mile, SLA ' + SVC[s].slaLabel : 'Real-time'}>${SVC[s].name}<//>`)}</div>
         </div>
         <div className="min-w-[260px] w-full sm:w-80">
@@ -1142,7 +1158,7 @@ function NotesPanel({ a, role, dispatch, now }) {
     setTitle(''); setText(''); setItems(null);
   };
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
-  return html`<${Card}><${CardHead} title="Add notes or a conversation" sub="Pick the channel it happened on" right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
+  return html`<${Card}><${CardHead} title="Add notes or a conversation" sub=${'For ' + a.name + ' · ' + a.orgId + '. Pick the channel it happened on.'} right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
     <div className="p-4 space-y-2.5">
       ${!can && html`<p className="text-xs text-mute">Notes are logged by AMs, TSI and Admins. Switch role to try this.</p>`}
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} disabled=${!can} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>
@@ -1286,10 +1302,10 @@ const mkLogs = (list, ts, seq) => list.map((l, i) => ({ ts, ...l, id: 'g' + seq 
 
 function seedCases() {
   const X = {
-    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 66 * 60e3, rem50: true, looped: ['Bisi Lawal'],
+    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 66 * 60e3, rem50: true, looped: ['Bisi Lawal'], batch: 'QL-0913', vids: Array.from({ length: 14 }, (_, i) => ({ id: 'VR-26-' + (4410921 + i * 7), status: i < 9 ? 'Completed' : 'Awaiting field agent' })),
       add: [{ by: 'System', auto: true, ts: DEMO_NOW - 83 * 60e3, text: 'Looped in: Bisi Lawal (Admin).' }, { by: 'Bisi Lawal', ts: DEMO_NOW - 40 * 60e3, text: 'Spoke to the Ikeja state coordinator. 3 of the 5 pending addresses are scheduled for this morning; 2 need the applicants to call back.', via: 'Call with State coordinator', off: true }, { by: 'System', auto: true, ts: DEMO_NOW - 24 * 60e3, text: 'Reminder at 50% of the 2-hour standard sent to VS Team.' }] },
-    'ESC-1047': { category: 'Unreachable address', looped: [] },
-    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 22 * 60e3, looped: ['Uche Nnaji', 'Chidi Obi'] },
+    'ESC-1047': { category: 'Unreachable address', looped: [], applicant: 'Driver applicant, Ojota', vids: [{ id: 'VR-26-4418830', status: 'Address unreachable' }] },
+    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 22 * 60e3, looped: ['Uche Nnaji', 'Chidi Obi'], applicant: 'Corporate director', vids: [{ id: 'VR-26-4417302', status: 'Agent assigned' }] },
   };
   return ESCALATIONS_SEED.map(c => { const x = X[c.id] || {}; const { add, ...rest } = x; return { ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, ...c, ...rest, thread: [...c.thread, ...(add || [])] }; });
 }
@@ -1434,17 +1450,20 @@ function NewCaseForm({ role, dispatch, now, onDone, fixedAccount }) {
   const toVS = role !== 'VS'; const sl = SVC[svc]; const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   const acc = ACC[accId]; const choices = LOOP_CHOICES({ accountId: accId }).filter(n => n !== me.name && n !== (toVS ? ROLES.VS.name : acc.am)); const [loop, setLoop] = useState([ADMINS[acc.segment]]);
   const togg = n => setLoop(loop.includes(n) ? loop.filter(x => x !== n) : [...loop, n]);
+  const [vidTxt, setVidTxt] = useState(''); const [appl, setAppl] = useState(''); const vids = vidTxt.split(/[\s,;]+/).map(x => x.trim().toUpperCase()).filter(Boolean);
   return html`<${Card}><${CardHead} title=${toVS ? 'Raise an escalation to VS' : 'Raise a query to the AM'} /><div className="p-4 space-y-2.5">
     <div className="grid sm:grid-cols-3 gap-2.5">
-      <select className=${inp} value=${accId} onChange=${e => { setAcc(e.target.value); setLoop([ADMINS[ACC[e.target.value].segment]]); }} disabled=${!!fixedAccount} aria-label="Customer">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select className=${inp} value=${accId} onChange=${e => { setAcc(e.target.value); setLoop([ADMINS[ACC[e.target.value].segment]]); }} disabled=${!!fixedAccount} aria-label="Customer">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name} · ${a.orgId}</option>`)}</select>
       <select className=${inp} value=${svc} onChange=${e => setSvc(e.target.value)} aria-label="Service">${SERVICES.filter(s => s.type === 'lastmile').map(s => html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</select>
       <select className=${inp} value=${cat} onChange=${e => setCat(e.target.value)} aria-label="Issue type">${ESC_CATEGORIES.map(c => html`<option key=${c}>${c}</option>`)}</select></div>
+    <div className="grid sm:grid-cols-2 gap-2.5"><input className=${inp} value=${vidTxt} onChange=${e => setVidTxt(e.target.value)} placeholder="Verification ID(s), e.g. VR-26-4418830 (comma separated for a batch)" aria-label="Verification IDs" /><input className=${inp} value=${appl} onChange=${e => setAppl(e.target.value)} placeholder="Applicant (optional), e.g. Driver applicant, Ojota" aria-label="Applicant" /></div>
+    <div className="text-[11px] text-mute -mt-1">Organisation: ${acc.name} · ${acc.orgId}${vids.length ? ' · ' + vids.length + ' verification ID' + (vids.length > 1 ? 's' : '') : ''}</div>
     <textarea className=${inp} rows="3" value=${text} onChange=${e => setText(e.target.value)} placeholder="Case details: batch reference, applicant, what is missing or late" aria-label="Case details"></textarea>
     <div className="rounded-md bg-surface2 p-3 space-y-2"><div className="text-xs"><span className="font-medium">Task owner: </span>${toVS ? 'VS Team (resolves the case)' : acc.am + ' (replies to VS)'}</div>
       <div className="text-xs font-medium flex items-center gap-1.5"><${Icon} n="loop" s=${12} />Loop in (they follow the case and see every update)</div>
       <div className="flex flex-wrap gap-1.5">${choices.map(n => html`<label key=${n} className=${cx('px-2.5 py-1 rounded-full text-xs border cursor-pointer', loop.includes(n) ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><input type="checkbox" className="sr-only" checked=${loop.includes(n)} onChange=${() => togg(n)} />${n} · ${roleLabel(n)}</label>`)}</div></div>
     <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the clock starts: ${toVS ? 'VS resolves within 2 hrs' : 'AM replies within 15 mins'}. The verification itself runs ${sl.slaLabel}.</p>
-    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now, looped: loop.filter(n => choices.includes(n)) }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now, looped: loop.filter(n => choices.includes(n)), vids, applicant: appl.trim() }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
   </div><//>`;
 }
 
@@ -1464,8 +1483,8 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
   const toggle = () => { if (!open && watch) dispatch({ type: 'NOTIF_READ', ids: [updId(c.id, upd)] }); setOpen(!open); };
   return html`<${Card}>
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${toggle}>
-      <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone=${statusTone}>${c.status}<//>${c.breached && html`<${Pill} tone="bad">Breached<//>`}<span className="text-mute">${a.name}</span></div>
-        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · raised by ${c.raisedBy} · owner ${c.owner}${(c.looped || []).length ? ' · looped in: ' + c.looped.join(', ') : ''}</div><${LatestUpdate} id=${c.id} u=${upd} watch=${watch} now=${now} /></div>
+      <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone=${statusTone}>${c.status}<//>${c.breached && html`<${Pill} tone="bad">Breached<//>`}<span className="text-mute">${a.name}</span><span className="text-[11px] text-mute tabular-nums">${a.orgId}</span></div>
+        <div className="text-xs text-mute mt-0.5">${c.issue}</div>${(c.vids || []).length > 0 && html`<div className="flex flex-wrap items-center gap-1 mt-1 text-[11px]">${c.batch && html`<${Pill} tone="mute">Batch ${c.batch}<//>`}${c.vids.slice(0, 3).map(v => html`<${Pill} key=${v.id} tone="info">${v.id}<//>`)}${c.vids.length > 3 && html`<span className="text-mute">+${c.vids.length - 3} more</span>`}${c.applicant && html`<span className="text-mute">· ${c.applicant}</span>`}</div>`}<div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · raised by ${c.raisedBy} · owner ${c.owner}${(c.looped || []).length ? ' · looped in: ' + c.looped.join(', ') : ''}</div><${LatestUpdate} id=${c.id} u=${upd} watch=${watch} now=${now} /></div>
       <${SlaClock} c=${c} now=${now} />
     </div>
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
@@ -1475,6 +1494,7 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
         <${Pill} tone=${c.rem80 ? 'warn' : 'mute'}>${c.rem80 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${c.rem80 && html`<${AutoBadge} />`}
         ${c.breached ? html`<${Pill} tone="bad">Auto-escalated to Director of Verification Services and Head of AM<//><${AutoBadge} />` : html`<${Pill} tone="mute">On breach: escalates to Director of VS and Head of AM<//>`}
       </div>
+      ${(c.vids || []).length > 0 && html`<div className="rounded-md border border-line"><div className="px-3 py-2 text-xs font-medium border-b border-line">Verification IDs on this case (${c.vids.length})${c.batch ? ' · batch ' + c.batch : ''} · ${a.name}, ${a.orgId}</div><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 px-3 py-2 text-xs">${c.vids.map(v => html`<div key=${v.id} className="flex justify-between gap-2"><span className="tabular-nums font-medium">${v.id}</span><span className=${v.status === 'Completed' ? 'text-ok' : 'text-mute'}>${v.status}</span></div>`)}</div></div>`}
       <div className="space-y-2">${thread.map((t, i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', t.auto ? 'bg-autosoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${t.by}</span>${!t.auto && html`<span>${t.by === 'VS Team' ? 'VS' : roleLabel(t.by)}</span>`}<span>${fmtFull(t.ts)}</span>${t.auto && html`<${AutoBadge} />`}${t.via && html`<${Pill} tone="warn"><${Icon} n=${/WhatsApp/.test(t.via) ? 'chat' : /Call/.test(t.via) ? 'phone' : 'mail'} s=${10} />Off-portal · ${t.via}<//>`}</div><div className="mt-0.5">${t.text}</div></div>`)}</div>
       ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//><span className="text-xs text-mute">Sends a mock update to the customer and logs it on the timeline.</span></div>` : role === 'ADMIN' ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('adminclose')}><${Icon} n="check" s=${12} />Confirm customer updated and close<//><span className="text-xs text-mute">Use when the AM or VS has told the customer off-portal. Type a note above first if useful.</span></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case. The Admin can also confirm closure.</p>`)}
       ${c.status === 'Resolved' && role === 'ADMIN' && html`<textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder="Closure note, for example: AM confirmed by WhatsApp that the customer has the results" aria-label="Closure note"></textarea>`}
@@ -1510,12 +1530,12 @@ function CaseExtras({ c, role, dispatch, now }) {
 }
 function EscalationsPage({ st, dispatch, role, route }) {
   const now = useNow(); const me = ROLES[role];
-  const scoped = st.escalations.filter(c => role === 'AM' ? ACC[c.accountId].am === me.name || escParts(c).includes(me.name) : role === 'ADMIN' ? ACC[c.accountId].segment === me.segment || escParts(c).includes(me.name) : role === 'TSI' ? escParts(c).includes(me.name) : true);
+  const scoped = st.escalations.filter(c => role === 'AM' ? ACC[c.accountId].am === me.name || escParts(c).includes(me.name) : true);
   const mineF = c => isOpen(c) && ((role === 'VS' && c.owner === 'VS Team') || (role === 'AM' && c.owner === me.name));
-  const raisedF = c => c.raisedBy === me.name; const loopF = c => (c.looped || []).includes(me.name);
+  const raisedF = c => c.raisedBy === me.name; const loopF = c => (c.looped || []).includes(me.name); const [q, setQ] = useState('');
   const fc = route && route.focus ? st.escalations.find(c => c.id === route.focus) : null; const [tab, setTab] = useState(fc ? (isOpen(fc) ? 'open' : 'done') : role === 'HEAD' || role === 'ADMIN' ? 'open' : role === 'TSI' ? 'looped' : 'mine'); const [showNew, setShowNew] = useState(false);
   const open = scoped.filter(isOpen), closed = scoped.filter(c => !isOpen(c));
-  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'raised' ? scoped.filter(raisedF) : tab === 'looped' ? scoped.filter(loopF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
+  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'raised' ? scoped.filter(raisedF) : tab === 'looped' ? scoped.filter(loopF) : tab === 'open' ? open : closed).filter(c => caseMatch(c, q)).sort((x, y) => slaPct(y, now) - slaPct(x, now));
   const near = open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, breached = open.filter(c => slaPct(c, now) >= 1).length;
   const acked = scoped.filter(c => c.ackAt); const avgFr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
   const resolved = scoped.filter(c => c.resolvedAt); const within = resolved.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length;
@@ -1530,7 +1550,8 @@ function EscalationsPage({ st, dispatch, role, route }) {
       <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + fmtDur(st.simHours * H) : 'Real time'}<//>
       <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
     <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['raised', 'Raised by me', scoped.filter(raisedF).length], ['looped', 'Looped in', scoped.filter(loopF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !((t[0] === 'mine' || t[0] === 'raised') && (role === 'HEAD' || role === 'ADMIN' || role === 'TSI'))).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
-    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : tab === 'looped' ? 'You are not looped in on any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
+    <input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Filter by org ID, verification ID, case ID, batch or customer" className="w-full sm:w-[420px] rounded-md border border-line bg-surface px-3 py-1.5 text-sm" aria-label="Filter cases" />
+    ${list.length === 0 ? html`<${Card}><${Empty}>${q ? 'No cases match "' + q + '".' : tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : tab === 'looped' ? 'You are not looped in on any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
     <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Standards:</span> AMs reply to a VS query within 15 minutes. VS resolves an escalated address check in about 2 hours. Verification itself runs 24 to 72 hours (guarantor 5 days).</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and a VS acknowledgement target (30 minutes proposed).</div><//>
   </div>`;
 }
@@ -1541,14 +1562,16 @@ function FollowUpPage({ st, dispatch, role, go }) {
   const hot = open.filter(c => slaPct(c, now) >= .8);
   const fups = st.escalations.flatMap(c => c.thread.filter(t => t.off && t.by === admin)); const today = fups.filter(t => t.ts >= sod(now)).length;
   const closed7 = cases.filter(c => c.status === 'Closed' && c.resolvedAt && now - c.resolvedAt <= 7 * D).length;
-  const order = [...open.filter(c => c.status !== 'Resolved').sort((x, y) => slaPct(y, now) - slaPct(x, now)), ...resolved];
+  const [q, setQ] = useState('');
+  const order = [...open.filter(c => c.status !== 'Resolved').sort((x, y) => slaPct(y, now) - slaPct(x, now)), ...resolved].filter(c => caseMatch(c, q));
   const tks = st.tickets.filter(k => k.accountId && ACC[k.accountId].segment === seg && k.status !== 'Resolved');
   return html`<div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalation follow-up</h1><p className="text-sm text-mute max-w-3xl">${role === 'ADMIN' ? 'You chase' : admin + ' (Admin) chases'} every escalation on ${seg} accounts until it is closed. Log off-portal conversations with field agents, state coordinators, VS and TSI so the AM, VS and anyone looped in see them on the case.</p></div>
       ${role === 'HEAD' && html`<div className="flex gap-1">${['Key', 'Scale'].map(x => html`<button key=${x} onClick=${() => setSeg(x)} className=${cx('px-3 py-1.5 rounded-md text-xs border', seg === x ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${x} accounts · ${ADMINS[x]}</button>`)}</div>`}</div>
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open escalations" value=${open.length - resolved.length} /><${Tile} label="Near or past the standard" value=${hot.length} tone=${hot.length ? 'warn' : undefined} sub="Chase these first" /><${Tile} label="Resolved, not yet closed" value=${resolved.length} tone=${resolved.length ? 'info' : undefined} sub="Check the customer was told" /><${Tile} label="Follow-ups logged today" value=${today} sub=${fups.length + ' in total'} /><${Tile} label="Closed in the last 7 days" value=${closed7} /></div>
     <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>${[1, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}<span className="text-xs text-mute">Reminders and breach escalation fire automatically.</span></div><//>
-    ${order.length === 0 ? html`<${Card}><${Empty}>No open escalations on ${seg} accounts.<//><//>` : order.map((c, i) => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${i === 0} />`)}
+    <input value=${q} onChange=${e => setQ(e.target.value)} placeholder="Filter by org ID, verification ID, case ID or customer" className="w-full sm:w-[420px] rounded-md border border-line bg-surface px-3 py-1.5 text-sm" aria-label="Filter cases" />
+    ${order.length === 0 ? html`<${Card}><${Empty}>${q ? 'No cases match "' + q + '".' : 'No open escalations on ' + seg + ' accounts.'}<//><//>` : order.map((c, i) => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${i === 0} />`)}
     <${Card}><${CardHead} title=${'Technical tickets on ' + seg + ' accounts'} sub="Sometimes TSI needs chasing too. Add what you hear so TSI and the AM see it." />${tks.length === 0 ? html`<${Empty}>No open technical tickets.<//>` : tks.map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} />`)}<//>
   </div>`;
 }
@@ -1630,7 +1653,7 @@ function logRows(accts, from, to, svcs) {
 }
 const logCount = (accts, from, to, svcs) => sum(logRows(accts, from, to, svcs).map(r => r[3]));
 function downloadCsv(name, rows) {
-  const csv = ['Date,Customer,Account Manager,Service,Requests', ...rows.map(([t, aid, x, n]) => [ymd(t), '"' + ACC[aid].name + '"', ACC[aid].am, '"' + SVC[x].name + '"', n].join(','))].join('\n');
+  const csv = ['Date,Org ID,Customer,Account Manager,Service,Requests', ...rows.map(([t, aid, x, n]) => [ymd(t), ACC[aid].orgId, '"' + ACC[aid].name + '"', ACC[aid].am, '"' + SVC[x].name + '"', n].join(','))].join('\n');
   try { const u = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); const l = document.createElement('a'); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 1000); } catch (e) {}
 }
 const FREQS = ['Off', 'Daily', 'Weekly', 'Monthly'];
@@ -1675,7 +1698,7 @@ function UsageLogForm({ role, dispatch, now, onDone, fixedAccount }) {
     <div className="flex flex-wrap gap-2.5">
       <select className=${inp} value=${scope} disabled=${!!fixedAccount} onChange=${e => setScope(e.target.value)} aria-label="Customers">
         ${scopes.length > 0 && html`<optgroup label="Groups">${scopes.map(([v, l]) => html`<option key=${v} value=${v}>${l}</option>`)}</optgroup>`}
-        <optgroup label="One customer">${accts.map(a => html`<option key=${a.id} value=${'acc:' + a.id}>${a.name}${a.obId && !ACTIVE.handed.has(a.id) ? ' (in onboarding)' : ''}</option>`)}</optgroup></select>
+        <optgroup label="One customer">${accts.map(a => html`<option key=${a.id} value=${'acc:' + a.id}>${a.name} · ${a.orgId}${a.obId && !ACTIVE.handed.has(a.id) ? ' (in onboarding)' : ''}</option>`)}</optgroup></select>
       <select className=${inp} value=${preset} onChange=${e => pick(e.target.value)} aria-label="Period"><option value="1">Yesterday</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="sep">September 2026</option><option value="custom">Custom dates</option></select>
       <label className="flex items-center gap-1.5 text-xs text-mute">From<input type="date" className=${inp} min=${ymd(LOG_MIN)} max=${ymd(LOG_MAX)} value=${ymd(from)} onChange=${e => { if (e.target.value) { setFrom(fromYmd(e.target.value)); setPreset('custom'); } }} /></label>
       <label className="flex items-center gap-1.5 text-xs text-mute">To<input type="date" className=${inp} min=${ymd(LOG_MIN)} max=${ymd(LOG_MAX)} value=${ymd(to)} onChange=${e => { if (e.target.value) { setTo(fromYmd(e.target.value)); setPreset('custom'); } }} /></label></div>
@@ -1742,7 +1765,7 @@ function invoiceHtml(a, inv, note, contact) {
   const d = invoiceData(a, inv); const ng = n => 'NGN ' + Math.round(n).toLocaleString('en-US');
   return '<!doctype html><html><head><meta charset="utf-8"><title>' + inv.no + '</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#0A243B;margin:40px;max-width:760px}h1{font-size:26px;margin:0}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:8px;border-bottom:1px solid #dde2dd;text-align:left;font-size:13px}td.n,th.n{text-align:right}.bar{height:6px;background:#6BC177;margin:14px 0 22px}.muted{color:#5b6670;font-size:12px}.note{margin-top:22px;padding:12px 14px;border:1px solid #E9AF5F;background:#fdf6ea;font-size:13px}@media print{body{margin:16mm}}</style></head><body>'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h1>VerifyMe</h1><div class="muted">Identity verification services</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:bold">Invoice</div><div>' + inv.no + '</div><div class="muted">Period: ' + escH(inv.period) + '</div>' + (inv.issued ? '<div class="muted">Issued ' + escH(inv.issued) + ' · due ' + escH(inv.due) + '</div>' : '') + '</div></div><div class="bar"></div>'
-    + '<div><b>Bill to</b><br>' + escH(a.name) + (contact ? '<br>Attn: ' + escH(contact.name) + ', ' + escH(contact.role) : '') + '</div>'
+    + '<div><b>Bill to</b><br>' + escH(a.name) + '<br>Org ID: ' + a.orgId + (contact ? '<br>Attn: ' + escH(contact.name) + ', ' + escH(contact.role) : '') + '</div>'
     + '<table><tr><th>Service</th><th class="n">Requests</th><th class="n">Unit price</th><th class="n">Amount</th></tr>' + d.lines.map(l => '<tr><td>' + escH(l[0]) + '</td><td class="n">' + l[1].toLocaleString('en-US') + '</td><td class="n">' + ng(l[2]) + '</td><td class="n">' + ng(l[3]) + '</td></tr>').join('')
     + '<tr><td colspan="3" class="n">Subtotal</td><td class="n">' + ng(d.sub) + '</td></tr><tr><td colspan="3" class="n">VAT 7.5%</td><td class="n">' + ng(d.vat) + '</td></tr><tr><td colspan="3" class="n"><b>Total</b></td><td class="n"><b>' + ng(d.total) + '</b></td></tr></table>'
     + (note ? '<div class="note"><b>Note from your account manager</b><br>' + escH(note) + '</div>' : '')
@@ -1787,7 +1810,7 @@ function RequestForm({ role, dispatch, now, onDone, fixedAccount, cases }) {
   const checks = validateRequest(a, period, svcs, adjust, cases); const standard = checks.every(c => c.pass); const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   return html`<${Card}><${CardHead} title="Request invoice and usage logs" sub="Raise the request. Validation against contract rules runs automatically." /><div className="p-4 space-y-3">
     <div className="flex flex-wrap gap-2.5">
-      <select className=${inp} value=${accId} disabled=${!!fixedAccount} onChange=${e => { setAcc(e.target.value); setSvcs(ACC[e.target.value].services); }} aria-label="Account">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name}</option>`)}</select>
+      <select className=${inp} value=${accId} disabled=${!!fixedAccount} onChange=${e => { setAcc(e.target.value); setSvcs(ACC[e.target.value].services); }} aria-label="Account">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name} · ${x.orgId}</option>`)}</select>
       <select className=${inp} value=${period} onChange=${e => setPeriod(e.target.value)} aria-label="Period">${Object.keys(PERIODS).map(p => html`<option key=${p}>${p}</option>`)}</select></div>
     <div className="flex flex-wrap gap-x-4 gap-y-1.5">${SERVICES.map(s => html`<label key=${s.id} className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked=${svcs.includes(s.id)} onChange=${() => setSvcs(svcs.includes(s.id) ? svcs.filter(x => x !== s.id) : [...svcs, s.id])} />${s.name}${!a.services.includes(s.id) && html`<span className="text-[10px] text-mute">(not in contract)</span>`}</label>`)}</div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked=${adjust} onChange=${e => setAdjust(e.target.checked)} />Customer asked for a credit note or adjustment</label>
@@ -2140,20 +2163,21 @@ function repSections(r, st, now, accts) {
     default: return [['AM portfolio and activity', [...new Set(ACCOUNTS.map(a => a.am))].map(n => { const l = ACCOUNTS.filter(a => a.am === n), hs = l.map(a => healthOf(a, sigs, st.escalations, now)); return n + ': ' + l.length + ' accounts, ' + hs.filter(h => h === 'green').length + ' healthy, ' + hs.filter(h => h !== 'green').length + ' needing attention'; })]];
   }
 }
-function updAccounts(role) { const me = ROLES[role]; return role === 'AM' ? scopeAccounts('AM') : role === 'ADMIN' ? ACCOUNTS.filter(a => a.segment === me.segment && (!a.obId || ACTIVE.handed.has(a.id))) : role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD'); }
+function updAccounts(role) { const me = ROLES[role]; return role === 'AM' ? scopeAccounts('AM') : role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD'); }
 function AddUpdateForm({ role, dispatch, now, onDone, fixedAccount, kinds, compact }) {
   const me = ROLES[role]; const accts = fixedAccount ? [ACC[fixedAccount]] : updAccounts(role);
   const ks = kinds || (role === 'AM' || role === 'HEAD' ? ['update', 'visit', 'referral'] : ['update']);
   const [kind, setKind] = useState(ks[0]); const [aid, setAid] = useState(fixedAccount || accts[0].id); const a = ACC[aid];
   const [chan, setChan] = useState('call'); const [cid, setCid] = useState(a.contacts[0].id); const [day, setDay] = useState(isoDate(now)); const [txt, setTxt] = useState('');
-  const KL = { update: 'Update or conversation', visit: 'Customer visit', referral: 'Referral' };
+  const KL = { update: 'Update or conversation', visit: 'Customer visit', referral: 'Referral' }; const [orgQ, setOrgQ] = useState(''); const orgHit = findOrg(orgQ, accts);
   const save = () => { if (!txt.trim()) return; const d = new Date(day + 'T00:00:00').getTime(); const ts = sod(now) === d ? now : d + 12 * H;
-    dispatch({ type: 'UPD_ADD', kind, accountId: aid, channel: kind === 'visit' ? 'meeting' : chan, contactId: cid, text: txt.trim(), by: me.name, ts, now }); setTxt(''); onDone && onDone(); };
+    setOrgQ(''); dispatch({ type: 'UPD_ADD', kind, accountId: aid, channel: kind === 'visit' ? 'meeting' : chan, contactId: cid, text: txt.trim(), by: me.name, ts, now }); setTxt(''); onDone && onDone(); };
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   return html`<div className="space-y-2.5">
     ${ks.length > 1 && html`<div className="flex flex-wrap gap-1.5">${ks.map(k => html`<button key=${k} onClick=${() => setKind(k)} className=${cx('px-3 py-1.5 rounded-md text-xs border', kind === k ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${KL[k]}</button>`)}</div>`}
+    ${!fixedAccount && html`<div className="flex flex-wrap items-center gap-2"><input className="rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm w-40" value=${orgQ} onChange=${e => { setOrgQ(e.target.value); const h = findOrg(e.target.value, accts); if (h) { setAid(h.id); setCid(h.contacts[0].id); } }} placeholder="Org ID, e.g. 10741" aria-label="Organisation ID" /><span className=${orgQ && !orgHit ? 'text-xs text-bad' : 'text-xs text-mute'}>${orgQ ? (orgHit ? 'Found: ' + orgHit.name : 'No organisation in your list with that ID') : 'Type an org ID, or pick below'}</span></div>`}
     <div className=${cx('grid gap-2.5', compact ? '' : 'sm:grid-cols-2')}>
-      <select className=${inp} value=${aid} disabled=${!!fixedAccount} onChange=${e => { setAid(e.target.value); setCid(ACC[e.target.value].contacts[0].id); }} aria-label="Customer">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name}</option>`)}</select>
+      <select className=${inp} value=${aid} disabled=${!!fixedAccount} onChange=${e => { setAid(e.target.value); setCid(ACC[e.target.value].contacts[0].id); }} aria-label="Customer">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name} · ${x.orgId}</option>`)}</select>
       <select className=${inp} value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}<option value="internal">Internal, no customer contact</option></select></div>
     ${kind !== 'visit' && html`<div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>`}
     <div className="flex flex-wrap items-center gap-2"><label className="text-xs text-mute flex items-center gap-1.5">Date<input type="date" className="rounded-md border border-line bg-bg px-2 py-1 text-sm" max=${isoDate(now)} value=${day} onChange=${e => e.target.value && setDay(e.target.value)} /></label></div>
@@ -2177,7 +2201,7 @@ function QuickInput({ dispatch, now, me, accts }) {
   const save = () => { if (!txt.trim()) return; dispatch({ type: 'REP_LOG', kind, accountId: aid, text: txt.trim(), by: me.name, ts: now }); setTxt(''); };
   return html`<${Card}><${CardHead} title="Quick input" sub="Under 30 seconds. Entries feed the reports and the account timeline, so nothing is typed twice." />
     <div className="p-4 space-y-3"><div className="flex gap-2">${['visit', 'referral'].map(k => html`<button key=${k} onClick=${() => setKind(k)} className=${cx('px-3 py-1.5 rounded-md text-xs border', kind === k ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${k === 'visit' ? 'Customer visit' : 'Referral'}</button>`)}</div>
-      <select value=${aid} onChange=${e => setAid(e.target.value)} className=${INP} aria-label="Account">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select value=${aid} onChange=${e => setAid(e.target.value)} className=${INP} aria-label="Account">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name} · ${a.orgId}</option>`)}</select>
       <input value=${txt} onChange=${e => setTxt(e.target.value)} placeholder=${kind === 'visit' ? 'What happened and what was agreed' : 'Who was referred and from which company'} className=${INP} aria-label="Entry" />
       <${Btn} kind="primary" onClick=${save} disabled=${!txt.trim()}>Save entry<//></div><//>`;
 }
@@ -2186,14 +2210,14 @@ function PortfolioExport({ st, dispatch, role }) {
   const now = useNow(); const [seg, setSeg] = useState('All'); const [am, setAm] = useState('All');
   const sigs = computeSignals(ACCOUNTS, st.incidents); const ams = [...new Set(ACCOUNTS.map(a => a.am))];
   const list = (role === 'AM' ? scopeAccounts('AM') : ACCOUNTS).filter(a => (seg === 'All' || a.segment === seg) && (am === 'All' || a.am === am));
-  const head = ['Customer', 'Segment', 'Account manager', 'Health', 'Agreed monthly volume', 'Last 30 days', 'Percent of agreed', 'Change on previous 30 days', 'Days since last request', 'Services used', 'Open cases', 'Latest invoice', 'Invoice status', 'Active signal'];
-  const rows = list.map(a => { const g = sigs.find(x => x.accountId === a.id); return [a.name, a.segment, a.am, HEALTH[healthOf(a, sigs, st.escalations, now)].label, a.agreed, a.stats.last30, p1(a.stats.last30 / a.agreed * 100) + '%', p1(a.stats.mom * 100) + '%', a.stats.daysSinceLast, a.services.map(x => SVC[x].name).join('; '), st.escalations.filter(c => c.accountId === a.id && isOpen(c)).length, a.invoices[2] ? a.invoices[2].no + ' (NGN ' + num(a.invoices[2].amount) + ')' : 'None yet', a.invoices[2] ? a.invoices[2].status : 'New account', g ? g.kind + (g.suppressed ? ' (held back)' : '') : 'None']; });
+  const head = ['Customer', 'Org ID', 'Segment', 'Account manager', 'Health', 'Agreed monthly volume', 'Last 30 days', 'Percent of agreed', 'Change on previous 30 days', 'Days since last request', 'Services used', 'Open cases', 'Latest invoice', 'Invoice status', 'Active signal'];
+  const rows = list.map(a => { const g = sigs.find(x => x.accountId === a.id); return [a.name, a.orgId, a.segment, a.am, HEALTH[healthOf(a, sigs, st.escalations, now)].label, a.agreed, a.stats.last30, p1(a.stats.last30 / a.agreed * 100) + '%', p1(a.stats.mom * 100) + '%', a.stats.daysSinceLast, a.services.map(x => SVC[x].name).join('; '), st.escalations.filter(c => c.accountId === a.id && isOpen(c)).length, a.invoices[2] ? a.invoices[2].no + ' (NGN ' + num(a.invoices[2].amount) + ')' : 'None yet', a.invoices[2] ? a.invoices[2].status : 'New account', g ? g.kind + (g.suppressed ? ' (held back)' : '') : 'None']; });
   const download = () => { const csv = [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n'); const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })); const l = document.createElement('a'); l.href = url; l.download = 'verifyme-portfolio-' + isoDate(now) + '.csv'; document.body.appendChild(l); l.click(); l.remove(); URL.revokeObjectURL(url); dispatch({ type: 'TOAST', text: 'Portfolio spreadsheet downloaded: ' + rows.length + ' customers.' }); };
   return html`<${Card}><${CardHead} title="Portfolio spreadsheet" sub=${role === 'AM' ? 'One row per customer in your portfolio. Opens in Excel.' : 'One row per customer across the whole portfolio. Opens in Excel.'} right=${html`<${AutoBadge} label="Generated on request" />`} />
     <div className="p-4 space-y-3"><div className="flex flex-wrap gap-2"><select value=${seg} onChange=${e => setSeg(e.target.value)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm" aria-label="Segment"><option>All</option><option>Key</option><option>Scale</option></select>
       ${role === 'HEAD' && html`<select value=${am} onChange=${e => setAm(e.target.value)} className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm" aria-label="Account manager"><option value="All">All AMs</option>${ams.map(n => html`<option key=${n}>${n}</option>`)}</select>`}
       <${Btn} kind="primary" onClick=${download} disabled=${!rows.length}>Download spreadsheet (${rows.length} customers)<//></div>
-      <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute border-b border-line">${[0, 1, 3, 4, 5, 6, 10].map(i => html`<th key=${i} className="px-2 py-1.5 whitespace-nowrap">${head[i]}</th>`)}</tr></thead><tbody>${rows.slice(0, 5).map((r, k) => html`<tr key=${k} className="border-b border-line last:border-0">${[0, 1, 3, 4, 5, 6, 10].map(i => html`<td key=${i} className="px-2 py-1.5 whitespace-nowrap">${typeof r[i] === 'number' && i > 3 ? num(r[i]) : r[i]}</td>`)}</tr>`)}</tbody></table></div>
+      <div className="scroll-x"><table className="w-full text-xs"><thead><tr className="text-left text-mute border-b border-line">${[0, 1, 2, 5, 6, 7, 11].map(i => html`<th key=${i} className="px-2 py-1.5 whitespace-nowrap">${head[i]}</th>`)}</tr></thead><tbody>${rows.slice(0, 5).map((r, k) => html`<tr key=${k} className="border-b border-line last:border-0">${[0, 1, 2, 5, 6, 7, 11].map(i => html`<td key=${i} className="px-2 py-1.5 whitespace-nowrap">${typeof r[i] === 'number' && i > 4 ? num(r[i]) : r[i]}</td>`)}</tr>`)}</tbody></table></div>
       <div className="text-xs text-mute">Preview of the first 5 rows and 7 of ${head.length} columns. The file has every column, including services, invoice and signal.</div></div><//>`;
 }
 function MetabaseCard({ dispatch }) {
@@ -2476,7 +2500,7 @@ function NewTicketForm({ role, dispatch, now, onDone, fixedAccount }) {
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   return html`<${Card}><${CardHead} title="Raise a technical ticket to TSI" sub=${vs ? 'For system problems: the field agent app, portal or API errors, results not coming through. Customer issues (address, landmark, guarantor) go to the AM as an escalation.' : 'For technical problems a customer reports: errors, slow responses, integration or set-up questions.'} /><div className="p-4 space-y-2.5">
     <div className="grid sm:grid-cols-2 gap-2.5">
-      <select className=${inp} value=${aid} onChange=${e => setAid(e.target.value)} aria-label="Customer">${vs && html`<option value="">Internal (VS tools, no customer)</option>`}${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select className=${inp} value=${aid} onChange=${e => setAid(e.target.value)} aria-label="Customer">${vs && html`<option value="">Internal (VS tools, no customer)</option>`}${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name} · ${a.orgId}</option>`)}</select>
       <select className=${inp} value=${lvl} onChange=${e => setLvl(e.target.value)} aria-label="Level">${TKT_LEVELS.map(([l, d]) => html`<option key=${l} value=${l}>${l}: ${d}</option>`)}</select></div>
     <textarea className=${inp} rows="3" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder="What is happening, since when, and any error message or reference" aria-label="Issue"></textarea>
     <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />TSI must respond within 20 mins and resolve within ${hLabel(TSI_RES_H[lvl])} (${lvl}). You see every update here.</p>
@@ -2495,7 +2519,7 @@ function TicketCard({ k, dispatch, role, defaultOpen }) {
   return html`<div className="border-b border-line last:border-0">
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer hover:bg-surface2" onClick=${toggle} role="button" aria-expanded=${open}>
       <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${k.id}</span><${Pill} tone="mute">${k.level}<//><${Pill} tone=${stTone[k.status]}>${k.status}<//><span className="text-mute">${tktName(k)}</span>${k.source === 'VS' && html`<${Pill} tone="mute">From VS<//>`}</div>
-        <div className="text-xs text-mute mt-0.5">${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div><${LatestUpdate} id=${k.id} u=${upd} watch=${watch} now=${now} /></div>
+        <div className="text-xs text-mute mt-0.5">${k.accountId ? ACC[k.accountId].orgId + ' · ' : ''}${k.issue} · raised by ${k.raisedBy} ${relAgo(k.openedAt, now)}${k.ackAt ? ' · acknowledged in ' + dur(k.ackAt - k.openedAt) : ''}</div><${LatestUpdate} id=${k.id} u=${upd} watch=${watch} now=${now} /></div>
       <div className="text-[11px] text-mute w-full sm:w-auto">${!k.ackAt && openNow ? 'First response' : 'Resolution'}<${SlaClock} c=${clk} now=${now} /></div>
       <span className="text-xs text-brand">${open ? 'Hide details' : 'Details'}</span>
     </div>
@@ -2527,7 +2551,7 @@ function TsiPage({ st, dispatch, role, route, go }) {
         const clk = o.stage === 'Assigned' ? { openedAt: o.assignedAt, slaHours: ONB_RESP_H, resolvedAt: null } : { openedAt: o.assignedAt, slaHours: ONB_DAYS * 24, resolvedAt: o.liveAt || null };
         return html`<div key=${o.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 border-b border-line last:border-0">
           <div className="flex-1 min-w-[240px]"><div className="flex flex-wrap items-center gap-2 text-sm"><button className="font-semibold hover:underline" onClick=${() => o.accountId && o.stage === 'Handed to AM' && go ? go({ page: 'account', id: o.accountId, tab: 'Onboarding' }) : setObOpen(obOpen === o.id ? null : o.id)}>${o.name}</button><${SegPill} segment=${o.segment} /><${Pill} tone=${done ? 'ok' : i === 0 ? 'warn' : 'info'}>${o.stage}<//></div>
-            <div className="text-xs text-mute mt-0.5">${o.industry} · ${o.services.map(x => SVC[x].name).join(', ')} · assigned from Sales ${relAgo(o.assignedAt, now)}${o.respondedAt ? ' · contacted in ' + dur(o.respondedAt - o.assignedAt) : ''}${done ? ' · handed to ' + o.handedTo : ''}</div>
+            <div className="text-xs text-mute mt-0.5">${o.orgId} · ${o.industry} · ${o.services.map(x => SVC[x].name).join(', ')} · assigned from Sales ${relAgo(o.assignedAt, now)}${o.respondedAt ? ' · contacted in ' + dur(o.respondedAt - o.assignedAt) : ''}${done ? ' · handed to ' + o.handedTo : ''}</div>
             <div className="flex gap-1 mt-2" aria-label=${'Stage ' + (i + 1) + ' of ' + ONB_STAGES.length}>${ONB_STAGES.map((g, k) => html`<span key=${g} title=${g} className="h-1.5 w-8 rounded-full" style=${{ background: k <= i ? 'var(--brand)' : 'var(--surface2)' }}></span>`)}</div>${obOpen === o.id && html`<ol className="mt-2 space-y-1 text-xs">${(o.hist || []).map(([g, ts, by], n) => html`<li key=${n}><span className="font-medium">${g}</span> <span className="text-mute">${fmtFull(ts)} · ${by}</span></li>`)}</ol>`}</div>
           <div className="text-[11px] text-mute w-full sm:w-auto">${o.stage === 'Assigned' ? 'First contact' : 'Assignment to go-live'}<${SlaClock} c=${clk} now=${now} /></div>
           ${can && !done && html`<${Btn} kind=${o.stage === 'Live' ? 'primary' : 'default'} onClick=${() => dispatch({ type: 'ONB_NEXT', id: o.id, by: me.name, ts: now })}>${o.stage === 'Live' ? 'Hand over to ' + am : ONB_NEXT_LABEL[o.stage]}<//>`}
@@ -2629,6 +2653,7 @@ function App() {
   const planned = NAV.find(n => n.id === route.page && n.stage > STAGE_DONE);
   let screen;
   if (planned) screen = html`<${Planned} item=${planned} />`;
+  else if (!canPage(role, route)) screen = html`<${NoAccess} role=${role} go=${go} />`;
   else if (route.page === 'home' && role === 'TSI') screen = html`<${TsiPage} st=${st} dispatch=${dispatch} role=${role} route=${route} go=${go} />`;
   else if (route.page === 'home' && role === 'ADMIN') screen = html`<${FollowUpPage} st=${st} dispatch=${dispatch} role=${role} go=${go} />`;
   else if (route.page === 'home' && role === 'VS') screen = html`<${VsHome} st=${st} go=${go} />`;
