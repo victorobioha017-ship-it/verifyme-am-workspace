@@ -107,10 +107,22 @@ const ROLES = {
   AM:   { id: 'AM',   short: 'AM',         name: 'Amaka Eze',   title: 'Account Manager' },
   TSI:  { id: 'TSI',  short: 'TSI',        name: 'Ada Okafor',  title: 'Technical Support and Implementation' },
   VS:   { id: 'VS',   short: 'VS Agent',   name: 'Tunde Bello', title: 'Verification Services Agent' },
+  ADMIN: { id: 'ADMIN', short: 'Admin',     name: 'Bisi Lawal',  title: 'Admin, Scale accounts', segment: 'Scale' },
   FIN:  { id: 'FIN',  short: 'Finance',    name: 'Ify Okon',    title: 'Finance' },
   HEAD: { id: 'HEAD', short: 'Head of AM', name: 'Chidi Obi',   title: 'Head of Account Management' },
 };
-const ROLE_ORDER = ['AM', 'TSI', 'VS', 'FIN', 'HEAD'];
+const ROLE_ORDER = ['AM', 'TSI', 'VS', 'ADMIN', 'FIN', 'HEAD'];
+const ADMINS = { Key: 'Uche Nnaji', Scale: 'Bisi Lawal' };
+const STAFF = [
+  { name: 'Amaka Eze', fn: 'AM' }, { name: 'Kemi Adeyemi', fn: 'AM' }, { name: 'Segun Bakare', fn: 'AM' },
+  { name: 'Ada Okafor', fn: 'TSI' }, { name: 'Ibrahim Musa', fn: 'TSI' },
+  { name: 'Bisi Lawal', fn: 'ADMIN', note: 'Scale accounts' }, { name: 'Uche Nnaji', fn: 'ADMIN', note: 'Key accounts' },
+  { name: 'Tunde Bello', fn: 'VS' }, { name: 'Grace Etim', fn: 'VS' },
+  { name: 'Ify Okon', fn: 'FIN' },
+];
+const FN_LABEL = { AM: 'Account managers', TSI: 'Technical Support and Implementation', ADMIN: 'Admins', VS: 'Verification Services', FIN: 'Finance' };
+const FN_SHORT = { AM: 'AM', TSI: 'TSI', ADMIN: 'Admin', VS: 'VS', FIN: 'Finance' };
+const roleLabel = n => { if (n === 'Chidi Obi') return 'Head of AM'; if (n === 'Director of VS') return 'Director of VS'; const x = STAFF.find(q => q.name === n); return x ? FN_SHORT[x.fn] : 'AM'; };
 
 // Service catalogue: add a row to extend. type: realtime | lastmile
 const SERVICES = [
@@ -139,11 +151,12 @@ const NAV = [
   { id: 'notifications', label: 'Notifications',     icon: 'bell',     stage: 1 },
   { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
   { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
-  { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
+  { id: 'followup',      label: 'Escalation follow-up', icon: 'phone', stage: 2, roles: ['ADMIN', 'HEAD'], blurb: 'Admins chase every escalation on their Key or Scale accounts until it is closed, and log off-portal conversations with agents, state coordinators, VS and TSI.' },
+  { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'ADMIN', 'TSI', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
   { id: 'signals',       label: 'Signals',           icon: 'trend',    stage: 2, roles: ['AM', 'HEAD'], blurb: 'Dropped, Low volume and Reduced volume cards, threshold settings by segment and service type, suppression rules, templated check-ins for Scale and approve-and-send drafts for Key.' },
   { id: 'invoices',      label: 'Invoices and logs', icon: 'file',     stage: 3, roles: ['AM', 'TSI', 'FIN', 'HEAD'], blurb: 'Invoice requests validated against contract rules, usage logs on request for any customer, AM portfolio or TSI onboarding list over any date range, and automatic daily, weekly or monthly log delivery to customers.' },
   { id: 'opportunities', label: 'Opportunities',     icon: 'spark',    stage: 3, roles: ['AM', 'HEAD'], blurb: 'Rule-based upsell and cross-sell cards with a drafted email. Approve and send, edit, or dismiss with a reason; then Sales handoff and Addendum filed.' },
-  { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'TSI', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
+  { id: 'reports',       label: 'Reports',           icon: 'note',     stage: 4, roles: ['AM', 'TSI', 'VS', 'ADMIN', 'FIN', 'HEAD'], blurb: 'Input once, reports generated: weekly to quarterly reports compiled from workspace data, AM commentary and approval, publish or share.' },
   { id: 'dashboard',     label: 'Manager dashboard', icon: 'chart',    stage: 3, roles: ['HEAD'], blurb: 'First-response and resolution time per unit, escalation aging, breaches, signal-to-action rate, opportunities and retention tiles. Includes the guided demo.' },
 ];
 const STAGE_DONE = 4;
@@ -530,6 +543,31 @@ function reducer(s, a) {
       const txt = a.freq === 'Off' ? 'Automatic usage logs turned off for ' + acc.name + '.' : acc.name + ' will receive usage logs ' + a.freq.toLowerCase() + ', sent to ' + c.name + '. Next send ' + fmtFull(sc.nextAt) + '.';
       return { ...s, seq, schedules: { ...s.schedules, [a.accountId]: sc }, log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Log delivery preference: ' + txt }], a.ts, seq), ...s.log], toast: { id: seq, text: txt } };
     }
+    case 'UPD_ADD': {
+      const seq = s.seq + 1, acc = ACC[a.accountId], c = acc.contacts.find(x => x.id === a.contactId);
+      const subj = a.kind === 'visit' ? 'Customer visit' + (c ? ' with ' + c.name : '') : a.kind === 'referral' ? 'Referral' : CH[a.channel].label + (c ? ' with ' + c.name : ' (internal)');
+      const ent = { id: 'v' + seq, accountId: acc.id, text: a.text, by: a.by, ts: a.ts };
+      const tl = { id: 'tl-u' + seq, accountId: acc.id, channel: a.channel, dir: 'note', contactId: c ? c.id : null, author: a.by, ts: a.ts, subject: subj, body: a.text, auto: false, tags: autoTag(subj + '. ' + a.text, 'note') };
+      return { ...s, seq, visits: a.kind === 'visit' ? [ent, ...s.visits] : s.visits, referrals: a.kind === 'referral' ? [ent, ...s.referrals] : s.referrals, timeline: [tl, ...s.timeline],
+        log: [{ id: 'g' + seq, ts: a.now || a.ts, actor: a.by, auto: false, accountId: acc.id, text: subj + ' logged for ' + acc.name + (a.kind !== 'update' ? '. Feeds the ' + (a.kind === 'visit' ? 'monthly visits log' : 'referral log') + '.' : '.') }, ...s.log],
+        toast: { id: seq, text: subj + ' saved to ' + acc.name + '\'s timeline.' } };
+    }
+    case 'ESC_LOOP': {
+      const c = s.escalations.find(x => x.id === a.id); if (!c || (c.looped || []).includes(a.name)) return s; const seq = s.seq + 1;
+      const txt = a.by + ' looped in ' + a.name + ' (' + roleLabel(a.name) + ').';
+      return { ...s, seq, escalations: s.escalations.map(x => x.id === c.id ? { ...x, looped: [...(x.looped || []), a.name], thread: [...x.thread, { by: 'System', auto: true, ts: a.ts, text: txt }] } : x), log: [{ id: 'lp' + seq, ts: a.ts, actor: a.by, auto: false, accountId: c.accountId, text: c.id + ': ' + txt }, ...s.log], toast: { id: seq, text: a.name + ' looped in on ' + c.id + '. They see every update.' } };
+    }
+    case 'ESC_FOLLOW': {
+      const c = s.escalations.find(x => x.id === a.id); if (!c) return s; const seq = s.seq + 1; const via = CH[a.channel].label + ' with ' + a.withWho;
+      return { ...s, seq, escalations: s.escalations.map(x => x.id === c.id ? { ...x, thread: [...x.thread, { by: a.by, ts: a.ts, text: a.text, via, off: true }] } : x), log: [{ id: 'fu' + seq, ts: a.ts, actor: a.by, auto: false, accountId: c.accountId, text: 'Off-portal follow-up on ' + c.id + ' (' + via + '): ' + a.text }, ...s.log], toast: { id: seq, text: 'Follow-up logged on ' + c.id + '. Everyone on the case can see it.' } };
+    }
+    case 'INV_OFFPORTAL': {
+      const seq = s.seq + 1, acc = ACC[a.accountId], c = acc.contacts.find(x => x.id === a.contactId) || acc.contacts[0];
+      const subject = 'Invoice ' + a.invNo + ' sent by ' + CH[a.channel].label + ' (off-portal)'; const body = (a.note ? 'Note on the invoice: ' + a.note : 'Invoice downloaded and sent to ' + c.name + '.') + (a.internal ? ' Internal note: ' + a.internal : '');
+      const item = { id: 'tl-io' + seq, accountId: acc.id, channel: a.channel, dir: 'out', contactId: c.id, author: a.by, ts: a.ts, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'out') };
+      const reqs = a.reqId ? s.invoiceRequests.map(r => r.id === a.reqId && r.status === 'Ready' ? { ...r, status: 'Delivered', deliveredAt: a.ts, method: 'Downloaded and sent off-portal (' + CH[a.channel].label + ')', steps: [...r.steps, { label: 'Downloaded with notes and sent off-portal by ' + a.by, ts: a.ts, auto: false }, { label: 'Marked as received. Request clock stops', ts: a.ts, auto: true }] } : r) : s.invoiceRequests;
+      return { ...s, seq, invoiceRequests: reqs, timeline: [item, ...s.timeline], log: [{ id: 'io' + seq, ts: a.ts, actor: a.by, auto: false, accountId: acc.id, text: 'Sent invoice ' + a.invNo + ' to ' + c.name + ' off-portal by ' + CH[a.channel].label + '.' }, ...s.log], toast: { id: seq, text: 'Recorded: invoice ' + a.invNo + ' sent to ' + c.name + ' by ' + CH[a.channel].label + '. Logged on the timeline.' } };
+    }
     case 'NOTIF_READ': return { ...s, read: { ...s.read, ...Object.fromEntries(a.ids.map(x => [x, true])) } };
     case 'NOTIF_UNREAD': { const r = { ...s.read }; delete r[a.id]; return { ...s, read: r }; }
     case 'TASK_ADD': { const seq = s.seq + 1; return { ...s, seq, tasks: [...mkTasks([a.task], seq), ...s.tasks], toast: { id: seq, text: 'Task added: ' + a.task.text + ', due ' + fmtDay(a.task.due) + '.' } }; }
@@ -619,7 +657,7 @@ function reducer(s, a) {
     }
     case 'ESC_NEW': {
       const seq = s.seq + 1; const n = Math.max(...s.escalations.map(c => +c.id.slice(4))) + 1; const acc = ACC[a.accountId]; const vs = a.direction === 'AM_TO_VS';
-      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: caseSla(a.direction), status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, thread: [{ by: a.by, ts: a.ts, text: a.issue }] };
+      const c = { id: 'ESC-' + n, accountId: acc.id, direction: a.direction, type: SVC[a.svc].name, category: a.category, issue: a.issue, raisedBy: a.by, owner: vs ? 'VS Team' : acc.am, openedAt: a.ts, slaHours: caseSla(a.direction), status: 'Open', ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, looped: a.looped || [], thread: [{ by: a.by, ts: a.ts, text: a.issue }, ...((a.looped || []).length ? [{ by: 'System', auto: true, ts: a.ts, text: 'Looped in: ' + a.looped.map(n => n + ' (' + roleLabel(n) + ')').join(', ') + '.' }] : [])] };
       return { ...s, seq, escalations: [c, ...s.escalations], log: [...mkLogs([{ actor: a.by, auto: false, accountId: acc.id, text: 'Raised ' + c.id + ' to ' + c.owner + ' (' + acc.name + ', ' + a.category + ').' }, { actor: 'System', auto: true, accountId: acc.id, text: c.id + ' created, routed to ' + c.owner + ' and clock started (' + stdLabel(c) + ').' }], a.ts, seq), ...s.log], toast: { id: seq, text: c.id + ' raised to ' + c.owner + '. Clock started: ' + stdLabel(c) + '.' } };
     }
     case 'ESC_ACT': {
@@ -640,7 +678,9 @@ function reducer(s, a) {
           tl = { accountId: acc.id, channel: 'email', dir: 'out', contactId: cn.id, author: a.by, ts: t, subject: 'Update on address verification (' + c.id + ')', body: 'Hi ' + cn.name.split(' ')[0] + ', the address verification case ' + c.id + ' is complete and the results are in your dashboard. Thank you for your patience.', auto: false };
           tl.tags = autoTag(tl.subject + '. ' + tl.body, 'out'); lg.push({ actor: a.by, auto: false, text: 'Updated the customer (mock email) and closed ' + c.id + '.' });
           tasks = tasks.map(x => x.text.includes(c.id) && /Update customer/.test(x.text) ? { ...x, done: true } : x); toast = 'Customer updated (mock email) and ' + c.id + ' closed.'; break; }
-        default: lg.push({ actor: a.by, auto: false, text: 'Commented on ' + c.id + '.' }); toast = 'Comment added to ' + c.id + '.';
+        case 'adminclose': { u = { status: 'Closed', resolvedAt: c.resolvedAt || t }; msg = msg || 'Confirmed the customer was updated off-portal. Case closed.'; lg.push({ actor: a.by, auto: false, text: 'Confirmed closure of ' + c.id + ' after checking the customer was updated.' });
+          tasks = tasks.map(x => x.text.includes(c.id) && /Update customer/.test(x.text) ? { ...x, done: true } : x); toast = c.id + ' closed by ' + a.by + '. Everyone on the case can see it.'; break; }
+        default: lg.push({ actor: a.by, auto: false, text: 'Commented on ' + c.id + '.' }); toast = 'Comment added to ' + c.id + '. Everyone on the case can see it.';
       }
       const esc = s.escalations.map(x => x.id === c.id ? { ...x, ...u, thread: [...x.thread, { by: a.by, ts: t, text: msg }] } : x);
       return { ...s, seq, escalations: esc, tasks: [...mkTasks(tk, seq), ...tasks], timeline: tl ? [{ ...tl, id: 'tl-c' + seq }, ...s.timeline] : s.timeline, log: [...mkLogs(lg.map(l => ({ ...l, accountId: acc.id })), t, seq), ...s.log], toast: { id: seq, text: toast } };
@@ -758,6 +798,8 @@ const ICONS = {
   lock: 'M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4',
   reset: 'M23 4v6h-6 M1 20v-6h6 M3.5 9a9 9 0 0 1 14.9-3.4L23 10 M1 14l4.6 4.4A9 9 0 0 0 20.5 15',
   users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
+  phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z',
+  loop: 'M17 2l4 4-4 4 M3 11V9a4 4 0 0 1 4-4h14 M7 22l-4-4 4-4 M21 13v2a4 4 0 0 1-4 4H3',
   chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
@@ -877,6 +919,7 @@ function Home({ st, dispatch, go, role }) {
         <${TodoCard} st=${st} go=${go} role=${role} />
       </div>
       <div className="space-y-5 min-w-0">
+        <${AddUpdateCard} role=${role} dispatch=${dispatch} />
         <${Card}><${CardHead} title="Needs your attention" sub="Top items from Notifications" right=${html`<button className="text-xs text-brand" onClick=${() => go({ page: 'notifications' })}>See all</button>`} />
           ${(() => { const top = buildNotifs(st, role, now).filter(n => !st.read[n.id]).slice(0, 4); return top.length === 0 ? html`<${Empty}>All clear.<//>` : top.map(n => html`<${NotifRow} key=${n.id} n=${n} st=${st} dispatch=${dispatch} go=${go} compact=${true} />`); })()}<//>
         <${Card}>
@@ -1000,7 +1043,8 @@ function OnboardingTab({ a, ob, st, dispatch, role, go, route }) {
 }
 
 /* ---------- Timeline (Flow 1) ---------- */
-const CH = { email: { icon: 'mail', label: 'Email' }, slack: { icon: 'hash', label: 'Slack' }, meeting: { icon: 'note', label: 'Meeting notes' } };
+const CH = { email: { icon: 'mail', label: 'Email' }, slack: { icon: 'hash', label: 'Slack' }, meeting: { icon: 'note', label: 'Meeting' }, call: { icon: 'phone', label: 'Call' }, whatsapp: { icon: 'chat', label: 'WhatsApp' } };
+const NOTE_CH = ['meeting', 'call', 'whatsapp', 'email', 'slack'];
 const SENT_TONE = { Positive: 'ok', Neutral: 'mute', Negative: 'warn' };
 function TimelineTab({ a, st, dispatch, role }) {
   const now = useNow();
@@ -1021,7 +1065,7 @@ function TimelineTab({ a, st, dispatch, role }) {
       item: { accountId: a.id, channel: c.channel, dir: 'in', contactId: ct.id, author: ct.name, ts: now, subject: c.subject, body: c.body, auto: true, tags: autoTag(c.subject + '. ' + c.body, 'in') },
       logs: [{ actor: 'System', auto: true, accountId: a.id, text: CH[c.channel].label + ' from ' + ct.name + ' synced to the ' + a.name + ' timeline, matched by contact.' }] });
   };
-  const chips = [['all', 'All'], ['email', 'Email'], ['slack', 'Slack'], ['meeting', 'Notes']];
+  const chips = [['all', 'All'], ['email', 'Email'], ['slack', 'Slack'], ['whatsapp', 'WhatsApp'], ['call', 'Calls'], ['meeting', 'Meetings']];
   const sel = 'rounded-md border border-line bg-surface px-2 py-1.5 text-xs';
   return html`<div className="grid lg:grid-cols-3 gap-5">
     <div className="lg:col-span-2 space-y-3 min-w-0">
@@ -1060,7 +1104,7 @@ function TlItem({ t, a, now }) {
       <div className=${cx('w-8 h-8 rounded-md flex items-center justify-center shrink-0', t.channel === 'meeting' ? 'bg-brandsoft text-brand' : 'bg-surface2 text-mute')}><${Icon} n=${ch.icon} s=${15} /></div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-mute">
-          <span className="text-ink font-medium text-sm">${t.author}</span><span>${t.dir === 'in' ? c.role : t.dir === 'out' ? (/TSI/.test(t.author) ? 'TSI, sent to ' : t.auto ? 'Automatic, sent to ' : 'AM, sent to ') + (c ? c.name : 'customer') : /TSI/.test(t.author) ? 'TSI, logged' : 'AM, logged'}</span>
+          <span className="text-ink font-medium text-sm">${t.author}</span><span>${t.dir === 'in' ? c.role : t.dir === 'out' ? (/TSI/.test(t.author) ? 'TSI, sent to ' : t.auto ? 'Automatic, sent to ' : 'AM, sent to ') + (c ? c.name : 'customer') : roleLabel(t.author) + ', logged'}</span>
           <span>${ch.label}${t.dir === 'in' ? ', inbound' : t.dir === 'out' ? ', outbound' : ''}</span><span title=${fmtFull(t.ts)}>${fmtDay(t.ts)} · ${relAgo(t.ts, now)}</span>
           ${t.auto && html`<${AutoBadge} title=${'Synced automatically and matched to ' + (c ? c.name : 'a contact')} />`}${t.auto && c && html`<span>matched to ${c.name}</span>`}
         </div>
@@ -1077,8 +1121,8 @@ function TlItem({ t, a, now }) {
 }
 
 function NotesPanel({ a, role, dispatch, now }) {
-  const [title, setTitle] = useState(''); const [who, setWho] = useState(a.contacts[0].id); const [text, setText] = useState(''); const [items, setItems] = useState(null);
-  const can = role === 'AM' || role === 'HEAD'; const me = ROLES[role];
+  const [title, setTitle] = useState(''); const [who, setWho] = useState(a.contacts[0].id); const [text, setText] = useState(''); const [items, setItems] = useState(null); const [chan, setChan] = useState('meeting');
+  const can = role === 'AM' || role === 'HEAD' || role === 'TSI' || role === 'ADMIN'; const me = ROLES[role];
   const owners = [a.am, 'Ify Okon', 'Tunde Bello', ...a.contacts.map(c => c.name + ' (customer)')];
   const sample = () => {
     const c1 = a.contacts[0], c2 = a.contacts[a.contacts.length > 1 ? 1 : 0];
@@ -1090,18 +1134,19 @@ function NotesPanel({ a, role, dispatch, now }) {
   const upd = (k, p) => setItems(items.map(i => i.key === k ? { ...i, ...p } : i));
   const save = () => {
     const chosen = (items || extractActions(text, a, now)).filter(i => i.on);
-    const body = text.trim(); const subject = title.trim() || 'Meeting notes';
+    const body = text.trim(); const subject = title.trim() || CH[chan].label + ' with ' + (a.contacts.find(c => c.id === who) || a.contacts[0]).name;
     dispatch({ type: 'ADD_TIMELINE', ts: now, toast: 'Notes logged to the timeline' + (chosen.length ? ' and ' + chosen.length + ' task' + (chosen.length > 1 ? 's' : '') + ' created.' : '.'),
-      item: { accountId: a.id, channel: 'meeting', dir: 'note', contactId: who, author: me.name, ts: now, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'note') },
-      tasks: chosen.map(i => ({ accountId: a.id, text: i.text, owner: i.owner, due: i.due, src: 'Meeting notes', auto: true })),
-      logs: [{ actor: me.name, auto: false, accountId: a.id, text: 'Logged meeting notes for ' + a.name + '.' }, ...chosen.map(i => ({ actor: 'System', auto: true, accountId: a.id, text: 'Task created from notes: "' + i.text + '" (' + i.owner + ', due ' + fmtDay(i.due) + ').' }))] });
+      item: { accountId: a.id, channel: chan, dir: 'note', contactId: who, author: me.name, ts: now, subject, body, auto: false, tags: autoTag(subject + '. ' + body, 'note') },
+      tasks: chosen.map(i => ({ accountId: a.id, text: i.text, owner: i.owner, due: i.due, src: CH[chan].label + ' notes', auto: true })),
+      logs: [{ actor: me.name, auto: false, accountId: a.id, text: 'Logged ' + CH[chan].label.toLowerCase() + ' notes for ' + a.name + '.' }, ...chosen.map(i => ({ actor: 'System', auto: true, accountId: a.id, text: 'Task created from notes: "' + i.text + '" (' + i.owner + ', due ' + fmtDay(i.due) + ').' }))] });
     setTitle(''); setText(''); setItems(null);
   };
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
-  return html`<${Card}><${CardHead} title="Add meeting notes" right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
+  return html`<${Card}><${CardHead} title="Add notes or a conversation" sub="Pick the channel it happened on" right=${html`<button className="text-xs text-brand" onClick=${sample}>Use sample notes</button>`} />
     <div className="p-4 space-y-2.5">
-      ${!can && html`<p className="text-xs text-mute">Meeting notes are logged by account managers. Switch to the AM role to try this.</p>`}
-      <input className=${inp} placeholder="Title, for example Q4 planning call" value=${title} onChange=${e => setTitle(e.target.value)} disabled=${!can} />
+      ${!can && html`<p className="text-xs text-mute">Notes are logged by AMs, TSI and Admins. Switch role to try this.</p>`}
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} disabled=${!can} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>
+      <input className=${inp} placeholder=${'Title, for example ' + (chan === 'meeting' ? 'Q4 planning meeting' : chan === 'call' ? 'Call about the invoice' : chan === 'whatsapp' ? 'WhatsApp follow-up with Ops' : 'Volume update')} value=${title} onChange=${e => setTitle(e.target.value)} disabled=${!can} />
       <select className=${inp} value=${who} onChange=${e => setWho(e.target.value)} disabled=${!can} aria-label="Main contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}</select>
       <textarea className=${inp} rows="6" placeholder=${'Write notes in plain language. Lines starting with "Action:" and sentences such as "Ify to share the invoice tomorrow" become tasks.'} value=${text} onChange=${e => { setText(e.target.value); setItems(null); }} disabled=${!can}></textarea>
       <div className="flex gap-2"><${Btn} onClick=${extract} disabled=${!can || !text.trim()}><${Icon} n="bolt" s=${12} />Extract action items<//><${Btn} kind="primary" onClick=${save} disabled=${!can || !text.trim()}>Save to timeline<//></div>
@@ -1213,18 +1258,22 @@ const AM_REPLY_H = 0.25, VS_RESOLVE_H = 2, VS_ACK_H = 0.5; // VS acknowledgement
 /* ----- feedback to the person who raised it: latest typed update from the owner side ----- */
 const StCtx = createContext(null);
 const whoLabel = by => by === ROLES.TSI.name ? by + ' (TSI)' : by;
-const escWatchers = c => [c.raisedBy, ...(c.direction === 'AM_TO_VS' ? [ACC[c.accountId].am] : [])];
-const escUpdate = c => [...c.thread].filter(t => !t.auto && t.by !== c.raisedBy).sort((x, y) => y.ts - x.ts)[0] || null;
+const escOwnerName = c => c.owner === 'VS Team' ? ROLES.VS.name : c.owner;
+const escParts = c => { const a = ACC[c.accountId]; return [...new Set([c.raisedBy, escOwnerName(c), a.am, ADMINS[a.segment], ...(c.looped || [])])]; };
+const escWatchers = escParts;
+const escUpdate = c => [...c.thread].filter(t => !t.auto && t.ts > c.openedAt).sort((x, y) => y.ts - x.ts)[0] || null;
+const LOOP_CHOICES = c => [ADMINS[ACC[c.accountId].segment], 'Chidi Obi', 'Director of VS', ROLES.TSI.name, 'Ify Okon', ROLES.AM.name, ROLES.VS.name].filter((n, i, l) => l.indexOf(n) === i);
+const FOLLOW_WITH = ['Field agent', 'State coordinator', 'VS team', 'TSI', 'Account manager', 'Customer'];
 function tktEvents(k) {
   const T = ROLES.TSI.name;
   return [[k.openedAt, k.raisedBy, 'Raised: ' + k.issue], k.ackAt && [k.ackAt, T, 'Acknowledged in ' + dur(k.ackAt - k.openedAt) + ' (standard 20 mins)'], k.qaAt && [k.qaAt, T, 'Pushed to QA. TSI keeps ' + (k.accountId ? 'the customer and ' : '') + tktWho(k) + ' updated'], ...(k.notes || []).map(n => [n.ts, n.by, n.text, true]), k.resolvedAt && [k.resolvedAt, T, 'Resolved in ' + dur(k.resolvedAt - k.openedAt) + ' (' + k.level + ' standard ' + hLabel(TSI_RES_H[k.level]) + ')']].filter(Boolean).sort((x, y) => x[0] - y[0] || (x[3] ? 1 : 0) - (y[3] ? 1 : 0));
 }
-const tktWatchers = k => [k.raisedBy, ...(k.accountId ? [ACC[k.accountId].am] : [])];
-const tktUpdate = k => { const e = tktEvents(k).filter(x => x[1] !== k.raisedBy && x[1] !== (k.accountId && ACC[k.accountId].am)); const typed = e.filter(x => x[3]); const last = (typed.length ? typed : e).slice(-1)[0]; return last ? { ts: last[0], by: last[1], text: last[2] } : null; };
+const tktWatchers = k => [...new Set([k.raisedBy, ROLES.TSI.name, ...(k.accountId ? [ACC[k.accountId].am, ADMINS[ACC[k.accountId].segment]] : [])])];
+const tktUpdate = k => { const last = tktEvents(k).slice(1).slice(-1)[0]; return last ? { ts: last[0], by: last[1], text: last[2] } : null; };
 const updId = (id, u) => 'upd:' + id + ':' + u.ts;
 function LatestUpdate({ id, u, watch, now }) {
   const ctx = useContext(StCtx); if (!u) return null; const fresh = watch && ctx && !ctx.st.read[updId(id, u)];
-  return html`<div className="mt-1.5 flex items-start gap-1.5 text-xs rounded-md px-2 py-1" style=${{ background: fresh ? 'var(--brandsoft)' : 'transparent' }}><span className="text-brand mt-px"><${Icon} n="chat" s=${12} /></span><span className="min-w-0"><span className="font-medium">${fresh ? 'New update from ' : 'Latest from '}${whoLabel(u.by)}</span><span className="text-mute">, ${relAgo(u.ts, now)}: </span>${u.text.length > 120 ? u.text.slice(0, 117) + '...' : u.text}</span></div>`;
+  return html`<div className="mt-1.5 flex items-start gap-1.5 text-xs rounded-md px-2 py-1" style=${{ background: fresh ? 'var(--brandsoft)' : 'transparent' }}><span className="text-brand mt-px"><${Icon} n="chat" s=${12} /></span><span className="min-w-0"><span className="font-medium">${fresh ? 'New update from ' : 'Latest from '}${ctx && ctx.me === u.by ? 'you' : whoLabel(u.by)}</span>${u.via && html`<span className="text-mute"> (${u.via})</span>`}<span className="text-mute">, ${relAgo(u.ts, now)}: </span>${u.text.length > 120 ? u.text.slice(0, 117) + '...' : u.text}</span></div>`;
 }
 const caseSla = dir => dir === 'AM_TO_VS' ? VS_RESOLVE_H : AM_REPLY_H;
 const frTarget = c => c.direction === 'AM_TO_VS' ? VS_ACK_H : AM_REPLY_H;
@@ -1237,10 +1286,10 @@ const mkLogs = (list, ts, seq) => list.map((l, i) => ({ ts, ...l, id: 'g' + seq 
 
 function seedCases() {
   const X = {
-    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 66 * 60e3, rem50: true,
-      add: [{ by: 'System', auto: true, ts: DEMO_NOW - 24 * 60e3, text: 'Reminder at 50% of the 2-hour standard sent to VS Team.' }] },
-    'ESC-1047': { category: 'Unreachable address' },
-    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 22 * 60e3 },
+    'ESC-1042': { category: 'Delayed verification', ackAt: DEMO_NOW - 66 * 60e3, rem50: true, looped: ['Bisi Lawal'],
+      add: [{ by: 'System', auto: true, ts: DEMO_NOW - 83 * 60e3, text: 'Looped in: Bisi Lawal (Admin).' }, { by: 'Bisi Lawal', ts: DEMO_NOW - 40 * 60e3, text: 'Spoke to the Ikeja state coordinator. 3 of the 5 pending addresses are scheduled for this morning; 2 need the applicants to call back.', via: 'Call with State coordinator', off: true }, { by: 'System', auto: true, ts: DEMO_NOW - 24 * 60e3, text: 'Reminder at 50% of the 2-hour standard sent to VS Team.' }] },
+    'ESC-1047': { category: 'Unreachable address', looped: [] },
+    'ESC-1039': { category: 'Priority request', ackAt: DEMO_NOW - 22 * 60e3, looped: ['Uche Nnaji', 'Chidi Obi'] },
   };
   return ESCALATIONS_SEED.map(c => { const x = X[c.id] || {}; const { add, ...rest } = x; return { ackAt: null, rem50: false, rem80: false, breached: false, resolvedAt: null, ...c, ...rest, thread: [...c.thread, ...(add || [])] }; });
 }
@@ -1383,14 +1432,19 @@ function NewCaseForm({ role, dispatch, now, onDone, fixedAccount }) {
   const me = ROLES[role]; const accts = role === 'AM' ? ACCOUNTS.filter(a => a.am === me.name) : ACCOUNTS;
   const [accId, setAcc] = useState(fixedAccount || accts[0].id); const [svc, setSvc] = useState('PHYADDR'); const [cat, setCat] = useState(role === 'VS' ? 'Unreachable address' : 'Delayed verification'); const [text, setText] = useState('');
   const toVS = role !== 'VS'; const sl = SVC[svc]; const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  const acc = ACC[accId]; const choices = LOOP_CHOICES({ accountId: accId }).filter(n => n !== me.name && n !== (toVS ? ROLES.VS.name : acc.am)); const [loop, setLoop] = useState([ADMINS[acc.segment]]);
+  const togg = n => setLoop(loop.includes(n) ? loop.filter(x => x !== n) : [...loop, n]);
   return html`<${Card}><${CardHead} title=${toVS ? 'Raise an escalation to VS' : 'Raise a query to the AM'} /><div className="p-4 space-y-2.5">
     <div className="grid sm:grid-cols-3 gap-2.5">
-      <select className=${inp} value=${accId} onChange=${e => setAcc(e.target.value)} disabled=${!!fixedAccount} aria-label="Customer">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
+      <select className=${inp} value=${accId} onChange=${e => { setAcc(e.target.value); setLoop([ADMINS[ACC[e.target.value].segment]]); }} disabled=${!!fixedAccount} aria-label="Customer">${accts.map(a => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}</select>
       <select className=${inp} value=${svc} onChange=${e => setSvc(e.target.value)} aria-label="Service">${SERVICES.filter(s => s.type === 'lastmile').map(s => html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</select>
       <select className=${inp} value=${cat} onChange=${e => setCat(e.target.value)} aria-label="Issue type">${ESC_CATEGORIES.map(c => html`<option key=${c}>${c}</option>`)}</select></div>
     <textarea className=${inp} rows="3" value=${text} onChange=${e => setText(e.target.value)} placeholder="Case details: batch reference, applicant, what is missing or late" aria-label="Case details"></textarea>
+    <div className="rounded-md bg-surface2 p-3 space-y-2"><div className="text-xs"><span className="font-medium">Task owner: </span>${toVS ? 'VS Team (resolves the case)' : acc.am + ' (replies to VS)'}</div>
+      <div className="text-xs font-medium flex items-center gap-1.5"><${Icon} n="loop" s=${12} />Loop in (they follow the case and see every update)</div>
+      <div className="flex flex-wrap gap-1.5">${choices.map(n => html`<label key=${n} className=${cx('px-2.5 py-1 rounded-full text-xs border cursor-pointer', loop.includes(n) ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><input type="checkbox" className="sr-only" checked=${loop.includes(n)} onChange=${() => togg(n)} />${n} · ${roleLabel(n)}</label>`)}</div></div>
     <p className="text-xs text-mute flex items-center gap-1.5"><${AutoBadge} />Case is created, routed to ${toVS ? 'the VS Team' : 'the account AM'} and the clock starts: ${toVS ? 'VS resolves within 2 hrs' : 'AM replies within 15 mins'}. The verification itself runs ${sl.slaLabel}.</p>
-    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
+    <div className="flex gap-2"><${Btn} kind="primary" disabled=${!text.trim()} onClick=${() => { dispatch({ type: 'ESC_NEW', accountId: accId, svc, category: cat, issue: text.trim(), direction: toVS ? 'AM_TO_VS' : 'VS_TO_AM', by: me.name, ts: now, looped: loop.filter(n => choices.includes(n)) }); onDone(); }}>Raise case<//><${Btn} onClick=${onDone}>Cancel<//></div>
   </div><//>`;
 }
 
@@ -1404,14 +1458,14 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
   const thread = [...c.thread].sort((x, y) => x.ts - y.ts);
   const elapsed = ((c.resolvedAt || now) - c.openedAt) / H;
   const statusTone = c.status === 'Closed' || c.status === 'Resolved' ? 'ok' : c.status === 'Awaiting AM' ? 'warn' : 'info';
-  const canComment = !done && !mine && (isAM || isVS || role === 'HEAD');
+  const canComment = !done && !mine && (isAM || isVS || role === 'HEAD' || role === 'ADMIN' || (role === 'TSI' && escParts(c).includes(me.name)));
   const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
   const upd = escUpdate(c), watch = escWatchers(c).includes(me.name) && upd && upd.by !== me.name;
   const toggle = () => { if (!open && watch) dispatch({ type: 'NOTIF_READ', ids: [updId(c.id, upd)] }); setOpen(!open); };
   return html`<${Card}>
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 cursor-pointer" onClick=${toggle}>
       <div className="flex-1 min-w-[220px]"><div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">${c.id}</span><${Pill} tone="mute">${c.direction === 'AM_TO_VS' ? 'AM to VS' : 'VS to AM'}<//><${Pill} tone=${statusTone}>${c.status}<//>${c.breached && html`<${Pill} tone="bad">Breached<//>`}<span className="text-mute">${a.name}</span></div>
-        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · raised by ${c.raisedBy} · with ${c.owner}</div><${LatestUpdate} id=${c.id} u=${upd} watch=${watch} now=${now} /></div>
+        <div className="text-xs text-mute mt-0.5">${c.issue}</div><div className="text-[11px] text-mute mt-0.5">${c.category || 'Uncategorised'} · ${c.type} · raised by ${c.raisedBy} · owner ${c.owner}${(c.looped || []).length ? ' · looped in: ' + c.looped.join(', ') : ''}</div><${LatestUpdate} id=${c.id} u=${upd} watch=${watch} now=${now} /></div>
       <${SlaClock} c=${c} now=${now} />
     </div>
     ${open && html`<div className="border-t border-line px-4 py-3 space-y-3">
@@ -1421,8 +1475,9 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
         <${Pill} tone=${c.rem80 ? 'warn' : 'mute'}>${c.rem80 ? 'Reminder sent at 80%' : 'Reminder due at 80%'}<//>${c.rem80 && html`<${AutoBadge} />`}
         ${c.breached ? html`<${Pill} tone="bad">Auto-escalated to Director of Verification Services and Head of AM<//><${AutoBadge} />` : html`<${Pill} tone="mute">On breach: escalates to Director of VS and Head of AM<//>`}
       </div>
-      <div className="space-y-2">${thread.map((t, i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', t.auto ? 'bg-autosoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${t.by}</span><span>${fmtFull(t.ts)}</span>${t.auto && html`<${AutoBadge} />`}</div><div className="mt-0.5">${t.text}</div></div>`)}</div>
-      ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//><span className="text-xs text-mute">Sends a mock update to the customer and logs it on the timeline.</span></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case.</p>`)}
+      <div className="space-y-2">${thread.map((t, i) => html`<div key=${i} className=${cx('text-sm rounded-md px-3 py-2', t.auto ? 'bg-autosoft' : 'bg-surface2')}><div className="flex items-center gap-2 text-xs text-mute"><span className="font-medium text-ink">${t.by}</span>${!t.auto && html`<span>${t.by === 'VS Team' ? 'VS' : roleLabel(t.by)}</span>`}<span>${fmtFull(t.ts)}</span>${t.auto && html`<${AutoBadge} />`}${t.via && html`<${Pill} tone="warn"><${Icon} n=${/WhatsApp/.test(t.via) ? 'chat' : /Call/.test(t.via) ? 'phone' : 'mail'} s=${10} />Off-portal · ${t.via}<//>`}</div><div className="mt-0.5">${t.text}</div></div>`)}</div>
+      ${c.status === 'Resolved' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('close')}><${Icon} n="check" s=${12} />Update customer and close<//><span className="text-xs text-mute">Sends a mock update to the customer and logs it on the timeline.</span></div>` : role === 'ADMIN' ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => act('adminclose')}><${Icon} n="check" s=${12} />Confirm customer updated and close<//><span className="text-xs text-mute">Use when the AM or VS has told the customer off-portal. Type a note above first if useful.</span></div>` : html`<p className="text-xs text-mute">Resolved. Waiting for the AM to update the customer and close the case. The Admin can also confirm closure.</p>`)}
+      ${c.status === 'Resolved' && role === 'ADMIN' && html`<textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder="Closure note, for example: AM confirmed by WhatsApp that the customer has the results" aria-label="Closure note"></textarea>`}
       ${!done && (mine || canComment) && html`<div className="space-y-2">
         <textarea className=${inp} rows="2" value=${msg} onChange=${e => setMsg(e.target.value)} placeholder=${isVS && mine ? 'Update, or the question you need the AM to answer' : isAM && mine ? 'Information for VS, for example a landmark or phone number' : 'Add a comment to the thread'} aria-label="Message"></textarea>
         <div className="flex flex-wrap gap-2">
@@ -1432,18 +1487,35 @@ function CaseCard({ c, st, dispatch, role, defaultOpen }) {
           ${canComment && html`<${Btn} disabled=${!m} onClick=${() => act('comment')}>Add comment<//>`}
         </div></div>`}
       ${done && c.status === 'Closed' && html`<p className="text-xs text-mute">Closed. Handled in ${fmtDur(c.resolvedAt - c.openedAt)} against the ${hLabel(c.slaHours)} standard.</p>`}
+      ${!done && role !== 'FIN' && html`<${CaseExtras} c=${c} role=${role} dispatch=${dispatch} now=${now} />`}
     </div>`}
   <//>`;
 }
 
+function CaseExtras({ c, role, dispatch, now }) {
+  const me = ROLES[role]; const [who, setWho] = useState(''); const [fu, setFu] = useState(role === 'ADMIN');
+  const [chan, setChan] = useState('call'); const [withWho, setWith] = useState(role === 'ADMIN' ? 'State coordinator' : 'Customer'); const [txt, setTxt] = useState('');
+  const choices = LOOP_CHOICES(c).filter(n => !escParts(c).includes(n));
+  const inp = 'rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<div className="border-t border-line pt-3 space-y-3">
+    <div className="flex flex-wrap items-center gap-2 text-xs"><span className="font-medium inline-flex items-center gap-1"><${Icon} n="loop" s=${12} />On this case:</span>${escParts(c).map(n => html`<${Pill} key=${n} tone=${n === escOwnerName(c) ? 'info' : 'mute'}>${n} · ${n === escOwnerName(c) ? 'owner' : roleLabel(n)}<//>`)}
+      ${choices.length > 0 && html`<select className="rounded-md border border-line bg-bg px-2 py-1 text-xs" value=${who} onChange=${e => setWho(e.target.value)} aria-label="Loop someone in"><option value="">Loop someone in...</option>${choices.map(n => html`<option key=${n} value=${n}>${n}, ${roleLabel(n)}</option>`)}</select><${Btn} disabled=${!who} onClick=${() => { dispatch({ type: 'ESC_LOOP', id: c.id, name: who, by: me.name, ts: now }); setWho(''); }}>Loop in<//>`}</div>
+    ${!fu ? html`<button className="text-xs text-brand" onClick=${() => setFu(true)}>Log an off-portal conversation on this case</button>` : html`<div className="rounded-md bg-surface2 p-3 space-y-2">
+      <div className="text-xs font-medium">${role === 'ADMIN' ? 'Log your follow-up' : 'Log an off-portal conversation'} <span className="text-mute font-normal">· everyone on the case sees it</span></div>
+      <div className="flex flex-wrap gap-2"><div className="flex flex-wrap gap-1.5">${NOTE_CH.map(k => html`<button key=${k} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>
+        <select className=${inp} value=${withWho} onChange=${e => setWith(e.target.value)} aria-label="Spoke with">${FOLLOW_WITH.map(x => html`<option key=${x}>${x}</option>`)}</select></div>
+      <textarea className=${inp + ' w-full'} rows="2" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder="What they said and what happens next" aria-label="Follow-up"></textarea>
+      <div className="flex gap-2"><${Btn} kind="primary" disabled=${!txt.trim()} onClick=${() => { dispatch({ type: 'ESC_FOLLOW', id: c.id, by: me.name, ts: now, channel: chan, withWho, text: txt.trim() }); setTxt(''); }}>Save follow-up<//>${role !== 'ADMIN' && html`<${Btn} onClick=${() => setFu(false)}>Cancel<//>`}</div></div>`}
+  </div>`;
+}
 function EscalationsPage({ st, dispatch, role, route }) {
   const now = useNow(); const me = ROLES[role];
-  const scoped = st.escalations.filter(c => role !== 'AM' || ACC[c.accountId].am === me.name);
+  const scoped = st.escalations.filter(c => role === 'AM' ? ACC[c.accountId].am === me.name || escParts(c).includes(me.name) : role === 'ADMIN' ? ACC[c.accountId].segment === me.segment || escParts(c).includes(me.name) : role === 'TSI' ? escParts(c).includes(me.name) : true);
   const mineF = c => isOpen(c) && ((role === 'VS' && c.owner === 'VS Team') || (role === 'AM' && c.owner === me.name));
-  const raisedF = c => c.raisedBy === me.name;
-  const fc = route && route.focus ? st.escalations.find(c => c.id === route.focus) : null; const [tab, setTab] = useState(fc ? (isOpen(fc) ? 'open' : 'done') : role === 'HEAD' ? 'open' : 'mine'); const [showNew, setShowNew] = useState(false);
+  const raisedF = c => c.raisedBy === me.name; const loopF = c => (c.looped || []).includes(me.name);
+  const fc = route && route.focus ? st.escalations.find(c => c.id === route.focus) : null; const [tab, setTab] = useState(fc ? (isOpen(fc) ? 'open' : 'done') : role === 'HEAD' || role === 'ADMIN' ? 'open' : role === 'TSI' ? 'looped' : 'mine'); const [showNew, setShowNew] = useState(false);
   const open = scoped.filter(isOpen), closed = scoped.filter(c => !isOpen(c));
-  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'raised' ? scoped.filter(raisedF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
+  const list = (tab === 'mine' ? scoped.filter(mineF) : tab === 'raised' ? scoped.filter(raisedF) : tab === 'looped' ? scoped.filter(loopF) : tab === 'open' ? open : closed).sort((x, y) => slaPct(y, now) - slaPct(x, now));
   const near = open.filter(c => slaPct(c, now) >= .8 && slaPct(c, now) < 1).length, breached = open.filter(c => slaPct(c, now) >= 1).length;
   const acked = scoped.filter(c => c.ackAt); const avgFr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
   const resolved = scoped.filter(c => c.resolvedAt); const within = resolved.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length;
@@ -1457,9 +1529,27 @@ function EscalationsPage({ st, dispatch, role, route }) {
       ${[0.25, 1, 2, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}
       <${Pill} tone=${st.simHours ? 'auto' : 'mute'}>${st.simHours ? 'Clock advanced by ' + fmtDur(st.simHours * H) : 'Real time'}<//>
       <span className="text-xs text-mute">Reminders at 50% and 80% and the breach escalation fire automatically. Reset demo restores the clock.</span></div><//>
-    <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['raised', 'Raised by me', scoped.filter(raisedF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !((t[0] === 'mine' || t[0] === 'raised') && role === 'HEAD')).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
-    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
+    <div className="flex flex-wrap gap-1 border-b border-line">${[['mine', 'My queue', scoped.filter(mineF).length], ['raised', 'Raised by me', scoped.filter(raisedF).length], ['looped', 'Looped in', scoped.filter(loopF).length], ['open', 'All open', open.length], ['done', 'Resolved and closed', closed.length]].filter(t => !((t[0] === 'mine' || t[0] === 'raised') && (role === 'HEAD' || role === 'ADMIN' || role === 'TSI'))).map(([k, l, n]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}<span className="ml-1.5 text-xs text-mute">${n}</span></button>`)}</div>
+    ${list.length === 0 ? html`<${Card}><${Empty}>${tab === 'mine' ? 'Nothing is waiting on you.' : tab === 'raised' ? 'You have not raised any cases.' : tab === 'looped' ? 'You are not looped in on any cases.' : 'No cases here.'}<//><//>` : list.map(c => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${route && route.focus === c.id} />`)}
     <${Card} className="p-3.5 text-xs text-mute space-y-1"><div><span className="font-medium text-ink">Standards:</span> AMs reply to a VS query within 15 minutes. VS resolves an escalated address check in about 2 hours. Verification itself runs 24 to 72 hours (guarantor 5 days).</div><div><span className="font-medium text-ink">Open decisions:</span> who triages for Key accounts, the breach path, case categories, and a VS acknowledgement target (30 minutes proposed).</div><//>
+  </div>`;
+}
+function FollowUpPage({ st, dispatch, role, go }) {
+  const now = useNow(); const me = ROLES[role]; const [seg, setSeg] = useState(role === 'ADMIN' ? me.segment : 'Scale'); const admin = ADMINS[seg];
+  const inSeg = c => ACC[c.accountId].segment === seg;
+  const cases = st.escalations.filter(inSeg); const open = cases.filter(isOpen); const resolved = cases.filter(c => c.status === 'Resolved');
+  const hot = open.filter(c => slaPct(c, now) >= .8);
+  const fups = st.escalations.flatMap(c => c.thread.filter(t => t.off && t.by === admin)); const today = fups.filter(t => t.ts >= sod(now)).length;
+  const closed7 = cases.filter(c => c.status === 'Closed' && c.resolvedAt && now - c.resolvedAt <= 7 * D).length;
+  const order = [...open.filter(c => c.status !== 'Resolved').sort((x, y) => slaPct(y, now) - slaPct(x, now)), ...resolved];
+  const tks = st.tickets.filter(k => k.accountId && ACC[k.accountId].segment === seg && k.status !== 'Resolved');
+  return html`<div className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold">Escalation follow-up</h1><p className="text-sm text-mute max-w-3xl">${role === 'ADMIN' ? 'You chase' : admin + ' (Admin) chases'} every escalation on ${seg} accounts until it is closed. Log off-portal conversations with field agents, state coordinators, VS and TSI so the AM, VS and anyone looped in see them on the case.</p></div>
+      ${role === 'HEAD' && html`<div className="flex gap-1">${['Key', 'Scale'].map(x => html`<button key=${x} onClick=${() => setSeg(x)} className=${cx('px-3 py-1.5 rounded-md text-xs border', seg === x ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}>${x} accounts · ${ADMINS[x]}</button>`)}</div>`}</div>
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><${Tile} label="Open escalations" value=${open.length - resolved.length} /><${Tile} label="Near or past the standard" value=${hot.length} tone=${hot.length ? 'warn' : undefined} sub="Chase these first" /><${Tile} label="Resolved, not yet closed" value=${resolved.length} tone=${resolved.length ? 'info' : undefined} sub="Check the customer was told" /><${Tile} label="Follow-ups logged today" value=${today} sub=${fups.length + ' in total'} /><${Tile} label="Closed in the last 7 days" value=${closed7} /></div>
+    <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 text-sm font-medium"><${Icon} n="clock" s=${15} />Simulate time passing</div>${[1, 24].map(h => html`<${Btn} key=${h} onClick=${() => dispatch({ type: 'SIM', hours: h })}>+${h === 24 ? '1 day' : hLabel(h)}<//>`)}<span className="text-xs text-mute">Reminders and breach escalation fire automatically.</span></div><//>
+    ${order.length === 0 ? html`<${Card}><${Empty}>No open escalations on ${seg} accounts.<//><//>` : order.map((c, i) => html`<${CaseCard} key=${c.id} c=${c} st=${st} dispatch=${dispatch} role=${role} defaultOpen=${i === 0} />`)}
+    <${Card}><${CardHead} title=${'Technical tickets on ' + seg + ' accounts'} sub="Sometimes TSI needs chasing too. Add what you hear so TSI and the AM see it." />${tks.length === 0 ? html`<${Empty}>No open technical tickets.<//>` : tks.map(k => html`<${TicketCard} key=${k.id} k=${k} dispatch=${dispatch} role=${role} />`)}<//>
   </div>`;
 }
 function AccountCases({ a, cases, st, dispatch, role }) {
@@ -1643,6 +1733,38 @@ function AccountUsageLogs({ a, st, dispatch, role }) {
   <//>`;
 }
 
+const escH = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+function invoiceData(a, inv) {
+  if (inv.reqId || (PERIODS[inv.period] && inv.services)) { const p = packData(a, inv.period, inv.services); return { lines: p.lines.map(l => [SVC[l.svc].name, l.qty, l.unit, l.amount]), sub: p.sub, vat: p.vat, total: p.total }; }
+  const sub = inv.amount, qty = Math.round(sub / a.price); const vat = Math.round(sub * .075); return { lines: [['Identity verification services', qty, a.price, sub]], sub, vat, total: sub + vat };
+}
+function invoiceHtml(a, inv, note, contact) {
+  const d = invoiceData(a, inv); const ng = n => 'NGN ' + Math.round(n).toLocaleString('en-US');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>' + inv.no + '</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#0A243B;margin:40px;max-width:760px}h1{font-size:26px;margin:0}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{padding:8px;border-bottom:1px solid #dde2dd;text-align:left;font-size:13px}td.n,th.n{text-align:right}.bar{height:6px;background:#6BC177;margin:14px 0 22px}.muted{color:#5b6670;font-size:12px}.note{margin-top:22px;padding:12px 14px;border:1px solid #E9AF5F;background:#fdf6ea;font-size:13px}@media print{body{margin:16mm}}</style></head><body>'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h1>VerifyMe</h1><div class="muted">Identity verification services</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:bold">Invoice</div><div>' + inv.no + '</div><div class="muted">Period: ' + escH(inv.period) + '</div>' + (inv.issued ? '<div class="muted">Issued ' + escH(inv.issued) + ' · due ' + escH(inv.due) + '</div>' : '') + '</div></div><div class="bar"></div>'
+    + '<div><b>Bill to</b><br>' + escH(a.name) + (contact ? '<br>Attn: ' + escH(contact.name) + ', ' + escH(contact.role) : '') + '</div>'
+    + '<table><tr><th>Service</th><th class="n">Requests</th><th class="n">Unit price</th><th class="n">Amount</th></tr>' + d.lines.map(l => '<tr><td>' + escH(l[0]) + '</td><td class="n">' + l[1].toLocaleString('en-US') + '</td><td class="n">' + ng(l[2]) + '</td><td class="n">' + ng(l[3]) + '</td></tr>').join('')
+    + '<tr><td colspan="3" class="n">Subtotal</td><td class="n">' + ng(d.sub) + '</td></tr><tr><td colspan="3" class="n">VAT 7.5%</td><td class="n">' + ng(d.vat) + '</td></tr><tr><td colspan="3" class="n"><b>Total</b></td><td class="n"><b>' + ng(d.total) + '</b></td></tr></table>'
+    + (note ? '<div class="note"><b>Note from your account manager</b><br>' + escH(note) + '</div>' : '')
+    + '<p class="muted" style="margin-top:28px">Prototype mock invoice generated by the Account Management Workspace. Figures are demo data.</p></body></html>';
+}
+function InvoiceDownload({ a, inv, role, dispatch, reqId }) {
+  const now = useNow(); const me = ROLES[role]; const [note, setNote] = useState(''); const [internal, setInternal] = useState(''); const [cid, setCid] = useState(a.contacts[0].id); const [chan, setChan] = useState('email');
+  const c = a.contacts.find(x => x.id === cid) || a.contacts[0]; const doc = () => invoiceHtml(a, inv, note.trim(), c);
+  const download = () => { try { const u = URL.createObjectURL(new Blob([doc()], { type: 'text/html' })); const l = document.createElement('a'); l.href = u; l.download = inv.no + '.html'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(u), 1000); dispatch({ type: 'TOAST', text: inv.no + ' downloaded with your note. Open it and print to PDF if the customer needs a PDF.' }); } catch (e) {} };
+  const print = () => { const w = window.open('', '_blank'); if (!w) { dispatch({ type: 'TOAST', text: 'Pop-up blocked. Use Download invoice instead.' }); return; } w.document.write(doc()); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (e) {} }, 300); };
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<div className="rounded-md border border-line bg-bg p-3 space-y-2.5">
+    <div className="text-sm font-medium">Download ${inv.no} to send yourself</div>
+    <textarea className=${inp} rows="2" value=${note} onChange=${e => setNote(e.target.value)} placeholder="Note printed on the invoice, for example: Includes the 14 address checks re-run at no charge" aria-label="Note on the invoice"></textarea>
+    <input className=${inp} value=${internal} onChange=${e => setInternal(e.target.value)} placeholder="Internal note for the record (not printed)" aria-label="Internal note" />
+    <div className="flex flex-wrap gap-2"><${Btn} kind="primary" onClick=${download}><${Icon} n="download" s=${12} />Download invoice<//><${Btn} onClick=${print}>Print or save as PDF<//></div>
+    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-line"><span className="text-xs text-mute">After sending it yourself:</span>
+      <select className="rounded-md border border-line bg-surface px-2 py-1 text-xs" value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Sent to">${a.contacts.map(x => html`<option key=${x.id} value=${x.id}>${x.name}</option>`)}</select>
+      <select className="rounded-md border border-line bg-surface px-2 py-1 text-xs" value=${chan} onChange=${e => setChan(e.target.value)} aria-label="Sent by">${['email', 'whatsapp', 'slack'].map(k => html`<option key=${k} value=${k}>${CH[k].label}</option>`)}</select>
+      <${Btn} onClick=${() => dispatch({ type: 'INV_OFFPORTAL', accountId: a.id, reqId, invNo: inv.no, note: note.trim(), internal: internal.trim(), contactId: cid, channel: chan, by: me.name, ts: now })}><${Icon} n="check" s=${12} />Mark as sent<//></div>
+  </div>`;
+}
 function PackPreview({ r }) {
   const a = ACC[r.accountId]; const p = packData(a, r.period, r.services);
   return html`<div className="rounded-md border border-line bg-bg p-3 space-y-3 text-sm">
@@ -1698,6 +1820,7 @@ function RequestCard({ r, dispatch, role, defaultOpen }) {
       ${(r.status === 'Ready' || r.status === 'Delivered') && html`<div className="space-y-2"><${Btn} onClick=${() => setPrev(!prev)}><${Icon} n="file" s=${12} />${prev ? 'Hide pack preview' : 'Preview invoice and log pack'}<//>${r.status === 'Ready' && html`<span className="text-xs text-mute ml-2 inline-flex items-center gap-1">Archived to the account <${AutoBadge} /></span>`}${prev && html`<${PackPreview} r=${r} />`}</div>`}
       ${r.status === 'Ready' && (myAcct ? html`<div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: me.name, ts: now })}><${Icon} n="mail" s=${12} />Send to customer<//><${Btn} onClick=${() => dispatch({ type: 'INV_SHARE', id: r.id, method: 'link', by: me.name, ts: now })}>Share link<//><span className="text-xs text-mute">Delivery stops the request clock. Sending is mocked.</span></div>` : html`<p className="text-xs text-mute">Ready. Waiting for ${a.am} to share it with the customer.</p>`)}
       ${r.status === 'Delivered' && html`<p className="text-xs text-mute">${r.method}${r.link ? ': ' + r.link : ''}. Delivered in ${fmtDur(r.deliveredAt - r.raisedAt)}.</p>`}
+      ${(r.status === 'Ready' || r.status === 'Delivered') && myAcct && html`<${InvoiceDownload} a=${a} inv=${{ no: 'INV-' + a.id.slice(0, 3).toUpperCase() + '-' + PERIODS[r.period].code + '-' + r.id.slice(4), period: r.period, services: r.services, reqId: r.id }} role=${role} dispatch=${dispatch} reqId=${r.status === 'Ready' ? r.id : undefined} />`}
     </div>`}
   <//>`;
 }
@@ -1755,12 +1878,13 @@ function InvoiceRequests({ st, dispatch, role }) {
 }
 function AccountInvoices({ a, st, dispatch, role }) {
   const now = useNow(); const [show, setShow] = useState(false); const reqs = st.invoiceRequests.filter(r => r.accountId === a.id).sort((x, y) => y.raisedAt - x.raisedAt);
-  const can = role === 'AM' && a.am === ROLES.AM.name;
+  const can = role === 'AM' && a.am === ROLES.AM.name; const [dl, setDl] = useState(null);
   return html`<div className="space-y-4">
     ${can && html`<div className="flex justify-end"><${Btn} kind="primary" onClick=${() => setShow(!show)}><${Icon} n="plus" s=${12} />Request invoice<//></div>`}
     ${show && html`<${RequestForm} role=${role} dispatch=${dispatch} now=${now} cases=${st.escalations} fixedAccount=${a.id} onDone=${() => setShow(false)} />`}
-    <${Card}><${CardHead} title="Invoices" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Invoice</th><th className="px-2 font-medium">Period</th><th className="px-2 font-medium text-right">Amount</th><th className="px-2 font-medium">Issued</th><th className="px-2 font-medium">Due</th><th className="px-2 font-medium">Status</th></tr></thead><tbody>
-      ${a.invoices.map(i => html`<tr key=${i.no} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${i.no}</td><td className="px-2">${i.period}</td><td className="px-2 text-right tabular-nums">${ngn(i.amount)}</td><td className="px-2 text-mute">${i.issued}</td><td className="px-2 text-mute">${i.due}</td><td className="px-2"><${Pill} tone=${i.status === 'Paid' ? 'ok' : 'warn'}>${i.status}<//></td></tr>`)}</tbody></table></div><//>
+    <${Card}><${CardHead} title="Invoices" /><div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Invoice</th><th className="px-2 font-medium">Period</th><th className="px-2 font-medium text-right">Amount</th><th className="px-2 font-medium">Issued</th><th className="px-2 font-medium">Due</th><th className="px-2 font-medium">Status</th>${can && html`<th className="px-2"></th>`}</tr></thead><tbody>
+      ${a.invoices.map(i => html`<tr key=${i.no} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${i.no}</td><td className="px-2">${i.period}</td><td className="px-2 text-right tabular-nums">${ngn(i.amount)}</td><td className="px-2 text-mute">${i.issued}</td><td className="px-2 text-mute">${i.due}</td><td className="px-2"><${Pill} tone=${i.status === 'Paid' ? 'ok' : 'warn'}>${i.status}<//></td>${can && html`<td className="px-2"><${Btn} onClick=${() => setDl(dl === i.no ? null : i.no)}><${Icon} n="download" s=${12} />${dl === i.no ? 'Hide' : 'Download'}<//></td>`}</tr>`)}</tbody></table></div>
+      ${dl && html`<div className="p-4 border-t border-line"><${InvoiceDownload} key=${dl} a=${a} inv=${a.invoices.find(i => i.no === dl)} role=${role} dispatch=${dispatch} /></div>`}<//>
     <${AccountUsageLogs} a=${a} st=${st} dispatch=${dispatch} role=${role} />
     ${reqs.length > 0 && html`<div className="space-y-3"><h3 className="text-sm font-semibold">Requests for this account</h3>${reqs.map(r => html`<${RequestCard} key=${r.id} r=${r} dispatch=${dispatch} role=${role} defaultOpen=${true} />`)}</div>`}
   </div>`;
@@ -1951,17 +2075,19 @@ function GuidedDemo({ st, dispatch, go, setRole, now, onClose }) {
     { who: 'Auto', title: 'Brightpay drop detected', text: 'The daily usage feed flags Brightpay as Dropped and prepares a check-in draft. It is a Key account, so nothing is sent without Amaka.', run: () => { setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Human', title: 'AM approves the check-in', text: 'Amaka reviews the draft and approves it. The mock send is logged to the timeline and the signal-to-action time is recorded.', run: () => { dispatch({ type: 'SIG_APPROVE', accountId: 'brightpay', ts: now, by: 'Amaka Eze' }); setRole('AM'); go({ page: 'signals' }); } },
     { who: 'Auto', title: 'Reply logged, follow-up task created', text: 'Folake replies. The system logs the reply to the timeline, tags it, and creates a follow-up task.', run: () => { dispatch({ type: 'SIG_REPLY', accountId: 'brightpay', ts: now }); setRole('AM'); go({ page: 'account', id: 'brightpay', tab: 'Timeline' }); } },
-    { who: 'Human', title: 'AM raises an escalation to VS', text: 'Brightpay is restarting onboarding and needs priority address checks for field agents. Amaka raises a case; VS has 2 hours to resolve it.', run: () => { dispatch({ type: 'ESC_NEW', accountId: 'brightpay', svc: 'PHYADDR', category: 'Priority request', issue: 'Brightpay is restarting onboarding. 6 field agent addresses need priority physical verification.', direction: 'AM_TO_VS', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'escalations' }); } },
+    { who: 'Human', title: 'AM raises an escalation to VS', text: 'Brightpay is restarting onboarding and needs priority address checks for field agents. Amaka raises a case with VS as the task owner, and loops in the Key accounts Admin and the Head of AM. VS has 2 hours to resolve it.', run: () => { dispatch({ type: 'ESC_NEW', accountId: 'brightpay', svc: 'PHYADDR', category: 'Priority request', issue: 'Brightpay is restarting onboarding. 6 field agent addresses need priority physical verification.', direction: 'AM_TO_VS', by: 'Amaka Eze', ts: now, looped: ['Uche Nnaji', 'Chidi Obi'] }); setRole('AM'); go({ page: 'escalations' }); } },
     { who: 'Human', title: 'VS acknowledges', text: 'Tunde sees the case in the VS queue and acknowledges it. First-response time is logged for the manager view.', run: () => { const c = latest(st.escalations, x => x.accountId === 'brightpay' && x.owner === 'VS Team' && !x.ackAt); if (c) dispatch({ type: 'ESC_ACT', id: c.id, act: 'ack', by: 'Tunde Bello', ts: now, text: '' }); setRole('VS'); go({ page: 'escalations' }); } },
+    { who: 'Human', title: 'Admin chases a case off-portal', text: 'Bisi, the Admin for Scale accounts, calls the Ikeja state coordinator about the QuickLoan addresses and logs the call on ESC-1042. Amaka, VS and anyone looped in see it on the case and in their notifications.', run: () => { dispatch({ type: 'ESC_FOLLOW', id: 'ESC-1042', by: 'Bisi Lawal', ts: now, channel: 'whatsapp', withWho: 'Field agent', text: 'Field agent confirmed 2 more addresses are done and uploading now. The last 3 are booked for 2pm.' }); setRole('ADMIN'); go({ page: 'home' }); } },
     { who: 'Auto', title: 'Invoice requested and auto-approved', text: 'Back as Amaka: she requests the September invoice and logs. It passes every contract rule, so it is approved automatically and the pack is generated.', run: () => { dispatch({ type: 'INV_NEW', accountId: 'brightpay', period: 'Sep 2026', services: ACC.brightpay.services, adjust: false, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
-    { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. Delivery stops the request clock, so request-to-delivery time is recorded.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
+    { who: 'Human', title: 'AM sends the pack to the customer', text: 'Amaka sends the pack. She could also download the invoice with a note printed on it and send it herself by email or WhatsApp. Delivery stops the request clock either way.', run: () => { const r = latest(st.invoiceRequests, x => x.accountId === 'brightpay' && x.status === 'Ready'); if (r) dispatch({ type: 'INV_SHARE', id: r.id, method: 'email', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'invoices' }); } },
     { who: 'Human', title: 'Usage logs on request or on a schedule', text: 'QuickLoan asks for last week\'s usage logs. Amaka picks the exact dates and the file is ready in seconds to download or send. QuickLoan also gets a daily log at 07:00 automatically, because that is their preference.', run: () => { dispatch({ type: 'ULOG_NEW', scope: 'acc:quickloan', from: LOG_MAX - 6 * D, to: LOG_MAX, by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'account', id: 'quickloan', tab: 'Invoices' }); } },
     { who: 'Auto', title: 'Upsell proposed', text: 'The customer has replied, so the hold on Brightpay lifts. The rules match field agent onboarding with address verification and draft an email using the account context.', run: () => { setRole('AM'); go({ page: 'opportunities' }); } },
     { who: 'Human', title: 'AM approves the upsell', text: 'Amaka approves the draft. It sends automatically, logs to the timeline, and the opportunity moves to Sales handoff.', run: () => { dispatch({ type: 'OPP_APPROVE', okey: 'brightpay:addr', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'opportunities' }); } },
-    { who: 'Auto', title: 'Weekly operational report generated', text: 'The weekly report compiles itself: week-on-week transactions and revenue, customers to worry about, escalations, complaints and opportunities. Only the general and strategic updates are left for Amaka.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
+    { who: 'Auto', title: 'Weekly operational report generated', text: 'The weekly report compiles itself: week-on-week transactions and revenue, customers to worry about, escalations, complaints and opportunities. Only the general and strategic updates are left for Amaka. Her monthly and quarterly views sit under Reports too.', run: () => { setRole('AM'); go({ page: 'reports', id: 'health' }); } },
     { who: 'Human', title: 'AM adds commentary and approves', text: 'Amaka adds her updates and approves. The report publishes to the Head of AM with no re-keying.', run: () => { dispatch({ type: 'REP_COMMENT', id: 'health', text: 'Brightpay re-engaged after the check-in and is restarting onboarding. Savannah address-verification upsell is with Sales.' }); dispatch({ type: 'REP_APPROVE', id: 'health', by: 'Amaka Eze', ts: now }); setRole('AM'); go({ page: 'reports', id: 'health' }); } },
     { who: 'Human', title: 'Everything waiting, in one place', text: 'Notifications gather customer messages, cases waiting on Amaka, health signals, upsell drafts, ticket updates and handovers, ranked Critical to Info. Each one opens the screen where she acts.', run: () => { setRole('AM'); go({ page: 'notifications' }); } },
     { who: 'Head of AM', title: 'The manager sees the whole picture', text: 'Chidi\'s dashboard now shows TSI onboarding and ticket times, the first response from VS, the invoice turnaround, the signal-to-action time, the opportunity moving through the funnel, and the weekly report already in the submission tracker. The monthly portfolio report is under Reports.', run: () => { setRole('HEAD'); go({ page: 'dashboard' }); } },
+    { who: 'Head of AM', title: 'Every person, every period', text: 'Under Reports, Chidi switches between weekly, monthly and quarterly views for the whole team, then picks any AM, TSI, Admin, VS or Finance person to see their scorecard against the standards.', run: () => { setRole('HEAD'); go({ page: 'reports' }); } },
   ];
   const s = STEPS[i]; const tone = { Auto: 'auto', Human: 'info', Reset: 'mute', 'Head of AM': 'ok' }[s.who];
   const run = () => { s.run(); setDone({ ...done, [i]: true }); };
@@ -2008,11 +2134,43 @@ function repSections(r, st, now, accts) {
     case 'issues': return [['Cases with logged and resolved times', cs.map(c => c.id + ' ' + ACC[c.accountId].name + ': ' + c.status + ', raised ' + fmtDay(c.openedAt) + ', first response ' + (c.ackAt ? hrsTxt(c.ackAt - c.openedAt) : 'awaited') + (c.resolvedAt ? ', resolved in ' + hrsTxt(c.resolvedAt - c.openedAt) : ''))]];
     case 'mrv': { const ag = sum(accts.map(a => a.agreed)), ac = sum(accts.map(a => a.stats.last30)); return [['Monthly recurring volume', ['Portfolio: ' + num(ac) + ' requests in the last 30 days against ' + num(ag) + ' agreed (' + p1(ac / ag * 100) + '%)', ...accts.map(a => a.name + ': ' + num(a.stats.last30) + ' of ' + num(a.agreed) + ' (' + pc(a.stats.mom) + ' on the previous 30 days)')]]]; }
     case 'qbr': return [['Usage, billing and cases by Key account', accts.filter(a => a.segment === 'Key').map(a => a.name + ': ' + num(a.stats.last30) + ' requests (' + p1(a.stats.last30 / a.agreed * 100) + '% of agreed), latest invoice ' + (a.invoices[2] ? a.invoices[2].status.toLowerCase() : 'not yet issued') + ', ' + cs.filter(c => c.accountId === a.id && isOpen(c)).length + ' open cases')]];
-    case 'visits': return [['Visits logged this month', st.visits.length ? st.visits.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No visits logged yet. Use Quick input.']]];
-    case 'referrals': return [['Referrals logged this quarter', st.referrals.length ? st.referrals.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No referrals logged yet. Use Quick input.']]];
+    case 'visits': return [['Visits logged this month', st.visits.length ? st.visits.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No visits logged yet. Use Add update.']]];
+    case 'referrals': return [['Referrals logged this quarter', st.referrals.length ? st.referrals.map(v => fmtDay(v.ts) + ', ' + ACC[v.accountId].name + ': ' + v.text) : ['No referrals logged yet. Use Add update.']]];
     case 'mgmt': { const hs = ACCOUNTS.map(a => healthOf(a, sigs, st.escalations, now)); const op = st.escalations.filter(isOpen); return [['Portfolio summary', ['Health: ' + hs.filter(h => h === 'green').length + ' healthy, ' + hs.filter(h => h === 'amber').length + ' at risk, ' + hs.filter(h => h === 'red').length + ' critical', 'Open cases: ' + op.length + ', of which ' + op.filter(c => c.breached).length + ' breached', 'Live signals: ' + sigs.filter(s => !s.suppressed).length + ', held back: ' + sigs.filter(s => s.suppressed).length, 'Invoice requests handled: ' + st.invoiceRequests.length, 'Opportunities in progress: ' + Object.keys(st.oppWork).length]]]; }
     default: return [['AM portfolio and activity', [...new Set(ACCOUNTS.map(a => a.am))].map(n => { const l = ACCOUNTS.filter(a => a.am === n), hs = l.map(a => healthOf(a, sigs, st.escalations, now)); return n + ': ' + l.length + ' accounts, ' + hs.filter(h => h === 'green').length + ' healthy, ' + hs.filter(h => h !== 'green').length + ' needing attention'; })]];
   }
+}
+function updAccounts(role) { const me = ROLES[role]; return role === 'AM' ? scopeAccounts('AM') : role === 'ADMIN' ? ACCOUNTS.filter(a => a.segment === me.segment && (!a.obId || ACTIVE.handed.has(a.id))) : role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD'); }
+function AddUpdateForm({ role, dispatch, now, onDone, fixedAccount, kinds, compact }) {
+  const me = ROLES[role]; const accts = fixedAccount ? [ACC[fixedAccount]] : updAccounts(role);
+  const ks = kinds || (role === 'AM' || role === 'HEAD' ? ['update', 'visit', 'referral'] : ['update']);
+  const [kind, setKind] = useState(ks[0]); const [aid, setAid] = useState(fixedAccount || accts[0].id); const a = ACC[aid];
+  const [chan, setChan] = useState('call'); const [cid, setCid] = useState(a.contacts[0].id); const [day, setDay] = useState(isoDate(now)); const [txt, setTxt] = useState('');
+  const KL = { update: 'Update or conversation', visit: 'Customer visit', referral: 'Referral' };
+  const save = () => { if (!txt.trim()) return; const d = new Date(day + 'T00:00:00').getTime(); const ts = sod(now) === d ? now : d + 12 * H;
+    dispatch({ type: 'UPD_ADD', kind, accountId: aid, channel: kind === 'visit' ? 'meeting' : chan, contactId: cid, text: txt.trim(), by: me.name, ts, now }); setTxt(''); onDone && onDone(); };
+  const inp = 'w-full rounded-md border border-line bg-bg px-2.5 py-1.5 text-sm';
+  return html`<div className="space-y-2.5">
+    ${ks.length > 1 && html`<div className="flex flex-wrap gap-1.5">${ks.map(k => html`<button key=${k} onClick=${() => setKind(k)} className=${cx('px-3 py-1.5 rounded-md text-xs border', kind === k ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${KL[k]}</button>`)}</div>`}
+    <div className=${cx('grid gap-2.5', compact ? '' : 'sm:grid-cols-2')}>
+      <select className=${inp} value=${aid} disabled=${!!fixedAccount} onChange=${e => { setAid(e.target.value); setCid(ACC[e.target.value].contacts[0].id); }} aria-label="Customer">${accts.map(x => html`<option key=${x.id} value=${x.id}>${x.name}</option>`)}</select>
+      <select className=${inp} value=${cid} onChange=${e => setCid(e.target.value)} aria-label="Contact">${a.contacts.map(c => html`<option key=${c.id} value=${c.id}>${c.name}, ${c.role}</option>`)}<option value="internal">Internal, no customer contact</option></select></div>
+    ${kind !== 'visit' && html`<div className="flex flex-wrap gap-1.5" role="group" aria-label="Channel">${NOTE_CH.map(k => html`<button key=${k} onClick=${() => setChan(k)} className=${cx('px-2.5 py-1 rounded-full text-xs border inline-flex items-center gap-1', chan === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line')}><${Icon} n=${CH[k].icon} s=${11} />${CH[k].label}</button>`)}</div>`}
+    <div className="flex flex-wrap items-center gap-2"><label className="text-xs text-mute flex items-center gap-1.5">Date<input type="date" className="rounded-md border border-line bg-bg px-2 py-1 text-sm" max=${isoDate(now)} value=${day} onChange=${e => e.target.value && setDay(e.target.value)} /></label></div>
+    <textarea className=${inp} rows="3" value=${txt} onChange=${e => setTxt(e.target.value)} placeholder=${kind === 'visit' ? 'What happened and what was agreed' : kind === 'referral' ? 'Who was referred and from which company' : 'What was said, what was agreed, any next step'} aria-label="Update"></textarea>
+    <div className="flex flex-wrap items-center gap-2"><${Btn} kind="primary" onClick=${save} disabled=${!txt.trim()}>Save to ${a.name}<//>${onDone && html`<${Btn} onClick=${onDone}>Cancel<//>`}<span className="text-xs text-mute">Goes on the customer timeline${kind !== 'update' ? ' and the ' + (kind === 'visit' ? 'visits' : 'referral') + ' log' : ''}.</span></div>
+  </div>`;
+}
+function AddUpdateCard({ role, dispatch }) {
+  const now = useNow();
+  return html`<${Card}><${CardHead} title="Add an update or conversation" sub="Any channel. Saved to the customer timeline and the reports." /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} compact=${true} /></div><//>`;
+}
+function AddUpdateModal({ role, dispatch, onClose }) {
+  const now = useNow();
+  return html`<div className="fixed inset-0 z-[80] flex items-start justify-center p-4 pt-20" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${onClose}>
+    <div className="w-full max-w-xl rounded-lg border border-line bg-surface shadow-xl" onClick=${e => e.stopPropagation()} role="dialog" aria-label="Add update">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line"><div><div className="text-sm font-semibold">Add an update or conversation</div><div className="text-xs text-mute">Pick the customer and channel, then type what happened</div></div><button className="text-xs text-mute hover:text-ink" onClick=${onClose}>Close</button></div>
+      <div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} onDone=${onClose} /></div></div></div>`;
 }
 function QuickInput({ dispatch, now, me, accts }) {
   const [kind, setKind] = useState('visit'); const [aid, setAid] = useState(accts[0].id); const [txt, setTxt] = useState('');
@@ -2045,19 +2203,21 @@ function MetabaseCard({ dispatch }) {
     <div className="px-4 pb-4 text-xs text-mute">Production design: signed Metabase embeds inside the workspace, with the customer or AM filter passed in. Metabase reads the same data the signals and reports use, so the numbers agree.</div><//>`;
 }
 function ReportsHub({ st, dispatch, role, go }) {
-  const now = useNow(); const me = ROLES[role]; const list = REPORTS.filter(r => r.owner === role); const stt = r => repStatus(r, st, now);
+  const now = useNow(); const me = ROLES[role]; const list = REPORTS.filter(r => role === 'HEAD' || r.owner === role); const stt = r => repStatus(r, st, now);
+  const [tab, setTab] = useState('views');
   const due = list.filter(r => stt(r) !== 'Submitted' && repDue(r) - now < 7 * D).length, wait = list.filter(r => stt(r) === 'Awaiting approval').length, late = list.filter(r => stt(r) === 'Overdue').length;
   return html`<div className="space-y-5">
-    <div><h1 className="text-xl font-semibold">Reports</h1><p className="text-sm text-mute max-w-3xl">Input once. Activity from every other screen feeds these reports, so you only add what the system cannot know, then review and approve.</p></div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Due in 7 days" value=${due} /><${Tile} label="Awaiting approval" value=${wait} /><${Tile} label="Overdue" value=${late} tone=${late ? 'bad' : undefined} /><${Tile} label="Time saved so far" value=${dur(repSaved(list, st) * H)} sub="Estimate: manual minutes per report x share auto-filled" /></div>
-    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Reports you own' : 'Your reports'} sub="Reminders go to the owner 12 hours before the due date; overdue reports are flagged to the Head of AM. Use +1 day on Escalations to see it." />
+    <div><h1 className="text-xl font-semibold">Reports</h1><p className="text-sm text-mute max-w-3xl">${role === 'HEAD' ? 'Weekly, monthly and quarterly views for the whole team and for each person, plus every report your team submits.' : 'Your weekly, monthly and quarterly views, plus the reports you submit. Activity from every other screen feeds them.'}</p></div>
+    <div className="flex flex-wrap gap-1 border-b border-line">${[['views', role === 'HEAD' ? 'Team and individual views' : 'My performance views'], ...(list.length ? [['submit', role === 'HEAD' ? 'All reports' : 'Reports I submit']] : []), ['tools', 'Spreadsheet and analytics']].map(([k, l]) => html`<button key=${k} onClick=${() => setTab(k)} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${l}</button>`)}</div>
+    ${tab === 'views' && html`<${PerfViews} st=${st} role=${role} />`}
+    ${tab === 'submit' && html`<div className="space-y-5"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Due in 7 days" value=${due} /><${Tile} label="Awaiting approval" value=${wait} /><${Tile} label="Overdue" value=${late} tone=${late ? 'bad' : undefined} /><${Tile} label="Time saved so far" value=${dur(repSaved(list, st) * H)} sub="Estimate: manual minutes per report x share auto-filled" /></div>
+    <${Card}><${CardHead} title=${role === 'HEAD' ? 'Every report, by owner' : 'Your reports'} sub="Reminders go to the owner 12 hours before the due date; overdue reports are flagged to the Head of AM. Use +1 day on Escalations to see it." />
       <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2">Report</th><th className="px-4 py-2">Due</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Auto-filled</th><th className="px-4 py-2"></th></tr></thead><tbody>
-      ${list.map(r => { const s = stt(r); const rem = s !== 'Submitted' && now > repDue(r) - 12 * H && s !== 'Overdue'; return html`<tr key=${r.id} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r.name}</div><div className="text-xs text-mute">${r.cadence} · to ${r.to}</div></td><td className="px-4 py-2 text-xs whitespace-nowrap">${fmtDay(repDue(r))}</td><td className="px-4 py-2"><div className="flex flex-wrap gap-1"><${Pill} tone=${STATUS_TONE[s]}>${s}<//>${rem && html`<${AutoBadge} label="Reminder sent" />`}${s === 'Overdue' && html`<${Pill} tone="bad">Flagged to Head of AM<//>`}</div></td><td className="px-4 py-2 w-32"><${Bar} pct=${r.autoPct} /><div className="text-[11px] text-mute">${r.autoPct}% auto</div></td><td className="px-4 py-2"><${Btn} onClick=${() => go({ page: 'reports', id: r.id })}>Open<//></td></tr>`; })}
+      ${list.map(r => { const s = stt(r); const rem = s !== 'Submitted' && now > repDue(r) - 12 * H && s !== 'Overdue'; return html`<tr key=${r.id} className="border-b border-line last:border-0"><td className="px-4 py-2"><div className="font-medium">${r.name}</div><div className="text-xs text-mute">${r.cadence} · ${r.owner === 'HEAD' ? 'yours' : 'owned by ' + FN_SHORT[r.owner]} · to ${r.to}</div></td><td className="px-4 py-2 text-xs whitespace-nowrap">${fmtDay(repDue(r))}</td><td className="px-4 py-2"><div className="flex flex-wrap gap-1"><${Pill} tone=${STATUS_TONE[s]}>${s}<//>${rem && html`<${AutoBadge} label="Reminder sent" />`}${s === 'Overdue' && html`<${Pill} tone="bad">Flagged to Head of AM<//>`}</div></td><td className="px-4 py-2 w-32"><${Bar} pct=${r.autoPct} /><div className="text-[11px] text-mute">${r.autoPct}% auto</div></td><td className="px-4 py-2"><${Btn} onClick=${() => go({ page: 'reports', id: r.id })}>Open<//></td></tr>`; })}
       </tbody></table></div><//>
-    <${PortfolioExport} st=${st} dispatch=${dispatch} role=${role} />
-    ${role === 'AM' && html`<${QuickInput} dispatch=${dispatch} now=${now} me=${me} accts=${scopeAccounts('AM')} />`}
-    ${role === 'HEAD' && html`<${ReportTracker} st=${st} />`}
-    <${MetabaseCard} dispatch=${dispatch} />
+    ${role === 'AM' && html`<${Card}><${CardHead} title="Add update, visit or referral" sub="Same as Add update in the header. Visits and referrals feed their logs." /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} /></div><//>`}
+    ${role === 'HEAD' && html`<${ReportTracker} st=${st} />`}</div>`}
+    ${tab === 'tools' && html`<div className="space-y-5"><${PortfolioExport} st=${st} dispatch=${dispatch} role=${role === 'AM' ? 'AM' : 'HEAD'} /><${MetabaseCard} dispatch=${dispatch} /></div>`}
   </div>`;
 }
 /* ----- weekly operational and monthly portfolio report layouts ----- */
@@ -2126,24 +2286,25 @@ const UPSOLD = [{ accountId: 'meridian', svc: 'DIGADDR' }, { accountId: 'quicklo
 const monthSvc = (a, svc, m) => sum(a.series[svc].filter((_, i) => new Date(DEMO_NOW - (90 - i) * D).getMonth() === m));
 const isUpsold = (a, svc) => UPSOLD.some(u => u.accountId === a.id && u.svc === svc);
 const monthRev = (a, m, exclUpsold) => sum(Object.keys(a.series).filter(s => !(exclUpsold && isUpsold(a, s))).map(s => monthSvc(a, s, m) * a.price));
-function MonthlyReport({ st }) {
-  const now = useNow(); const sigs = computeSignals(ACCOUNTS, st.incidents);
-  const existing = ACCOUNTS.filter(a => !NEWLY_ASSIGNED[a.id]), newly = ACCOUNTS.filter(a => NEWLY_ASSIGNED[a.id]);
+function MonthlyReport({ st, accts }) {
+  const L = accts || ACCOUNTS; const Lids = new Set(L.map(a => a.id)); const ESC = st.escalations.filter(c => Lids.has(c.accountId));
+  const now = useNow(); const sigs = computeSignals(L, st.incidents);
+  const existing = L.filter(a => !NEWLY_ASSIGNED[a.id]), newly = L.filter(a => NEWLY_ASSIGNED[a.id]);
   const deltas = existing.map(a => { const prev = monthRev(a, REP_PREV, true), cur = monthRev(a, REP_MONTH, true); return { a, prev, cur, d: cur - prev }; });
   const book = sum(deltas.map(x => x.prev)), inc = sum(deltas.filter(x => x.d > 0).map(x => x.d)), dec = sum(deltas.filter(x => x.d < 0).map(x => x.d));
   const upsell = UPSOLD.map(u => { const a = ACC[u.accountId]; return { a, svc: u.svc, rev: monthSvc(a, u.svc, REP_MONTH) * a.price }; }), newBiz = sum(upsell.map(u => u.rev));
-  const newlyRev = sum(newly.map(a => monthRev(a, REP_MONTH, false))), total = sum(ACCOUNTS.map(a => monthRev(a, REP_MONTH, false)));
-  const target = Math.round(sum(ACCOUNTS.map(a => a.agreed * a.price)) / 1e5) * 1e5, lastYear = Math.round(total / 1.28 / 1e5) * 1e5;
+  const newlyRev = sum(newly.map(a => monthRev(a, REP_MONTH, false))), total = sum(L.map(a => monthRev(a, REP_MONTH, false)));
+  const target = Math.round(sum(L.map(a => a.agreed * a.price)) / 1e5) * 1e5, lastYear = Math.round(total / 1.28 / 1e5) * 1e5;
   const nrr = (book + inc + dec) / book, grr = (book + dec) / book;
   const bridge = [['Last month (existing book)', book, 'mute'], ['Growth from existing customers', inc, 'ok'], ['New business from upsells', newBiz, 'ok'], ['Newly assigned accounts', newlyRev, 'ok'], ['Decline and lost business', dec, 'bad'], [REP_MONTH_LABEL.split(' ')[0] + ' total', total, 'brand']];
   const maxB = Math.max(...bridge.map(b => Math.abs(b[1])));
-  const ams = [...new Set(ACCOUNTS.map(a => a.am))].map(n => { const l = ACCOUNTS.filter(a => a.am === n); const cur = sum(l.map(a => monthRev(a, REP_MONTH, false))), prev = sum(l.filter(a => !NEWLY_ASSIGNED[a.id]).map(a => monthRev(a, REP_PREV, false))); return { n, l, cur, ch: prev ? cur / prev - 1 : null, risk: l.filter(a => healthOf(a, sigs, st.escalations, now) !== 'green').length }; });
-  const lost = deltas.filter(x => x.d < 0).sort((x, y) => x.d - y.d), churned = ACCOUNTS.filter(a => !isNewAcct(a) && monthRev(a, REP_MONTH, false) === 0);
-  const res = st.escalations.filter(c => c.resolvedAt), within = res.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length, open = st.escalations.filter(isOpen);
-  const acked = st.escalations.filter(c => c.ackAt), fr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
+  const ams = [...new Set(L.map(a => a.am))].map(n => { const l = L.filter(a => a.am === n); const cur = sum(l.map(a => monthRev(a, REP_MONTH, false))), prev = sum(l.filter(a => !NEWLY_ASSIGNED[a.id]).map(a => monthRev(a, REP_PREV, false))); return { n, l, cur, ch: prev ? cur / prev - 1 : null, risk: l.filter(a => healthOf(a, sigs, ESC, now) !== 'green').length }; });
+  const lost = deltas.filter(x => x.d < 0).sort((x, y) => x.d - y.d), churned = L.filter(a => !isNewAcct(a) && monthRev(a, REP_MONTH, false) === 0);
+  const res = ESC.filter(c => c.resolvedAt), within = res.filter(c => (c.resolvedAt - c.openedAt) / H <= c.slaHours).length, open = ESC.filter(isOpen);
+  const acked = ESC.filter(c => c.ackAt), fr = acked.length ? sum(acked.map(c => c.ackAt - c.openedAt)) / acked.length : null;
   return html`<div className="space-y-4">
     <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
-    <p className="text-xs text-mute">Monthly focus: the health, profitability, retention and growth of the whole team portfolio. Reporting month: ${REP_MONTH_LABEL}. Target and prior-year figures are mock placeholders.</p>
+    <p className="text-xs text-mute">Monthly focus: the health, profitability, retention and growth of ${L.length === ACCOUNTS.length ? 'the whole team portfolio' : 'this portfolio (' + L.length + ' accounts)'}. Reporting month: ${REP_MONTH_LABEL}. Target and prior-year figures are mock placeholders.</p>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <${Tile} label="Total portfolio revenue" value=${ngn(total)} sub=${REP_MONTH_LABEL} />
       <${Tile} label="Against monthly target" value=${p1(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target) + ' · gap ' + ngn(Math.max(0, target - total))} />
@@ -2163,10 +2324,109 @@ function MonthlyReport({ st }) {
     <${Card}><${SecHead} q="Retention" title="Lost business, decline and churn" sub="The opposite of growth: where revenue went down" />
       ${lost.length === 0 ? html`<${Empty}>No declining accounts this month.<//>` : html`<div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Customer</th><th className="px-2 font-medium text-right">Last month</th><th className="px-2 font-medium text-right">This month</th><th className="px-2 font-medium text-right">Change</th><th className="px-4 font-medium">AM</th></tr></thead><tbody>${lost.map(x => html`<tr key=${x.a.id} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.a.name}</td><td className="px-2 text-right tabular-nums text-mute">${ngn(x.prev)}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2 text-right tabular-nums text-bad">↓ ${ngn(-x.d)} (${p1((1 - x.cur / x.prev) * 100)}% down)</td><td className="px-4 text-mute">${x.a.am}</td></tr>`)}</tbody></table></div>`}
       <div className="px-4 py-3 text-xs border-t border-line">${churned.length ? 'Churned: ' + churned.map(a => a.name).join(', ') : 'No customers churned this month.'}</div><//>
-    <${Card}><${SecHead} q="Execution" title="By account manager" sub="Each AM’s portfolio, from the same data as their own dashboard" />
-      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Month on month</th><th className="px-2 font-medium text-right">At risk</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>
+    ${ams.length > 1 && html`<${Card}><${SecHead} q="Execution" title="By account manager" sub="Each AM’s portfolio, from the same data as their own dashboard" />
+      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Revenue</th><th className="px-2 font-medium">Month on month</th><th className="px-2 font-medium text-right">At risk</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>`}
     <${Card}><${SecHead} q="Service delivery" title="Are we delivering what customers expect?" sub="Escalation performance this month" />
-      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3"><${Tile} label="Open escalations" value=${open.length} /><${Tile} label="Breached" value=${st.escalations.filter(c => c.breached).length} tone=${st.escalations.some(c => c.breached) ? 'bad' : undefined} /><${Tile} label="Average first response" value=${fr == null ? 'n/a' : fmtDur(fr)} /><${Tile} label="Resolved within SLA" value=${res.length ? within + ' of ' + res.length : 'n/a'} /></div><//>
+      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3"><${Tile} label="Open escalations" value=${open.length} /><${Tile} label="Breached" value=${ESC.filter(c => c.breached).length} tone=${ESC.some(c => c.breached) ? 'bad' : undefined} /><${Tile} label="Average first response" value=${fr == null ? 'n/a' : fmtDur(fr)} /><${Tile} label="Resolved within SLA" value=${res.length ? within + ' of ' + res.length : 'n/a'} /></div><//>
+  </div>`;
+}
+/* ----- quarterly view ----- */
+const Q_LABEL = 'Q3 2026 (July to September)';
+const julRev = a => a.invoices.length ? a.invoices[0].amount : 0;
+const qRev = a => julRev(a) + monthRev(a, 7, false) + monthRev(a, 8, false);
+const q2Rev = a => Math.round(qRev(a) / (1 + ((a.seed % 9) - 2) / 100));
+function QuarterlyReport({ st, accts }) {
+  const now = useNow(); const L = accts || ACCOUNTS; const sigs = computeSignals(ACCOUNTS, st.incidents); const ids = new Set(L.map(a => a.id));
+  const months = [['July', a => julRev(a)], ['August', a => monthRev(a, 7, false)], ['September', a => monthRev(a, 8, false)]].map(([m, f]) => [m, sum(L.map(f))]);
+  const total = sum(months.map(m => m[1])), prev = sum(L.map(q2Rev)), target = Math.round(sum(L.map(a => a.agreed * a.price)) * 3 / 1e5) * 1e5; const maxM = Math.max(...months.map(m => m[1]), 1);
+  const existing = L.filter(a => !isNewAcct(a)); const decl = existing.map(a => ({ a, jul: julRev(a), sep: monthRev(a, 8, false) })).filter(x => x.jul && x.sep < x.jul * .9).sort((x, y) => x.sep / x.jul - y.sep / y.jul);
+  const churned = existing.filter(a => monthRev(a, 8, false) === 0 && julRev(a) > 0); const ups = UPSOLD.filter(u => ids.has(u.accountId));
+  const vs = STAFF.filter(x => x.fn === 'VS').map(x => perfOf(x, 'quarter', 0)); const vsCases = sum(vs.map(v => v.cases)), vsStd = avg(vs.map(v => v.res2h));
+  const ams = [...new Set(L.map(a => a.am))].map(n => { const l = L.filter(a => a.am === n); const cur = sum(l.map(qRev)), pv = sum(l.map(q2Rev)); return { n, l, cur, ch: pv ? cur / pv - 1 : null, risk: l.filter(a => healthOf(a, sigs, st.escalations, now) !== 'green').length }; });
+  const qbr = repStatus(REPORTS.find(r => r.id === 'qbr'), st, now);
+  return html`<div className="space-y-4">
+    <${FiveQ} show=${['Revenue', 'Retention', 'Growth', 'Service delivery', 'Execution']} />
+    <p className="text-xs text-mute">Quarterly focus: direction of the portfolio over three months, for planning and the QBR conversations. Quarter: ${Q_LABEL}. Previous-quarter and target figures are mock placeholders.</p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><${Tile} label="Quarter revenue" value=${ngn(total)} sub=${L.length + ' accounts'} /><${Tile} label="Against quarterly target" value=${p1(total / target * 100) + '%'} tone=${total < target ? 'warn' : undefined} sub=${'Target ' + ngn(target)} /><${Tile} label="Against Q2" value=${pct(prev ? total / prev - 1 : null)} sub=${ngn(prev) + ' (mock)'} /><${Tile} label="Customers retained" value=${(existing.length - churned.length) + ' of ' + existing.length} sub=${churned.length ? 'Lost: ' + churned.map(a => a.name).join(', ') : 'None lost this quarter'} /></div>
+    <${Card}><${SecHead} q="Revenue" title="Revenue by month" sub="July comes from the issued invoice; August and September from usage" />
+      <div className="p-4 space-y-2.5">${months.map(([m, v]) => html`<div key=${m} className="grid grid-cols-[110px_minmax(0,1fr)_150px] items-center gap-3 text-sm"><span>${m}</span><${Bar} pct=${v / maxM * 100} /><span className="tabular-nums text-right">${ngn(v)}</span></div>`)}</div><//>
+    <div className="grid lg:grid-cols-2 gap-4">
+      <${Card}><${SecHead} q="Retention" title="Declining over the quarter" sub="September revenue more than 10% below July" />${decl.length === 0 ? html`<${Empty}>No account declined over the quarter.<//>` : decl.map(x => html`<div key=${x.a.id} className="px-4 py-2.5 border-b border-line last:border-0 text-sm flex flex-wrap items-center justify-between gap-2"><span className="font-medium">${x.a.name}<span className="text-mute font-normal"> · ${x.a.am}</span></span><${Pill} tone=${x.sep === 0 ? 'bad' : 'warn'}>${x.sep === 0 ? 'No usage in September' : p1((1 - x.sep / x.jul) * 100) + '% down since July'}<//></div>`)}<//>
+      <${Card}><${SecHead} q="Growth" title="Upsells and new customers" sub="Converted upsells and customers handed over by TSI this quarter" />
+        <div className="p-4 space-y-1.5 text-sm">${ups.map(u => html`<div key=${u.accountId + u.svc}><span className="font-medium">${ACC[u.accountId].name}</span> <span className="text-mute">started ${SVC[u.svc].name}</span></div>`)}${L.filter(a => NEWLY_ASSIGNED[a.id]).map(a => html`<div key=${a.id}><span className="font-medium">${a.name}</span> <span className="text-mute">${NEWLY_ASSIGNED[a.id]}</span></div>`)}${ups.length + L.filter(a => NEWLY_ASSIGNED[a.id]).length === 0 && html`<div className="text-mute">None this quarter.</div>`}</div><//>
+    </div>
+    <${Card}><${SecHead} q="Service delivery" title="Escalations and support across the quarter" sub="From the team performance data" />
+      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3"><${Tile} label="Escalated address checks handled by VS" value=${num(vsCases)} /><${Tile} label="Resolved within 2 hrs" value=${p1(vsStd) + '%'} /><${Tile} label="Breached this quarter" value=${num(sum(vs.map(v => v.breaches)))} /><${Tile} label="QBR packs" value=${qbr} sub="Key accounts, shared with customers" /></div><//>
+    ${ams.length > 1 && html`<${Card}><${SecHead} q="Execution" title="By account manager" sub="Quarter revenue and change against Q2" />
+      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">AM</th><th className="px-2 font-medium text-right">Accounts</th><th className="px-2 font-medium text-right">Quarter revenue</th><th className="px-2 font-medium">Against Q2</th><th className="px-2 font-medium text-right">At risk now</th></tr></thead><tbody>${ams.map(x => html`<tr key=${x.n} className="border-b border-line last:border-0"><td className="px-4 py-2 font-medium">${x.n}</td><td className="px-2 text-right tabular-nums">${x.l.length}</td><td className="px-2 text-right tabular-nums">${ngn(x.cur)}</td><td className="px-2"><${Pill} tone=${chTone(x.ch)}>${pct(x.ch)}<//></td><td className="px-2 text-right tabular-nums">${x.risk}</td></tr>`)}</tbody></table></div><//>`}
+  </div>`;
+}
+
+/* ----- performance by person: week, month, quarter ----- */
+const PER = { week: { k: 1, unit: 'week', label: now => 'Week of ' + fmtDay(now - 7 * D) + ' to ' + fmtDay(now - D) }, month: { k: 4.3, unit: 'month', label: () => 'September 2026' }, quarter: { k: 13, unit: 'quarter', label: () => Q_LABEL } };
+const hashStr = t => { let h = 7; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) | 0; return Math.abs(h); };
+const PSPEC = {
+  AM: [['rev', 'Portfolio revenue', 'ngn', 'up'], ['accts', 'Accounts', 'n', 'up'], ['risk', 'Accounts at risk', 'n', 'down'], ['touch', 'Customer conversations logged', 'n', 'up'], ['reply', 'Avg reply to VS queries', 'min', 'down', 15, '15 mins'], ['esc', 'Escalations raised', 'n', 'none'], ['tasks', 'Tasks completed', 'n', 'up'], ['over', 'Tasks overdue', 'n', 'down'], ['ups', 'Upsells converted', 'n', 'up']],
+  TSI: [['tickets', 'Tickets handled', 'n', 'up'], ['fr', 'Avg first response', 'min', 'down', 20, '15 to 20 mins'], ['resStd', 'Resolved within standard', 'pct', 'up', 90, '90%'], ['qa', 'Pushed to QA', 'n', 'none'], ['assigned', 'New customers from Sales', 'n', 'none'], ['c30', 'Contacted within 30 mins', 'pct', 'up', 100, '100%'], ['live', 'Went live', 'n', 'up'], ['days', 'Avg days to go live', 'day', 'down', 5, '2 to 5 days']],
+  VS: [['cases', 'Escalated checks handled', 'n', 'up'], ['ack', 'Avg acknowledgement', 'min', 'down', 30, '30 mins (proposed)'], ['res2h', 'Resolved within 2 hrs', 'pct', 'up', 80, '80%'], ['queries', 'Queries raised to AMs', 'n', 'none'], ['breaches', 'Breaches', 'n', 'down']],
+  ADMIN: [['followed', 'Escalations followed', 'n', 'up'], ['fups', 'Follow-ups logged', 'n', 'up'], ['closed', 'Escalations closed', 'n', 'up'], ['closeStd', 'Closed within standard', 'pct', 'up', 80, '80%'], ['stake', 'Stakeholders contacted', 'n', 'up'], ['stale', 'Cases with no update for 24 hrs', 'n', 'down']],
+  FIN: [['exc', 'Invoice exceptions handled', 'n', 'up'], ['appr', 'Avg approval time', 'hr', 'down', 1, '1 hr'], ['auto', 'Requests auto-approved', 'pct', 'up']],
+};
+function amRevP(L, per, off) {
+  if (per === 'week') return sum(L.map(a => sum(a.total.slice(83 - 7 * off, 90 - 7 * off)) * a.price));
+  if (per === 'month') { const m = 8 - off; return sum(L.map(a => m >= 7 ? monthRev(a, m, false) : m === 6 ? julRev(a) : Math.round(julRev(a) * Math.pow(.97, 6 - m)))); }
+  return sum(L.map(a => off === 0 ? qRev(a) : Math.round(q2Rev(a) * Math.pow(.96, off - 1))));
+}
+function perfOf(p, per, off) {
+  const b = rng(hashStr(p.name + per)), z = rng(hashStr(p.name + per) + off * 977 + 13); const k = PER[per].k;
+  const B = (lo, hi) => lo + b() * (hi - lo); const J = () => 1 + (z() - .5) * .16;
+  const n = (lo, hi) => Math.max(0, Math.round(B(lo, hi) * k * J())); const v = (lo, hi) => B(lo, hi) * J(); const pc = (lo, hi) => Math.min(100, B(lo, hi) + (z() - .5) * 6);
+  if (p.fn === 'AM') { const L = ACCOUNTS.filter(a => a.am === p.name && (!a.obId || ACTIVE.handed.has(a.id))); return { rev: amRevP(L, per, off), accts: L.length, risk: off === 0 ? L.filter(a => healthOf(a, computeSignals(ACCOUNTS, INCIDENTS_SEED), [], DEMO_NOW) !== 'green').length : Math.round(B(0, 2.4) + (z() < .2 ? 1 : 0)), touch: n(6, 12), reply: v(9, 20), esc: n(2, 5), tasks: n(10, 18), over: Math.round(B(0, 2.5) * J()), ups: Math.round(B(0, 1.6) * k / 4.3 * J()) }; }
+  if (p.fn === 'TSI') return { tickets: n(8, 14), fr: v(13, 24), resStd: pc(80, 95), qa: n(1, 3), assigned: n(2, 5), c30: pc(84, 99), live: n(1.5, 4), days: v(3, 5.6) };
+  if (p.fn === 'VS') return { cases: n(25, 40), ack: v(20, 45), res2h: pc(58, 82), queries: n(4, 9), breaches: n(1, 3) };
+  if (p.fn === 'ADMIN') return { followed: n(12, 20), fups: n(30, 50), closed: n(10, 18), closeStd: pc(64, 88), stake: n(14, 24), stale: Math.round(B(0, 3) * J()) };
+  return { exc: n(3, 7), appr: v(.7, 1.8), auto: pc(66, 80) };
+}
+const fmtM = (v, f) => f === 'ngn' ? ngn(v) : f === 'pct' ? p1(v) + '%' : f === 'min' ? dur(v * 60e3) : f === 'hr' ? dur(v * H) : f === 'day' ? dur(v * D) : num(v);
+function deltaPill(v, pv, f, better) {
+  if (pv == null || better === 'none') return null; const d = f === 'pct' ? v - pv : pv ? v / pv - 1 : 0; if (Math.abs(d) < (f === 'pct' ? .05 : .005)) return html`<${Pill} tone="mute">No change<//>`;
+  const good = (d > 0) === (better === 'up'); const txt = f === 'pct' ? (d > 0 ? '↑ ' : '↓ ') + p1(Math.abs(d)) + ' pts' : chg(d);
+  return html`<${Pill} tone=${good ? 'ok' : 'warn'}>${txt}<//>`;
+}
+function Scorecard({ p, per, now }) {
+  const cur = perfOf(p, per, 0), prv = perfOf(p, per, 1); const spec = PSPEC[p.fn]; const head = spec[0];
+  const trend = [5, 4, 3, 2, 1, 0].map(o => perfOf(p, per, o)[head[0]]); const mx = Math.max(...trend, 1);
+  return html`<div className="space-y-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">${spec.map(([key, label, f, better, tgt, tl]) => { const v = cur[key]; const meet = tgt == null ? null : better === 'down' ? v <= tgt : v >= tgt;
+      return html`<div key=${key} className="rounded-lg border border-line bg-surface p-3.5 space-y-1"><div className="text-xs text-mute">${label}</div><div className="text-xl font-semibold tabular-nums">${fmtM(v, f)}</div>
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">${deltaPill(v, prv[key], f, better)}${tgt != null && html`<${Pill} tone=${meet ? 'ok' : 'warn'}>${meet ? 'Meets' : 'Below'} standard: ${tl}<//>`}</div></div>`; })}</div>
+    <${Card}><${CardHead} title=${head[1] + ', last 6 ' + PER[per].unit + 's'} sub=${'Change shown against the previous ' + PER[per].unit} />
+      <div className="p-4 flex items-end gap-2 h-36">${trend.map((v, i) => html`<div key=${i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end"><div className="w-full rounded-t" style=${{ height: Math.max(4, v / mx * 100) + '%', background: i === 5 ? 'var(--fern)' : 'var(--surface2)' }} title=${fmtM(v, head[2])}></div><span className="text-[10px] text-mute">${i === 5 ? 'This' : '-' + (5 - i)}</span></div>`)}</div><//>
+  </div>`;
+}
+function TeamTable({ per, onPick }) {
+  return html`<div className="space-y-4">${['AM', 'TSI', 'ADMIN', 'VS', 'FIN'].map(fn => { const ppl = STAFF.filter(x => x.fn === fn); const spec = PSPEC[fn].slice(0, fn === 'FIN' ? 3 : 4);
+    return html`<${Card} key=${fn}><${CardHead} title=${FN_LABEL[fn]} sub=${ppl.length + (ppl.length > 1 ? ' people' : ' person') + '. Click a name for the full scorecard.'} />
+      <div className="scroll-x"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-mute border-b border-line"><th className="px-4 py-2 font-medium">Name</th>${spec.map(x => html`<th key=${x[0]} className="px-2 py-2 font-medium">${x[1]}</th>`)}</tr></thead><tbody>
+        ${ppl.map(p => { const c = perfOf(p, per, 0), v = perfOf(p, per, 1); return html`<tr key=${p.name} className="border-b border-line last:border-0"><td className="px-4 py-2"><button className="font-medium text-brand hover:underline" onClick=${() => onPick(p.name)}>${p.name}</button>${p.note && html`<div className="text-[11px] text-mute">${p.note}</div>`}</td>${spec.map(([key, , f, better]) => html`<td key=${key} className="px-2 py-2"><div className="flex flex-wrap items-center gap-1.5"><span className="tabular-nums">${fmtM(c[key], f)}</span>${deltaPill(c[key], v[key], f, better)}</div></td>`)}</tr>`; })}
+      </tbody></table></div><//>`; })}</div>`;
+}
+function PerfViews({ st, role }) {
+  const now = useNow(); const me = ROLES[role]; const head = role === 'HEAD';
+  const [per, setPer] = useState('week'); const [who, setWho] = useState(head ? 'team' : me.name);
+  const p = STAFF.find(x => x.name === who);
+  const amAccts = n => scopeAccounts('HEAD').filter(a => a.am === n);
+  const portfolio = accts => per === 'week' ? html`<${WeeklyReport} st=${st} accts=${accts} />` : per === 'month' ? html`<${MonthlyReport} st=${st} accts=${accts} />` : html`<${QuarterlyReport} st=${st} accts=${accts} />`;
+  return html`<div className="space-y-4">
+    <${Card} className="p-3.5"><div className="flex flex-wrap items-center gap-3">
+      <div className="flex gap-1" role="group" aria-label="Period">${[['week', 'Weekly'], ['month', 'Monthly'], ['quarter', 'Quarterly']].map(([k, l]) => html`<button key=${k} onClick=${() => setPer(k)} className=${cx('px-3.5 py-1.5 rounded-md text-sm border', per === k ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${l}</button>`)}</div>
+      ${head ? html`<select className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm" value=${who} onChange=${e => setWho(e.target.value)} aria-label="Person"><option value="team">Whole team</option>${['AM', 'TSI', 'ADMIN', 'VS', 'FIN'].map(fn => html`<optgroup key=${fn} label=${FN_LABEL[fn]}>${STAFF.filter(x => x.fn === fn).map(x => html`<option key=${x.name} value=${x.name}>${x.name}</option>`)}</optgroup>`)}</select>` : html`<span className="text-sm"><span className="font-medium">${me.name}</span> <span className="text-mute">· ${me.title}</span></span>`}
+      <span className="text-xs text-mute ml-auto">${PER[per].label(now)}</span></div><//>
+    ${who === 'team' ? html`<${TeamTable} per=${per} onPick=${setWho} /><div className="pt-2"><h2 className="text-base font-semibold mb-2">${per === 'week' ? 'Weekly operational report' : per === 'month' ? 'Monthly portfolio report' : 'Quarterly portfolio report'}, whole team</h2>${portfolio(scopeAccounts('HEAD'))}</div>`
+      : html`${head && html`<button className="text-xs text-brand" onClick=${() => setWho('team')}>← Whole team</button>`}<div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold">${p.name}</h2><${Pill} tone="info">${FN_LABEL[p.fn]}<//>${p.note && html`<${Pill} tone="mute">${p.note}<//>`}</div>
+        <${Scorecard} p=${p} per=${per} now=${now} />
+        ${p.fn === 'AM' && html`<div className="pt-2"><h2 className="text-base font-semibold mb-2">${per === 'week' ? 'Weekly operational report' : per === 'month' ? 'Monthly portfolio report' : 'Quarterly portfolio report'}, ${p.name.split(' ')[0]}'s customers</h2>${portfolio(p.name === ROLES.AM.name && role === 'AM' ? scopeAccounts('AM') : amAccts(p.name))}</div>`}`}
+    <p className="text-xs text-mute">Revenue and account counts come from usage data. Activity counts and response times for other periods are demo baseline data; in production they come from the escalation, ticket and notes records.</p>
   </div>`;
 }
 function ReportDraft({ r, st, dispatch, role, go }) {
@@ -2178,11 +2438,11 @@ function ReportDraft({ r, st, dispatch, role, go }) {
     <div className="flex flex-wrap items-center gap-2"><h1 className="text-xl font-semibold">${r.name}</h1><${Pill} tone=${STATUS_TONE[s]}>${s}<//></div>
     <p className="text-sm text-mute">${r.cadence}, due ${fmtDay(repDue(r))}, goes to ${r.to}. ${r.autoPct}% of this report is filled automatically.</p>
     ${s === 'Overdue' && html`<${Card} className="p-3 text-sm text-bad flex items-center gap-2"><${Icon} n="alert" s=${14} />Not approved by the due date. The reminder went to the owner and the report is flagged to the Head of AM.<//>`}
-    ${r.id === 'health' ? html`<${WeeklyReport} st=${st} accts=${scopeAccounts('AM')} />` : r.id === 'mgmt' ? html`<${MonthlyReport} st=${st} />` : secs.map(([t, lines]) => html`<${Card} key=${t}><${CardHead} title=${t} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} /><ul className="p-4 space-y-1.5 text-sm list-disc pl-8">${lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul><//>`)}
+    ${r.id === 'health' ? html`<${WeeklyReport} st=${st} accts=${scopeAccounts('AM')} />` : r.id === 'mgmt' ? html`<${MonthlyReport} st=${st} accts=${role === 'HEAD' ? ACCOUNTS : undefined} />` : secs.map(([t, lines]) => html`<${Card} key=${t}><${CardHead} title=${t} right=${html`<${AutoBadge} label="Auto-filled" title="Compiled from data already in the workspace" />`} /><ul className="p-4 space-y-1.5 text-sm list-disc pl-8">${lines.map((l, i) => html`<li key=${i}>${l}</li>`)}</ul><//>`)}
     <${Card}><${CardHead} title=${r.id === 'health' ? 'General and strategic updates' : r.id === 'mgmt' ? 'Risks and decisions' : 'AM input needed'} sub=${'Only what the system cannot know: ' + r.need} />
-      ${r.kind === 'log' ? html`<div className="p-4 text-sm text-mute">Add entries with Quick input below. They also appear on the account timeline.</div>` : r.opt ? html`<div className="p-4 text-sm text-mute">Nothing required. You can add an optional note.</div>` : null}
+      ${r.kind === 'log' ? html`<div className="p-4 text-sm text-mute">Add entries below or with Add update in the header. They also appear on the account timeline.</div>` : r.opt ? html`<div className="p-4 text-sm text-mute">Nothing required. You can add an optional note.</div>` : null}
       ${r.kind !== 'log' && html`<div className="p-4 space-y-2"><textarea value=${txt} onChange=${e => setTxt(e.target.value)} rows="3" disabled=${!can} placeholder="Commentary for the reader" className=${INP} aria-label="Commentary"></textarea><${Btn} onClick=${() => dispatch({ type: 'REP_COMMENT', id: r.id, text: txt.trim() })} disabled=${!can || !txt.trim()}>Save commentary<//></div>`}<//>
-    ${r.kind === 'log' && can && html`<${QuickInput} dispatch=${dispatch} now=${now} me=${me} accts=${scopeAccounts('AM')} />`}
+    ${r.kind === 'log' && can && html`<${Card}><${CardHead} title=${r.id === 'visits' ? 'Log a visit' : 'Log a referral'} /><div className="p-4"><${AddUpdateForm} role=${role} dispatch=${dispatch} now=${now} kinds=${[r.id === 'visits' ? 'visit' : 'referral']} /></div><//>`}
     <${Card}><${CardHead} title="Approve and output" sub=${r.aud === 'customer' ? 'Customer packs always need AM approval before they can be shared.' : 'Internal reports publish on approval.'} />
       <div className="p-4 space-y-3"><div className="flex flex-wrap gap-2"><${Btn} onClick=${() => mock('PDF preview')}>Download PDF<//><${Btn} onClick=${() => mock('Excel preview')}>Download Excel<//>
         <${Btn} kind="primary" disabled=${!can || !ready || !!w.approvedAt} onClick=${() => dispatch({ type: 'REP_APPROVE', id: r.id, by: me.name, ts: now })}>${r.aud === 'customer' ? 'Approve' : 'Approve and publish to ' + r.to}<//>
@@ -2226,7 +2486,7 @@ function NewTicketForm({ role, dispatch, now, onDone, fixedAccount }) {
 function TicketCard({ k, dispatch, role, defaultOpen }) {
   const now = useNow(); const me = ROLES[role]; const [open, setOpen] = useState(!!defaultOpen); const [msg, setMsg] = useState('');
   const can = role === 'TSI', openNow = k.status !== 'Resolved'; const stTone = { Open: 'warn', 'In progress': 'info', 'Pushed to QA': 'auto', Resolved: 'ok' };
-  const mayNote = openNow && (can || k.raisedBy === me.name || (k.accountId && ACC[k.accountId].am === me.name) || role === 'HEAD');
+  const mayNote = openNow && (can || k.raisedBy === me.name || (k.accountId && ACC[k.accountId].am === me.name) || role === 'HEAD' || role === 'ADMIN');
   const clk = !k.ackAt && openNow ? { openedAt: k.openedAt, slaHours: TSI_FR_H, resolvedAt: null } : { openedAt: k.openedAt, slaHours: TSI_RES_H[k.level], resolvedAt: k.resolvedAt || null };
   const events = tktEvents(k);
   const upd = tktUpdate(k), watch = tktWatchers(k).includes(me.name) && upd && upd.by !== me.name;
@@ -2302,7 +2562,11 @@ function buildNotifs(st, role, now) {
     const side = (role === 'AM' && k.accountId && ids.has(k.accountId)) || (role === 'VS' && k.raisedBy === me.name);
     if (side && (k.status === 'Pushed to QA' || (k.resolvedAt && now - k.resolvedAt < 2 * D))) add('tkt:' + k.id + ':' + k.status, 'Technical tickets', 'Info', k.id + ' · ' + tktName(k) + ': ' + k.status.toLowerCase(), k.issue, k.resolvedAt || k.qaAt, { page: 'tsi', focus: k.id }, 'View ticket');
   });
-  st.escalations.forEach(c => { const u = escUpdate(c); if (u && u.by !== me.name && escWatchers(c).includes(me.name) && now - u.ts <= 3 * D) add(updId(c.id, u), 'Updates', 'Normal', 'Update from ' + whoLabel(u.by) + ' on ' + c.id + ' · ' + ACC[c.accountId].name, u.text.length > 110 ? u.text.slice(0, 107) + '...' : u.text, u.ts, { page: 'escalations', focus: c.id }, 'View update'); });
+  if (role === 'ADMIN') st.escalations.filter(c => ACC[c.accountId].segment === me.segment).forEach(c => { const p = slaPct(c, now), a = ACC[c.accountId];
+    if (isOpen(c) && c.status !== 'Resolved' && p >= .5) add('adm:' + c.id + ':' + (p >= 1 ? 'b' : p >= .8 ? 'h' : 'm'), 'Escalations', p >= 1 ? 'Critical' : p >= .8 ? 'High' : 'Normal', c.id + ' · ' + a.name + ': chase ' + c.owner, c.issue + ' · ' + dur(now - c.openedAt) + ' of ' + hLabel(c.slaHours), c.openedAt, { page: 'escalations', focus: c.id }, 'Open case');
+    if (c.status === 'Resolved') add('adm:close:' + c.id, 'Escalations', 'Normal', c.id + ' · ' + a.name + ' resolved: confirm the customer was told', 'Close it once the AM confirms the update', c.resolvedAt || now, { page: 'escalations', focus: c.id }, 'Open case'); });
+  st.escalations.filter(c => isOpen(c) && (c.looped || []).includes(me.name)).forEach(c => add('loop:' + c.id + ':' + me.name, 'Escalations', 'Info', 'You are looped in on ' + c.id + ' · ' + ACC[c.accountId].name, c.issue + ' · owner ' + c.owner, c.openedAt, { page: 'escalations', focus: c.id }, 'Open case'));
+  st.escalations.forEach(c => { const u = escUpdate(c); const myTurn = isOpen(c) && (c.status === 'Open' || c.status === 'Awaiting AM') && ((role === 'AM' && c.owner === me.name) || (role === 'VS' && c.owner === 'VS Team')); if (u && !myTurn && u.by !== me.name && escParts(c).includes(me.name) && now - u.ts <= 3 * D) add(updId(c.id, u), 'Updates', 'Normal', 'Update from ' + whoLabel(u.by) + (u.via ? ' (' + u.via + ')' : '') + ' on ' + c.id + ' · ' + ACC[c.accountId].name, u.text.length > 110 ? u.text.slice(0, 107) + '...' : u.text, u.ts, { page: 'escalations', focus: c.id }, 'View update'); });
   st.tickets.forEach(k => { const u = tktUpdate(k); if (u && u.by !== me.name && tktWatchers(k).includes(me.name) && now - u.ts <= 3 * D) add(updId(k.id, u), 'Updates', 'Normal', 'Update from ' + whoLabel(u.by) + ' on ' + k.id + ' · ' + tktName(k), u.text.length > 110 ? u.text.slice(0, 107) + '...' : u.text, u.ts, { page: 'tsi', focus: k.id }, 'View update'); });
   if (role === 'AM' || role === 'TSI') Object.entries(st.schedules).forEach(([aid, x]) => { const a = ACC[aid]; const h = x.history && x.history[0]; if (!h || now - h.ts > D) return; const mine = role === 'AM' ? ids.has(aid) : !!a.obId && !ACTIVE.handed.has(aid); if (mine) add('ulog:' + aid + ':' + h.ts, 'Usage logs', 'Info', x.freq + ' usage log sent to ' + a.name, h.covers + ' · ' + num(h.records) + ' requests · sent automatically to ' + (a.contacts.find(q => q.id === x.contactId) || a.contacts[0]).name, h.ts, { page: 'account', id: aid, tab: 'Invoices' }, 'View account'); });
   st.onboarding.forEach(o => {
@@ -2343,14 +2607,14 @@ function NotificationsPage({ st, dispatch, role, go }) {
 }
 
 // Screen registry: later stages register their screens here (and bump STAGE_DONE)
-const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage, notifications: NotificationsPage };
+const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage, notifications: NotificationsPage, followup: FollowUpPage };
 
 /* ============================ 8 APP SHELL ============================ */
 function App() {
   const [st, dispatch] = useReducer(reducer, null, initState);
   ACTIVE.th = st.thresholds; ACTIVE.supp = st.suppOn; ACTIVE.handed = new Set(st.onboarding.filter(o => o.stage === 'Handed to AM' && o.accountId).map(o => o.accountId));
   const [route, setRoute] = useState({ page: 'home' });
-  const [guide, setGuide] = useState(false);
+  const [guide, setGuide] = useState(false); const [addUpd, setAddUpd] = useState(false);
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 10000); return () => clearInterval(t); }, []);
   useEffect(() => { if (!st.toast) return; const t = setTimeout(() => dispatch({ type: 'TOAST', text: null }), 4500); return () => clearTimeout(t); }, [st.toast && st.toast.id]);
@@ -2366,12 +2630,13 @@ function App() {
   let screen;
   if (planned) screen = html`<${Planned} item=${planned} />`;
   else if (route.page === 'home' && role === 'TSI') screen = html`<${TsiPage} st=${st} dispatch=${dispatch} role=${role} route=${route} go=${go} />`;
+  else if (route.page === 'home' && role === 'ADMIN') screen = html`<${FollowUpPage} st=${st} dispatch=${dispatch} role=${role} go=${go} />`;
   else if (route.page === 'home' && role === 'VS') screen = html`<${VsHome} st=${st} go=${go} />`;
   else if (route.page === 'home' && role === 'FIN') screen = html`<${FinHome3} st=${st} dispatch=${dispatch} go=${go} />`;
   else { const S = SCREENS[route.page] || Home; screen = html`<${S} st=${st} dispatch=${dispatch} go=${go} role=${role} route=${route} />`; }
   const active = route.page === 'account' ? 'accounts' : route.page;
 
-  return html`<${NowCtx.Provider} value=${now}><${StCtx.Provider} value=${{ st, dispatch }}>
+  return html`<${NowCtx.Provider} value=${now}><${StCtx.Provider} value=${{ st, dispatch, me: me.name }}>
     <div className="min-h-screen flex">
       <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-line bg-surface sticky top-0 h-screen">
         <div className="px-4 py-4 border-b border-line"><div className="font-semibold text-sm leading-tight flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-sm" style=${{ background: 'var(--fern)' }}></span>VerifyMe</div><div className="text-xs text-mute">Account Management Workspace</div></div>
@@ -2384,12 +2649,13 @@ function App() {
             <div className="md:hidden font-semibold text-sm">VerifyMe AM</div>
             <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${me.name}</div><div className="text-xs text-mute">${me.title}</div></div></div>
             <div className="flex items-center gap-1.5 md:ml-auto" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
-            <button onClick=${() => go({ page: 'notifications' })} title="Notifications" aria-label=${unread.length + ' notifications waiting'} className="relative inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface hover:bg-surface2"><${Icon} n="bell" s=${16} />${unread.length > 0 && html`<span className=${cx('absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}</button><${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
+            <button onClick=${() => go({ page: 'notifications' })} title="Notifications" aria-label=${unread.length + ' notifications waiting'} className="relative inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface hover:bg-surface2"><${Icon} n="bell" s=${16} />${unread.length > 0 && html`<span className=${cx('absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}</button><${Btn} onClick=${() => setAddUpd(true)} title="Log a call, WhatsApp, email, Slack message or meeting against a customer"><${Icon} n="plus" s=${12} />Add update<//><${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
           </div>
           <div className="md:hidden flex gap-1 px-3 pb-2 scroll-x">${nav.filter(n => n.stage <= STAGE_DONE).map(n => html`<button key=${n.id} onClick=${() => go({ page: n.id })} className=${cx('px-3 py-1 rounded-md text-xs border whitespace-nowrap', active === n.id ? 'bg-brandsoft text-brand border-brand' : 'border-line')}>${n.label}</button>`)}</div>
         </header>
         <main className="p-4 md:p-6 max-w-[1280px] w-full mx-auto">${screen}</main>
       </div>
+      ${addUpd && html`<${AddUpdateModal} role=${role} dispatch=${dispatch} onClose=${() => setAddUpd(false)} />`}
       ${guide && html`<${GuidedDemo} st=${st} dispatch=${dispatch} go=${go} setRole=${setRole} now=${now} onClose=${() => setGuide(false)} />`}
       ${st.toast && html`<div key=${st.toast.id} className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] max-w-[90vw] rounded-lg bg-ink text-bg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2" role="status"><${Icon} n="check" s=${15} />${st.toast.text}</div>`}
     </div>
