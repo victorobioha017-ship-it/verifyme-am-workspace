@@ -145,13 +145,19 @@ const THRESHOLDS = {
 };
 // Suppression rules: signals on a service with an open incident are held back
 THRESHOLDS.svcType = { realtime: 25, lastmile: 40 };
-const ACTIVE = { th: THRESHOLDS, supp: true, handed: new Set(['crest']) };
+const ACTIVE = { th: THRESHOLDS, supp: true, handed: new Set(['crest']), phase: 3 };
+const ph = n => ACTIVE.phase >= n;
+const PHASES = { 1: 'Operational visibility', 2: 'Escalations and support', 3: 'Reports and automation' };
+const PHASE_ROLES = { 1: ['AM', 'HEAD'], 2: ['AM', 'TSI', 'VS', 'ADMIN', 'HEAD'], 3: ['AM', 'TSI', 'VS', 'ADMIN', 'FIN', 'HEAD'] };
+const PAGE_PHASE = { home: 1, accounts: 1, datasetup: 1, notifications: 2, tsi: 2, followup: 2, escalations: 2, signals: 2, dashboard: 2, invoices: 3, opportunities: 3, reports: 3 };
+const PHASE_TABS = { 1: ['Usage'], 2: ['Onboarding', 'Timeline', 'Usage', 'Escalations'], 3: ['Onboarding', 'Timeline', 'Usage', 'Invoices', 'Escalations', 'Opportunities'] };
 const SUPPRESSION_RULES = [{ id: 'incident', label: 'Open provider incident or downtime flag on the affected service' }];
 
 const NAV = [
   { id: 'home',          label: 'Home',              icon: 'home',     stage: 1 },
   { id: 'notifications', label: 'Notifications',     icon: 'bell',     stage: 1 },
   { id: 'accounts',      label: 'Accounts',          icon: 'building', stage: 1 },
+  { id: 'datasetup',     label: 'Data setup',        icon: 'search',   stage: 1, roles: ['AM', 'HEAD'], p1only: true },
   { id: 'tsi',           label: 'Onboarding and support', icon: 'users', stage: 2, roles: ['TSI', 'AM', 'VS', 'ADMIN', 'HEAD'], blurb: 'New customers from Sales through demo, onboarding and go-live to AM handover, plus first-line technical tickets with escalation to QA.' },
   { id: 'followup',      label: 'Escalation follow-up', icon: 'phone', stage: 2, roles: ['ADMIN', 'HEAD'], blurb: 'Admins chase every escalation on their Key or Scale accounts until it is closed, and log off-portal conversations with agents, state coordinators, VS and TSI.' },
   { id: 'escalations',   label: 'Escalations',       icon: 'flag',     stage: 2, roles: ['AM', 'VS', 'ADMIN', 'TSI', 'HEAD'], blurb: 'One case model for AM to VS and VS to AM address verification: case ID, SLA clock, reminders at 50% and 80%, auto-escalation on breach, and a "Simulate time passing" control.' },
@@ -481,7 +487,7 @@ const CANNED_INBOUND = [
 
 /* ============================ 4 STATE ============================ */
 const initState = () => ({
-  role: 'AM',
+  role: 'AM', phase: 3,
   timeline: [...seedStage2().timeline, ...startTimeline()],
   tasks: TASKS_SEED.map(t => ({ ...t, due: sod(DEMO_NOW) + t.dueOff * D, done: false })),
   escalations: seedCases(),
@@ -504,7 +510,8 @@ const initState = () => ({
 });
 function reducer(s, a) {
   switch (a.type) {
-    case 'RESET': return initState();
+    case 'RESET': return { ...initState(), phase: s.phase };
+    case 'SET_PHASE': return { ...s, phase: a.phase, role: PHASE_ROLES[a.phase].includes(s.role) ? s.role : 'AM' };
     case 'SET_ROLE': return { ...s, role: a.role };
     case 'ONB_NEXT': {
       const o = s.onboarding.find(x => x.id === a.id); const i = ONB_STAGES.indexOf(o.stage); if (i < 0 || i >= ONB_STAGES.length - 1) return s;
@@ -886,7 +893,7 @@ function Home({ st, dispatch, go, role }) {
     <div className="flex flex-wrap items-end justify-between gap-2">
       <div><h1 className="text-xl font-semibold">${role === 'HEAD' ? 'Portfolio overview' : 'Good morning, ' + me.name.split(' ')[0]}</h1>
         <p className="text-sm text-mute">${fmtDay(now)} · ${accts.length} accounts ${role === 'HEAD' ? 'across 3 account managers' : 'assigned to you'}</p></div>
-      <div className="text-xs text-mute hidden md:flex items-center gap-1.5"><${AutoBadge} /> marks anything the system does without a person</div>
+      ${ph(2) && html`<div className="text-xs text-mute hidden md:flex items-center gap-1.5"><${AutoBadge} /> marks anything the system does without a person</div>`}
     </div>
 
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -894,15 +901,18 @@ function Home({ st, dispatch, go, role }) {
         <div className="flex h-2 rounded-full overflow-hidden bg-surface2 mt-1">${['green', 'amber', 'red'].map(k => hc[k] ? html`<div key=${k} style=${{ width: hc[k] / accts.length * 100 + '%', background: fillVar(HEALTH[k].tone) }}></div>` : null)}</div>
         <div className="flex gap-3 text-xs mt-1"><span className="text-ok">${hc.green} healthy</span><span className="text-warn">${hc.amber} at risk</span><span className="text-bad">${hc.red} critical</span></div>
       <//>
-      <${Tile} label="Open signals" value=${signals.length} sub=${signals.filter(s => s.suppressed).length + ' suppressed · target: action within 1 working day'} />
+      ${ph(2) ? html`<${Tile} label="Open signals" value=${signals.length} sub=${signals.filter(s => s.suppressed).length + ' suppressed · target: action within 1 working day'} />
       <${Tile} label="Open escalations" value=${cases.length} tone=${near ? 'warn' : ''} sub=${near + ' near breach'} />
-      <${Tile} label="Tasks due today" value=${myTasks.length} sub=${myTasks.filter(t => t.auto).length + ' created automatically'} />
+      <${Tile} label="Tasks due today" value=${myTasks.length} sub=${myTasks.filter(t => t.auto).length + ' created automatically'} />` : html`<${Tile} label="Revenue, last 30 days" value=${ngn(sum(accts.map(a => a.stats.last30 * a.price)))} sub=${chg(sum(accts.map(a => a.stats.last30)) / Math.max(1, sum(accts.map(a => a.stats.prior30))) - 1) + ' on the 30 days before'} />
+      <${Tile} label="Below 55% of agreed" value=${accts.filter(a => a.stats.last30 / a.agreed < .55).length} tone=${accts.some(a => a.stats.last30 / a.agreed < .55) ? 'warn' : ''} sub="Customers to look at first" />
+      <${Tile} label="Customers" value=${accts.length} sub=${accts.filter(a => a.segment === 'Key').length + ' Key · ' + accts.filter(a => a.segment === 'Scale').length + ' Scale'} />`}
       <${Tile} label="Volume, last 30 days" value=${p1(actualTot / agreedTot * 100) + '% of agreed'} sub=${num(actualTot) + ' of ' + num(agreedTot)}><${VolumeSpark} data=${portfolio30} w=${140} /><//>
     </div>
 
     <div className="grid lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-5 min-w-0">
-        <${Card}>
+        ${!ph(2) && html`<${P1Customers} accts=${accts} st=${st} go=${go} role=${role} now=${now} />`}
+        ${ph(2) && html`<${Card}>
           <${CardHead} title="Signal inbox" right=${html`<${AutoBadge} label="Auto-detected" />`} />
           ${signals.length === 0 ? html`<${Empty}>No open signals. Usage is in line with agreed volume.<//>` : signals.map(s => {
             const a = ACC[s.accountId]; const tone = s.suppressed ? 'mute' : s.kind === 'Dropped' ? 'bad' : 'warn';
@@ -918,17 +928,18 @@ function Home({ st, dispatch, go, role }) {
                     : html`<${SignalNext} s=${s} work=${st.sigWork[s.accountId]} />`}
               </div></div>`;
           })}
-        <//>
-        <${Card}>
+        <//>`}
+        ${ph(2) && html`<${Card}>
           <${CardHead} title="Open escalations" right=${html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Live<//>`} />
           ${cases.length === 0 ? html`<${Empty}>No open escalations.<//>` : cases.sort((a, b) => slaPct(b, now) - slaPct(a, now)).map(c => html`<${CaseRow} key=${c.id} c=${c} now=${now} go=${go} />`)}
-        <//>
+        <//>`}
         ${role === 'HEAD' && html`<${ByAmTable} accts=${accts} signals=${signals} st=${st} now=${now} />`}
-        <${TodoCard} st=${st} go=${go} role=${role} />
+        ${ph(3) && html`<${TodoCard} st=${st} go=${go} role=${role} />`}
       </div>
       <div className="space-y-5 min-w-0">
-        <${AddUpdateCard} role=${role} dispatch=${dispatch} />
-        <${Card}><${CardHead} title="Needs your attention" sub="Top items from Notifications" right=${html`<button className="text-xs text-brand" onClick=${() => go({ page: 'notifications' })}>See all</button>`} />
+        ${!ph(2) && html`<${DataCoverage} go=${go} role=${role} />`}
+        ${ph(2) && html`<${AddUpdateCard} role=${role} dispatch=${dispatch} />`}
+        ${ph(2) && html`<${Card}><${CardHead} title="Needs your attention" sub="Top items from Notifications" right=${html`<button className="text-xs text-brand" onClick=${() => go({ page: 'notifications' })}>See all</button>`} />
           ${(() => { const top = buildNotifs(st, role, now).filter(n => !st.read[n.id]).slice(0, 4); return top.length === 0 ? html`<${Empty}>All clear.<//>` : top.map(n => html`<${NotifRow} key=${n.id} n=${n} st=${st} dispatch=${dispatch} go=${go} compact=${true} />`); })()}<//>
         <${Card}>
           <${CardHead} title=${role === 'HEAD' ? 'Tasks due today (all AMs)' : 'Tasks due today'} />
@@ -937,12 +948,37 @@ function Home({ st, dispatch, go, role }) {
         <${Card}>
           <${CardHead} title="Activity log" sub="Mock: nothing is really sent" />
           ${recentLog.map(l => html`<div key=${l.id} className="px-4 py-2.5 border-b border-line last:border-0 text-xs"><div className="flex items-center gap-2 text-mute"><span>${fmtTime(l.ts)}, ${fmtDay(l.ts)}</span>${l.auto && html`<${AutoBadge} />`}</div><div className="mt-0.5"><span className="font-medium">${l.actor}: </span>${l.text}</div></div>`)}
-        <//>
+        <//>`}
       </div>
     </div>
   </div>`;
 }
 
+function P1Customers({ accts, st, go, role, now }) {
+  const sigs = computeSignals(ACCOUNTS, st.incidents);
+  const rows = [...accts].sort((x, y) => x.stats.last30 / x.agreed - y.stats.last30 / y.agreed);
+  return html`<${Card}><${CardHead} title=${role === 'HEAD' ? 'All customers' : 'Your customers'} sub="Lowest share of agreed volume first" />
+    ${rows.map(a => { const pc = a.stats.last30 / a.agreed; return html`<button key=${a.id} onClick=${() => go({ page: 'account', id: a.id, tab: 'Usage' })} className="w-full text-left px-4 py-3 border-b border-line last:border-0 hover:bg-surface2">
+      <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium text-sm">${a.name} <span className="text-xs text-mute font-normal">${a.orgId} · ${a.segment}${role === 'HEAD' ? ' · ' + a.am : ''}</span></span><${HealthPill} h=${healthOf(a, sigs, [], now)} /></div>
+      <div className="flex items-center gap-3 mt-1.5"><div className="flex-1 max-w-[260px]"><${Bar} pct=${pc * 100} tone=${pc >= .85 ? 'ok' : pc >= .55 ? 'warn' : 'bad'} /></div><span className="text-xs tabular-nums">${p1(pc * 100)}% of agreed</span><span className="text-xs text-mute">${chg(a.stats.mom)} on the previous 30 days</span></div></button>`; })}<//>`;
+}
+function DataCoverage({ go, role }) {
+  const all = ACCOUNTS.filter(a => !a.obId || ACTIVE.handed.has(a.id));
+  return html`<${Card}><${CardHead} title="Data behind these views" right=${role === 'HEAD' && html`<button className="text-xs text-brand" onClick=${() => go({ page: 'datasetup' })}>Details</button>`} />
+    <div className="p-4 space-y-3 text-sm"><div><div className="flex justify-between text-xs"><span>Account owner recorded</span><span className="tabular-nums">${all.length} of ${all.length}</span></div><${Bar} pct=${100} tone="ok" /></div>
+      <div><div className="flex justify-between text-xs"><span>Org ID recorded</span><span className="tabular-nums">${all.length} of ${all.length}</span></div><${Bar} pct=${100} tone="ok" /></div>
+      <div className="text-xs text-mute">Zoho CRM · database · Metabase, refreshed daily</div></div><//>`;
+}
+function DataSetupPage({ st }) {
+  const all = ACCOUNTS.filter(a => !a.obId || ACTIVE.handed.has(a.id)); const ams = [...new Set(all.map(a => a.am))];
+  const steps = [['Account owner and org ID in Zoho CRM', 'A required field on every customer record'], ['Daily sync from Zoho CRM to the database', 'Owner and org ID joined to usage and revenue'], ['Metabase model with the owner', 'One model, filtered per AM'], ['AM and group dashboards', 'Each AM sees their own; the Manager sees everyone']];
+  return html`<div className="space-y-5"><div><h1 className="text-xl font-semibold">Data setup</h1><p className="text-sm text-mute">Phase 1 work for the Data team</p></div>
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><${Tile} label="Customers with an account owner" value=${all.length + ' of ' + all.length} /><${Tile} label="Customers with an org ID" value=${all.length + ' of ' + all.length} /><${Tile} label="Account managers with a dashboard" value=${ams.length + ' of ' + ams.length} /></div>
+    <div className="grid lg:grid-cols-2 gap-5">
+      <${Card}><${CardHead} title="Customers per account manager" />${ams.map(n => { const l = all.filter(a => a.am === n); return html`<div key=${n} className="flex items-center justify-between px-4 py-2.5 border-b border-line last:border-0 text-sm"><span className="font-medium">${n}</span><span className="text-mute">${l.length} ${l.length === 1 ? 'customer' : 'customers'} · ${l.filter(a => a.segment === 'Key').length} Key</span></div>`; })}<//>
+      <${Card}><${CardHead} title="Phase 1 steps" sub="About 1 month" /><ol className="p-4 space-y-3">${steps.map(([t, d], i) => html`<li key=${t} className="flex gap-3"><span className="w-6 h-6 rounded-full bg-oksoft text-ok flex items-center justify-center shrink-0"><${Icon} n="check" s=${12} /></span><div><div className="text-sm font-medium">${t}</div><div className="text-xs text-mute">${d}</div></div></li>`)}</ol><//>
+    </div></div>`;
+}
 function ByAmTable({ accts, signals, st, now }) {
   const ams = [...new Set(accts.map(a => a.am))];
   return html`<${Card}><${CardHead} title="Portfolio by account manager" />
@@ -990,16 +1026,18 @@ const TABS = ['Timeline', 'Usage', 'Invoices', 'Escalations', 'Opportunities'];
 const ALL_TABS = ['Onboarding', ...TABS];
 const ACCESS_TABS = { AM: ALL_TABS, HEAD: ALL_TABS, TSI: ALL_TABS, ADMIN: ALL_TABS, FIN: ['Timeline', 'Usage', 'Invoices'], VS: ['Timeline', 'Usage', 'Escalations'] };
 const accessAccounts = role => role === 'TSI' ? ACCOUNTS : scopeAccounts('HEAD');
-const canPage = (role, route) => { const id = route.page === 'account' ? 'accounts' : route.page; if (id === 'home') return true; const n = NAV.find(x => x.id === id); if (!n) return true; if (n.roles && !n.roles.includes(role)) return false; if (route.page === 'account') return accessAccounts(role).some(a => a.id === route.id); return true; };
-function NoAccess({ role, go }) {
-  const me = ROLES[role]; const pages = NAV.filter(n => !n.roles || n.roles.includes(role));
+const canPage = (role, route) => { const id = route.page === 'account' ? 'accounts' : route.page; if (id === 'home') return true; if ((PAGE_PHASE[id] || 1) > ACTIVE.phase) return false; const n = NAV.find(x => x.id === id); if (!n) return true; if (n.roles && !n.roles.includes(role)) return false; if (route.page === 'account') return accessAccounts(role).some(a => a.id === route.id); return true; };
+function NoAccess({ role, go, route }) {
+  const me = ROLES[role]; const pages = NAV.filter(n => (!n.roles || n.roles.includes(role)) && (PAGE_PHASE[n.id] || 1) <= ACTIVE.phase && !(n.p1only && ACTIVE.phase > 1));
+  const pid = route && (route.page === 'account' ? 'accounts' : route.page), later = pid && (PAGE_PHASE[pid] || 1) > ACTIVE.phase;
+  if (later) { const n = NAV.find(x => x.id === pid); return html`<${Card} className="p-6 max-w-2xl space-y-3"><div className="flex items-center gap-2 text-sm font-semibold"><${Icon} n="lock" s=${16} />${n ? n.label : 'This screen'} arrives in Phase ${PAGE_PHASE[pid]}</div><p className="text-sm text-mute">Phase ${PAGE_PHASE[pid]}: ${PHASES[PAGE_PHASE[pid]]}.</p><div className="flex flex-wrap gap-1.5">${pages.map(x => html`<${Btn} key=${x.id} onClick=${() => go({ page: x.id })}><${Icon} n=${x.icon} s=${12} />${x.label}<//>`)}</div><//>`; }
   return html`<${Card} className="p-6 max-w-2xl space-y-3"><div className="flex items-center gap-2 text-sm font-semibold"><${Icon} n="lock" s=${16} />Not part of the ${me.short} view</div>
     <p className="text-sm text-mute">Each role sees only the pages and customers it needs. As ${me.name} (${me.title}) you can open:</p>
     <div className="flex flex-wrap gap-1.5">${pages.map(n => html`<${Btn} key=${n.id} onClick=${() => go({ page: n.id })}><${Icon} n=${n.icon} s=${12} />${n.label}<//>`)}</div>
     <//>`;
 }
 function Account360({ st, dispatch, go, role, route }) {
-  const now = useNow(); const a = ACC[route.id]; const tabs = (a.obId ? ['Onboarding', ...TABS] : TABS).filter(t => ACCESS_TABS[role].includes(t)); const tab = tabs.includes(route.tab) ? route.tab : tabs[0]; const ob = st.onboarding.find(o => o.accountId === a.id);
+  const now = useNow(); const a = ACC[route.id]; const tabs = (a.obId ? ['Onboarding', ...TABS] : TABS).filter(t => ACCESS_TABS[role].includes(t) && PHASE_TABS[ACTIVE.phase].includes(t)); const tab = tabs.includes(route.tab) ? route.tab : tabs[0]; const ob = st.onboarding.find(o => o.accountId === a.id);
   const signals = computeSignals(ACCOUNTS, st.incidents); const sig = signals.find(s => s.accountId === a.id);
   const h = healthOf(a, signals, st.escalations, now); const cases = st.escalations.filter(c => c.accountId === a.id);
   const pct = p1(a.stats.last30 / a.agreed * 100); const mom = p1(a.stats.mom * 100);
@@ -1019,7 +1057,7 @@ function Account360({ st, dispatch, go, role, route }) {
           <div className="h-2 rounded-full bg-surface2 mt-1.5 overflow-hidden"><div className="h-full rounded-full" style=${{ width: Math.min(100, pct) + '%', background: pct >= 85 ? 'var(--fern)' : pct >= 55 ? 'var(--porsche)' : 'var(--bad)' }}></div></div>
         </div>
       </div>
-      ${sig && html`<div className=${cx('mt-3.5 rounded-md px-3 py-2 text-sm flex flex-wrap items-center gap-2', sig.suppressed ? 'bg-surface2' : sig.kind === 'Dropped' ? 'bg-badsoft' : 'bg-warnsoft')}><${Icon} n=${sig.suppressed ? 'lock' : 'alert'} s=${15} /><span className="font-medium">${sig.suppressed ? 'Signal suppressed' : 'Signal: ' + sig.kind}.</span><span>${sig.detail}</span>${sig.suppressed && html`<span>Cause: ${sig.incident.id}, ${sig.incident.title}. No customer email is sent.</span>`}</div>`}
+      ${sig && ph(2) && html`<div className=${cx('mt-3.5 rounded-md px-3 py-2 text-sm flex flex-wrap items-center gap-2', sig.suppressed ? 'bg-surface2' : sig.kind === 'Dropped' ? 'bg-badsoft' : 'bg-warnsoft')}><${Icon} n=${sig.suppressed ? 'lock' : 'alert'} s=${15} /><span className="font-medium">${sig.suppressed ? 'Signal suppressed' : 'Signal: ' + sig.kind}.</span><span>${sig.detail}</span>${sig.suppressed && html`<span>Cause: ${sig.incident.id}, ${sig.incident.title}. No customer email is sent.</span>`}</div>`}
     <//>
     <div className="flex gap-1 border-b border-line scroll-x">${tabs.map(t => html`<button key=${t} onClick=${() => go({ ...route, tab: t })} className=${cx('px-3.5 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap', tab === t ? 'border-brand text-brand' : 'border-transparent text-mute hover:text-ink')}>${t}${counts[t] != null && html`<span className="ml-1.5 text-xs text-mute">${counts[t]}</span>`}</button>`)}</div>
     ${tab === 'Onboarding' && html`<${OnboardingTab} a=${a} ob=${ob} st=${st} dispatch=${dispatch} role=${role} go=${go} route=${route} />`}
@@ -1194,7 +1232,7 @@ function UsageTab({ a, st }) {
   const bw = (W - pl) / 90; const y = v => Hh - pb - v / max * (Hh - pb - 10); const ay = y(a.agreed / 30);
   const inc = st.incidents.filter(i => i.status === 'Open' && a.services.includes(i.service));
   return html`<div className="space-y-4">
-    ${inc.map(i => html`<div key=${i.id} className="rounded-md bg-warnsoft px-3 py-2 text-sm flex items-center gap-2"><${Icon} n="alert" s=${15} /><span><span className="font-medium">${i.id} is open:</span> ${i.title} since ${fmtDay(i.openedAt)}. ${i.note} Usage signals on ${SVC[i.service].name} are suppressed.</span></div>`)}
+    ${ph(2) && inc.map(i => html`<div key=${i.id} className="rounded-md bg-warnsoft px-3 py-2 text-sm flex items-center gap-2"><${Icon} n="alert" s=${15} /><span><span className="font-medium">${i.id} is open:</span> ${i.title} since ${fmtDay(i.openedAt)}. ${i.note} Usage signals on ${SVC[i.service].name} are suppressed.</span></div>`)}
     <${Card}><${CardHead} title="Daily requests, last 90 days" sub=${'Dashed line is agreed volume per day (' + num(a.agreed) + ' per month ÷ 30). Weekends run lower.'} />
       <div className="p-3 scroll-x"><svg viewBox=${'0 0 ' + W + ' ' + Hh} className="w-full min-w-[640px]" role="img" aria-label="Daily request volume">
         ${[0, .5, 1].map(f => html`<g key=${f}><line x1=${pl} x2=${W} y1=${y(max * f)} y2=${y(max * f)} style=${{ stroke: 'var(--line)' }} /><text x="0" y=${y(max * f) + 4} fontSize="10" style=${{ fill: 'var(--mute)' }}>${num(max * f)}</text></g>`)}
@@ -2641,14 +2679,14 @@ function NotificationsPage({ st, dispatch, role, go }) {
 }
 
 // Screen registry: later stages register their screens here (and bump STAGE_DONE)
-const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage, notifications: NotificationsPage, followup: FollowUpPage };
+const SCREENS = { home: Home, accounts: AccountsPage, account: Account360, escalations: EscalationsPage, signals: SignalsPage, invoices: InvoicesPage, opportunities: OppsPage, reports: ReportsPage, dashboard: DashboardPage, tsi: TsiPage, notifications: NotificationsPage, followup: FollowUpPage, datasetup: DataSetupPage };
 
 /* ============================ 8 APP SHELL ============================ */
 const MOB_TABS = { AM: ['home', 'notifications', 'escalations', 'accounts'], TSI: ['home', 'notifications', 'escalations', 'accounts'], VS: ['home', 'notifications', 'escalations', 'tsi'], ADMIN: ['home', 'notifications', 'escalations', 'accounts'], FIN: ['home', 'notifications', 'invoices', 'accounts'], HEAD: ['home', 'notifications', 'dashboard', 'reports'] };
-const MOB_LABEL = { home: 'Home', notifications: 'Alerts', escalations: 'Cases', accounts: 'Customers', invoices: 'Invoices', dashboard: 'Dashboard', reports: 'Reports', tsi: 'Support' };
+const MOB_LABEL = { datasetup: 'Data', home: 'Home', notifications: 'Alerts', escalations: 'Cases', accounts: 'Customers', invoices: 'Invoices', dashboard: 'Dashboard', reports: 'Reports', tsi: 'Support' };
 function App() {
   const [st, dispatch] = useReducer(reducer, null, initState);
-  ACTIVE.th = st.thresholds; ACTIVE.supp = st.suppOn; ACTIVE.handed = new Set(st.onboarding.filter(o => o.stage === 'Handed to AM' && o.accountId).map(o => o.accountId));
+  ACTIVE.th = st.thresholds; ACTIVE.supp = st.suppOn; ACTIVE.phase = st.phase; ACTIVE.handed = new Set(st.onboarding.filter(o => o.stage === 'Handed to AM' && o.accountId).map(o => o.accountId));
   const [route, setRoute] = useState({ page: 'home' });
   const [guide, setGuide] = useState(false); const [addUpd, setAddUpd] = useState(false); const [sheet, setSheet] = useState(null);
   const [tick, setTick] = useState(0);
@@ -2660,12 +2698,12 @@ function App() {
   const role = st.role; const me = ROLES[role];
   const go = r => { setRoute(r); window.scrollTo(0, 0); };
   const setRole = r => { dispatch({ type: 'SET_ROLE', role: r }); setRoute({ page: 'home' }); };
-  const nav = NAV.filter(n => !n.roles || n.roles.includes(role));
+  const nav = NAV.filter(n => (!n.roles || n.roles.includes(role)) && (PAGE_PHASE[n.id] || 1) <= st.phase && !(n.p1only && st.phase > 1));
   const notifs = buildNotifs(st, role, now), unread = notifs.filter(n => !st.read[n.id]), hot = unread.some(n => n.level === 'Critical') ? 'bad' : unread.some(n => n.level === 'High') ? 'warn' : 'info';
   const planned = NAV.find(n => n.id === route.page && n.stage > STAGE_DONE);
   let screen;
   if (planned) screen = html`<${Planned} item=${planned} />`;
-  else if (!canPage(role, route)) screen = html`<${NoAccess} role=${role} go=${go} />`;
+  else if (!canPage(role, route)) screen = html`<${NoAccess} role=${role} go=${go} route=${route} />`;
   else if (route.page === 'home' && role === 'TSI') screen = html`<${TsiPage} st=${st} dispatch=${dispatch} role=${role} route=${route} go=${go} />`;
   else if (route.page === 'home' && role === 'ADMIN') screen = html`<${FollowUpPage} st=${st} dispatch=${dispatch} role=${role} go=${go} />`;
   else if (route.page === 'home' && role === 'VS') screen = html`<${VsHome} st=${st} go=${go} />`;
@@ -2686,19 +2724,21 @@ function App() {
             <span className="inline-block w-3 h-3 rounded-sm shrink-0" style=${{ background: 'var(--fern)' }}></span>
             <button onClick=${() => setSheet('role')} className="flex items-center gap-2 min-w-0 flex-1 text-left" aria-label="Switch role"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold shrink-0">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight min-w-0"><div className="text-sm font-medium truncate">${me.name}</div><div className="text-[11px] text-mute truncate">${ROLES[role].short} · tap to switch</div></div></button>
             ${st.simHours > 0 && html`<${Pill} tone="auto">+${fmtDur(st.simHours * H)}<//>`}
-            <button onClick=${() => setAddUpd(true)} aria-label="Add update" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface"><${Icon} n="plus" s=${16} /></button>
+            ${ph(2) && html`<button onClick=${() => setAddUpd(true)} aria-label="Add update" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface"><${Icon} n="plus" s=${16} /></button>`}
+            <span className="text-[11px] font-semibold rounded px-1.5 py-0.5" style=${{ background: 'var(--porsche)', color: 'var(--tiber)' }}>P${st.phase}</span>
             <button onClick=${() => setSheet('more')} aria-label="Menu" className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface"><${Icon} n="menu" s=${16} /></button>
           </div>
           <div className="hidden md:flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
             <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${me.name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${me.name}</div><div className="text-xs text-mute">${me.title}</div></div></div>
-            <div className="flex items-center gap-1.5 md:ml-auto" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
-            <button onClick=${() => go({ page: 'notifications' })} title="Notifications" aria-label=${unread.length + ' notifications waiting'} className="relative inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface hover:bg-surface2"><${Icon} n="bell" s=${16} />${unread.length > 0 && html`<span className=${cx('absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}</button><${Btn} onClick=${() => setAddUpd(true)} title="Log a call, WhatsApp, email, Slack message or meeting against a customer"><${Icon} n="plus" s=${12} />Add update<//><${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
+            <div className="flex items-center gap-1 md:ml-auto" role="group" aria-label="Build phase"><span className="text-xs text-mute mr-1">Phase</span>${[1, 2, 3].map(n => html`<button key=${n} title=${'Phase ' + n + ': ' + PHASES[n]} onClick=${() => { dispatch({ type: 'SET_PHASE', phase: n }); setRoute({ page: 'home' }); }} className=${cx('w-8 py-1.5 rounded-md text-xs font-semibold border', st.phase === n ? 'border-transparent' : 'bg-surface border-line hover:bg-surface2')} style=${st.phase === n ? { background: 'var(--porsche)', color: 'var(--tiber)' } : null}>${n}</button>`)}</div>
+            <div className="flex items-center gap-1.5" role="group" aria-label="Switch role"><span className="text-xs text-mute mr-1">View as</span>${ROLE_ORDER.filter(r => PHASE_ROLES[st.phase].includes(r)).map(r => html`<button key=${r} onClick=${() => setRole(r)} className=${cx('px-2.5 py-1.5 rounded-md text-xs font-medium border', role === r ? 'bg-brand text-onbrand border-brand' : 'bg-surface border-line hover:bg-surface2')}>${ROLES[r].short}</button>`)}</div>
+            ${ph(2) && html`<button onClick=${() => go({ page: 'notifications' })} title="Notifications" aria-label=${unread.length + ' notifications waiting'} className="relative inline-flex items-center justify-center w-9 h-9 rounded-md border border-line bg-surface hover:bg-surface2"><${Icon} n="bell" s=${16} />${unread.length > 0 && html`<span className=${cx('absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}</button><${Btn} onClick=${() => setAddUpd(true)} title="Log a call, WhatsApp, email, Slack message or meeting against a customer"><${Icon} n="plus" s=${12} />Add update<//>`}${ph(3) && html`<${Btn} kind="primary" onClick=${() => setGuide(!guide)} title="Walk through the Brightpay story"><${Icon} n="spark" s=${12} />Guided demo<//>`}${st.simHours > 0 && html`<${Pill} tone="auto"><${Icon} n="clock" s=${11} />Clock +${fmtDur(st.simHours * H)}<//>`}<${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); }} title="Restore the initial demo data"><${Icon} n="reset" s=${12} />Reset demo<//>
           </div>
         </header>
         <main className="p-4 md:p-6 max-w-[1280px] w-full mx-auto mob-pad">${screen}</main>
       </div>
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-surface border-t border-line tabbar" aria-label="Main">
-        <div className="grid grid-cols-5">${[...(MOB_TABS[role] || MOB_TABS.AM), 'more'].map(id => { const n = NAV.find(x => x.id === id); const on = id === 'more' ? sheet === 'more' : active === id;
+        <div className="grid" style=${{ gridTemplateColumns: 'repeat(' + ([...(MOB_TABS[role] || MOB_TABS.AM)].filter(id => nav.some(n => n.id === id)).length + (st.phase === 1 ? 1 : 0) + 1) + ', minmax(0, 1fr))' }}>${[...(MOB_TABS[role] || MOB_TABS.AM).filter(id => nav.some(n => n.id === id)), ...(st.phase === 1 ? ['datasetup'] : []), 'more'].map(id => { const n = NAV.find(x => x.id === id); const on = id === 'more' ? sheet === 'more' : active === id;
           return html`<button key=${id} onClick=${() => id === 'more' ? setSheet(sheet === 'more' ? null : 'more') : (setSheet(null), go({ page: id }))} className=${cx('relative flex flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px]', on ? 'text-brand font-semibold' : 'text-mute')}>
             <${Icon} n=${id === 'more' ? 'menu' : n.icon} s=${20} /><span>${id === 'more' ? 'More' : MOB_LABEL[id] || n.label}</span>
             ${id === 'notifications' && unread.length > 0 && html`<span className=${cx('absolute top-1 left-1/2 ml-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center', TONES[hot])}>${unread.length}</span>`}
@@ -2706,9 +2746,10 @@ function App() {
       ${sheet && html`<div className="md:hidden fixed inset-0 z-[75] flex items-end" style=${{ background: 'rgba(10,36,59,.45)' }} onClick=${() => setSheet(null)}>
         <div className="w-full rounded-t-2xl bg-surface border-t border-line max-h-[80vh] overflow-y-auto tabbar" onClick=${e => e.stopPropagation()} role="dialog" aria-label=${sheet === 'role' ? 'Switch role' : 'Menu'}>
           <div className="flex justify-center pt-2"><span className="w-10 h-1 rounded-full bg-surface2"></span></div>
-          ${sheet === 'role' ? html`<div className="p-4 space-y-2"><div className="text-sm font-semibold">View the workspace as</div>${ROLE_ORDER.map(r => html`<button key=${r} onClick=${() => { setRole(r); setSheet(null); }} className=${cx('w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left', role === r ? 'border-brand bg-brandsoft' : 'border-line')}><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${ROLES[r].name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${ROLES[r].name}</div><div className="text-xs text-mute">${ROLES[r].title}</div></div></button>`)}</div>`
+          ${sheet === 'role' ? html`<div className="p-4 space-y-2"><div className="text-sm font-semibold">View the workspace as</div>${ROLE_ORDER.filter(r => PHASE_ROLES[st.phase].includes(r)).map(r => html`<button key=${r} onClick=${() => { setRole(r); setSheet(null); }} className=${cx('w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left', role === r ? 'border-brand bg-brandsoft' : 'border-line')}><div className="w-8 h-8 rounded-full bg-brand text-onbrand flex items-center justify-center text-xs font-semibold">${ROLES[r].name.split(' ').map(x => x[0]).join('')}</div><div className="leading-tight"><div className="text-sm font-medium">${ROLES[r].name}</div><div className="text-xs text-mute">${ROLES[r].title}</div></div></button>`)}</div>`
             : html`<div className="p-4 space-y-4"><div className="grid grid-cols-3 gap-2">${nav.map(n => html`<button key=${n.id} onClick=${() => { setSheet(null); go({ page: n.id }); }} className=${cx('flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-xs text-center', active === n.id ? 'border-brand bg-brandsoft text-brand' : 'border-line')}><${Icon} n=${n.icon} s=${20} /><span className="leading-tight">${n.label}</span></button>`)}</div>
-              <div className="grid grid-cols-2 gap-2"><${Btn} kind="primary" onClick=${() => { setSheet(null); setGuide(true); }}><${Icon} n="spark" s=${12} />Guided demo<//><${Btn} onClick=${() => { setSheet(null); setSheet('role'); }}><${Icon} n="users" s=${12} />Switch role<//><${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); setSheet(null); }}><${Icon} n="reset" s=${12} />Reset demo<//><${Btn} onClick=${() => setSheet(null)}>Close<//></div>
+              <div><div className="text-xs font-semibold mb-1.5">Build phase</div><div className="grid grid-cols-3 gap-2">${[1, 2, 3].map(n => html`<button key=${n} onClick=${() => { dispatch({ type: 'SET_PHASE', phase: n }); setRoute({ page: 'home' }); setSheet(null); }} className=${cx('rounded-lg border px-2 py-2 text-xs text-left', st.phase === n ? 'border-transparent font-semibold' : 'border-line')} style=${st.phase === n ? { background: 'var(--porsche)', color: 'var(--tiber)' } : null}>Phase ${n}<div className="font-normal leading-tight mt-0.5">${PHASES[n]}</div></button>`)}</div></div>
+              <div className="grid grid-cols-2 gap-2">${ph(3) && html`<${Btn} kind="primary" onClick=${() => { setSheet(null); setGuide(true); }}><${Icon} n="spark" s=${12} />Guided demo<//>`}<${Btn} onClick=${() => { setSheet(null); setSheet('role'); }}><${Icon} n="users" s=${12} />Switch role<//><${Btn} onClick=${() => { dispatch({ type: 'RESET' }); setRoute({ page: 'home' }); setSheet(null); }}><${Icon} n="reset" s=${12} />Reset demo<//><${Btn} onClick=${() => setSheet(null)}>Close<//></div>
               <div className="text-[11px] text-mute">Concept prototype. All data and actions are mock. Currency in NGN.</div></div>`}
         </div></div>`}
       ${addUpd && html`<${AddUpdateModal} role=${role} dispatch=${dispatch} onClose=${() => setAddUpd(false)} />`}

@@ -26,7 +26,11 @@ A clickable concept prototype for an account management workspace built around i
 - **Mobile:** on a phone the workspace switches to a mobile layout: a compact header (tap your name to switch role), a bottom tab bar (Home, Alerts, Cases or the role's main page, Customers, More), customer cards instead of tables, and bottom sheets for Add update and the menu
 - **Guided demo:** a 21-step walkthrough of one customer story from start to finish
 
-**Phase 1 prototype:** `phase1.html` shows what the first build phase delivers: AM and group dashboards filtered by the account owner from Zoho CRM, plus the Data team's setup view (owner and org ID coverage). Live at https://victorobioha017-ship-it.github.io/verifyme-am-workspace/phase1.html.
+**Build phases:** the Phase 1, 2 and 3 buttons in the header (or More, then Build phase, on mobile) show what each phase delivers in the same workspace.
+
+- Phase 1, Operational visibility: Home, Accounts (Usage) and Data setup, for the AM and the Head of AM
+- Phase 2, Escalations and support: adds Notifications, Escalations, Onboarding and support, Signals, Admin follow-up and Add update
+- Phase 3, Reports and automation: adds Reports, Invoices and logs, Opportunities and the Guided demo
 
 Switch between the six roles (Account Manager, TSI, Verification Services Agent, Admin, Finance, Head of Account Management) from the header.
 
