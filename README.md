@@ -30,6 +30,7 @@ Switch between the six roles (Account Manager, TSI, Verification Services Agent,
 ## Notes
 
 - All data, people and companies are fictional. Nothing is really sent.
+- Email is assumed to run through Outlook (Microsoft 365, existing licences). WhatsApp is not integrated: WhatsApp conversations are logged by hand with Add update, like calls and meetings.
 - Escalation clocks follow real team standards: AMs reply to a VS query within 15 minutes, VS resolves an escalated address check in about 2 hours, invoices take about 1 hour, and verification itself runs 24 to 72 hours. Baseline figures are illustrative.
 - The demo date is fixed at 15 October 2026 so the stories always read the same. Currency is NGN.
 - Single HTML file. React 18, htm and Tailwind load from public CDNs, so there is no build step.
